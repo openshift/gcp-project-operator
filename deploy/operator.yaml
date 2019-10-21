@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gcp-project-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: gcp-project-operator
+  template:
+    metadata:
+      labels:
+        name: gcp-project-operator
+    spec:
+      serviceAccountName: gcp-project-operator
+      containers:
+        - name: gcp-project-operator
+          # Replace this with the built image name
+          image: REPLACE_IMAGE
+          command:
+          - gcp-project-operator
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "gcp-project-operator"
