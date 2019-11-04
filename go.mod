@@ -12,6 +12,7 @@ require (
 	github.com/go-logr/zapr v0.1.0 // indirect
 	github.com/go-openapi/spec v0.18.0 // indirect
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
+	github.com/golang/mock v1.3.1
 	github.com/google/btree v1.0.0 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/google/uuid v1.0.0 // indirect
@@ -23,6 +24,8 @@ require (
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/onsi/ginkgo v1.7.0 // indirect
 	github.com/onsi/gomega v1.4.3 // indirect
+	github.com/openshift/api v3.9.1-0.20190927182313-d4a64ec2cbd8+incompatible // indirect
+	github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e // indirect
 	github.com/openshift/hive v0.0.0-20191020035449-08ae9d507dad
 	github.com/operator-framework/operator-sdk v0.8.3-0.20190722210327-daf62d44e47e
 	github.com/pborman/uuid v0.0.0-20180906182336-adf5a7427709 // indirect
@@ -75,3 +78,8 @@ replace github.com/operator-framework/operator-sdk => github.com/operator-framew
 
 // Pin google api to v0.11.0
 replace google.golang.org/api => google.golang.org/api v0.11.0
+
+// Pin hive dep
+replace github.com/openshift/cluster-network-operator => github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e
+
+replace github.com/openshift/api => github.com/openshift/api v3.9.1-0.20190927182313-d4a64ec2cbd8+incompatible
