@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"golang.org/x/oauth2/google"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
 	iam "google.golang.org/api/iam/v1"
@@ -81,7 +82,6 @@ func (c *gcpClient) CreateProject(parentFolderID string) (*cloudresourcemanager.
 
 // DeleteProject deletes a project from a given folder.
 func (c *gcpClient) DeleteProject(parentFolder string) (*cloudresourcemanager.Empty, error) {
-
 	empty, err := c.cloudResourceManagerClient.Projects.Delete(c.projectName).Do()
 	if err != nil {
 		return &cloudresourcemanager.Empty{}, fmt.Errorf("gcpclient.DeleteProject.Projects.Delete %v", err)
@@ -105,7 +105,6 @@ func (c *gcpClient) GetServiceAccount(accountName string) (*iam.ServiceAccount, 
 
 // CreateServiceAccount creates a service account with required roles.
 func (c *gcpClient) CreateServiceAccount(name, displayName string) (*iam.ServiceAccount, error) {
-
 	CreateServiceAccountRequest := &iam.CreateServiceAccountRequest{
 		AccountId: name,
 		ServiceAccount: &iam.ServiceAccount{
@@ -113,7 +112,7 @@ func (c *gcpClient) CreateServiceAccount(name, displayName string) (*iam.Service
 		},
 	}
 
-	serviceAccount, err := c.iamClient.Projects.ServiceAccounts.Create("projects/"+c.projectName, CreateServiceAccountRequest).Do()
+	serviceAccount, err := c.iamClient.Projects.ServiceAccounts.Create(fmt.Sprintf("projects/%s", c.projectName), CreateServiceAccountRequest).Do()
 	if err != nil {
 		return &iam.ServiceAccount{}, fmt.Errorf("gcpclient.CreateServiceAccount.Projects.ServiceAccounts.Create %v", err)
 	}
@@ -146,7 +145,7 @@ func (c *gcpClient) DeleteServiceAccountKeys(serviceAccountEmail string) error {
 		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.List: %v", err)
 	}
 
-	if len(response.Keys) <= 1{
+	if len(response.Keys) <= 1 {
 		return nil
 	}
 
@@ -160,7 +159,7 @@ func (c *gcpClient) DeleteServiceAccountKeys(serviceAccountEmail string) error {
 		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.List: %v", err)
 	}
 
-	if len(newResponse.Keys) > 1{
+	if len(newResponse.Keys) > 1 {
 		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.Delete: %v", errors.New("Could not delete all keys"))
 	}
 
@@ -177,7 +176,6 @@ func (c *gcpClient) GetIamPolicy() (*cloudresourcemanager.Policy, error) {
 }
 
 func (c *gcpClient) SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIamPolicyRequest) (*cloudresourcemanager.Policy, error) {
-
 	policy, err := c.cloudResourceManagerClient.Projects.SetIamPolicy(c.projectName, setIamPolicyRequest).Do()
 	if err != nil {
 		return &cloudresourcemanager.Policy{}, fmt.Errorf("gcpclient.SetIamPolicy.Projects.ServiceAccounts.SetIamPolicy %v", err)
