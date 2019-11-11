@@ -55,7 +55,7 @@ func getSecret(kubeClient client.Client, secretName, namespace string) (*corev1.
 	err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: secretName, Namespace: namespace}, s)
 
 	if err != nil {
-		return nil, err
+		return &corev1.Secret{}, err
 	}
 	return s, nil
 }

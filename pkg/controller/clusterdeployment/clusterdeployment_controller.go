@@ -85,7 +85,11 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileClusterDeployment{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileClusterDeployment{
+		client:           mgr.GetClient(),
+		scheme:           mgr.GetScheme(),
+		gcpClientBuilder: gcpclient.NewClient,
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -112,8 +116,9 @@ var _ reconcile.Reconciler = &ReconcileClusterDeployment{}
 type ReconcileClusterDeployment struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client           client.Client
+	scheme           *runtime.Scheme
+	gcpClientBuilder func(projectName string, authJSON []byte) (gcpclient.Client, error)
 }
 
 // Reconcile reads that state of the cluster for a ClusterDeployment object and makes changes based on the state read
@@ -170,7 +175,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	// Skip code block to create project for now until we have permissions to test
 	if false {
 		// Get gcpclient with creds
-		gClient, err := gcpclient.NewClient(cd.Spec.GCP.ProjectID, creds)
+		gClient, err := r.gcpClientBuilder(cd.Spec.GCP.ProjectID, creds)
 		if err != nil {
 			reqLogger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 			return reconcile.Result{}, err
@@ -187,7 +192,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		// TODO(Raf) Enable APIs
 	}
 
-	gClient, err := gcpclient.NewClient(cd.Spec.GCP.ProjectID, creds)
+	gClient, err := r.gcpClientBuilder(cd.Spec.GCP.ProjectID, creds)
 	if err != nil {
 		reqLogger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
