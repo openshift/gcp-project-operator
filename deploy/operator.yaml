@@ -16,7 +16,7 @@ spec:
       containers:
         - name: gcp-project-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: quay.io/razevedo/gcp-project-operator:alphav1
           command:
           - gcp-project-operator
           imagePullPolicy: Always

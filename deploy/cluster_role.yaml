@@ -39,3 +39,16 @@ rules:
   - gcp-project-operator
   verbs:
   - "update"
+- apiGroups:
+  - hive.openshift.io
+  attributeRestrictions: null
+  resources:
+  - clusterdeployments
+  - clusterdeployments/finalizers
+  - clusterdeployments/status
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
