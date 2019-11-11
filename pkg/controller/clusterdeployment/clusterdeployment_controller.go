@@ -39,8 +39,8 @@ const (
 	gcpSecretName       = "gcp"
 	orgGcpSecretName    = "gcp-project-operator-creds"
 	osServiceAccountKey = "osServiceAccount.json"
-	//
-	osdServiceAccountName = "osdmangedadmin"
+	// TODO(Raf) uncomment the line below once we are using individual projects per cluster
+	// osdServiceAccountName = "osdmangedadmin"
 )
 
 var OSDRequiredRoles = []string{
@@ -193,6 +193,8 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
+	// TODO(Raf) delete the line below once we are using individual projects per cluster
+	osdServiceAccountName := fmt.Sprintf("%s-installer", cd.Spec.ClusterName)
 	// See if GCP service account exists if not create it
 	ServiceAccount, err := gClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
