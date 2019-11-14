@@ -1,5 +1,7 @@
 package gcpclient
 
+//go:generate mockgen --source=client.go  --destination=mock/mock_client.go --package=mock
+
 import (
 	"context"
 	"errors"

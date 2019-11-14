@@ -11,7 +11,7 @@ TESTOPTS :=
 
 include project.mk
 
-default: gobuild
+default: gogenerate gobuild
 
 .PHONY: clean
 clean:
@@ -20,6 +20,10 @@ clean:
 .PHONY: gotest
 gotest:
 	go test $(TESTOPTS) $(TESTTARGETS)
+
+.PHONY: gogenerate
+gogenerate:
+	go generate pkg/gcpclient/client.go
 
 .PHONY: gobuild
 gobuild: gotest ## Build binary
