@@ -30,7 +30,7 @@ type Client interface {
 	CreateServiceAccountKey(serviceAccountEmail string) (*iam.ServiceAccountKey, error)
 	DeleteServiceAccountKeys(serviceAccountEmail string) error
 	// Cloudresourcemanager
-	GetIamPolicy() (*cloudresourcemanager.Policy, error)
+	GetIamPolicy(projectName string) (*cloudresourcemanager.Policy, error)
 	SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIamPolicyRequest) (*cloudresourcemanager.Policy, error)
 	CreateProject(parentFolder string) (*cloudresourcemanager.Operation, error)
 	DeleteProject(parentFolder string) (*cloudresourcemanager.Empty, error)
@@ -207,8 +207,8 @@ func (c *gcpClient) DeleteServiceAccountKeys(serviceAccountEmail string) error {
 	return nil
 }
 
-func (c *gcpClient) GetIamPolicy() (*cloudresourcemanager.Policy, error) {
-	policy, err := c.cloudResourceManagerClient.Projects.GetIamPolicy(c.projectName, &cloudresourcemanager.GetIamPolicyRequest{}).Do()
+func (c *gcpClient) GetIamPolicy(projectName string) (*cloudresourcemanager.Policy, error) {
+	policy, err := c.cloudResourceManagerClient.Projects.GetIamPolicy(projectName, &cloudresourcemanager.GetIamPolicyRequest{}).Do()
 	if err != nil {
 		return nil, fmt.Errorf("gcpclient.GetIamPolicy.Projects.ServiceAccounts.GetIamPolicy %v", err)
 	}

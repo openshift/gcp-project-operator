@@ -5,11 +5,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	"google.golang.org/api/iam/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -177,6 +177,8 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 
 	// Check if gcpSecretName in cd.Namespace exists we are done
 	// TODO(Raf) check if secret is a valid gcp secret
+	// TODO(MJ): what if we need to update secret. We should think something better.
+	// But we need to be mindful about gcp api call ammount so we would not rate limit ourselfs out.
 	if secretExists(r.client, gcpSecretName, cd.Namespace) {
 		reqLogger.Info(fmt.Sprintf("secret: %s already exists in Namespace: %s :: Nothing to do", gcpSecretName, cd.Namespace))
 		return reconcile.Result{}, nil
@@ -203,7 +205,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	billingAccount, err := getBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
+	_, err = getBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
 		reqLogger.Error(err, "could not get org billingAccount from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
@@ -216,18 +218,18 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		reqLogger.Error(err, "error enabling CloudBilling")
 		return reconcile.Result{}, err
 	}
-	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
-	if err != nil {
-		reqLogger.Error(err, "error creating CloudBilling")
-		return reconcile.Result{}, err
-	}
+	// TODO(MJ): Perm issue in the api
+	//err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
+	//if err != nil {
+	//	reqLogger.Error(err, "error creating CloudBilling")
+	//	return reconcile.Result{}, err
+	//}
 
 	err = gClient.EnableDNSAPI(cd.Spec.Platform.GCP.ProjectID)
 	if err != nil {
 		reqLogger.Error(err, "error enabling DNS API")
 		return reconcile.Result{}, err
 	}
-	os.Exit(1)
 
 	gClient, err = r.gcpClientBuilder(cd.Spec.GCP.ProjectID, creds)
 	if err != nil {
@@ -236,29 +238,29 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	}
 
 	// See if GCP service account exists if not create it
-	ServiceAccount, err := gClient.GetServiceAccount(osdServiceAccountName)
+	var serviceAccount *iam.ServiceAccount
+	serviceAccount, err = gClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
 		// Create OSDManged Service account
-		Account, err := gClient.CreateServiceAccount(osdServiceAccountName, osdServiceAccountName)
+		account, err := gClient.CreateServiceAccount(osdServiceAccountName, osdServiceAccountName)
 		if err != nil {
 			reqLogger.Error(err, "could create service account", "Service Account Name", osdServiceAccountName)
 			return reconcile.Result{}, err
 		}
-		ServiceAccount = Account
+		serviceAccount = account
 	}
 
 	// Configure policy
 	// Get policy from project
-	policy, err := gClient.GetIamPolicy()
+	policy, err := gClient.GetIamPolicy(cd.Spec.GCP.ProjectID)
 	if err != nil {
 		reqLogger.Error(err, "could not get policy from project", "Project Name", cd.Spec.GCP.ProjectID)
 		return reconcile.Result{}, err
 	}
 
-	// Create requiredBindings with the new member
-	requiredBindings := getOSDRequiredBindingMap(OSDRequiredRoles, ServiceAccount.Email)
-	// Get combined bindings
-	newBindings, modified := addOrUpdateBinding(policy.Bindings, requiredBindings)
+	// TODO(MJ): TESTS TESTS TESTS!!!!!!
+	newBindings, modified := addOrUpdateBinding(policy.Bindings, OSDRequiredRoles, serviceAccount.Email)
+
 	// If existing bindings have been modified update the policy
 	if modified {
 		// update policy
@@ -277,15 +279,15 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	}
 
 	// Delete service account keys if any exist
-	err = gClient.DeleteServiceAccountKeys(ServiceAccount.Email)
+	err = gClient.DeleteServiceAccountKeys(serviceAccount.Email)
 	if err != nil {
-		reqLogger.Error(err, "could delete service account key", "Service Account Name", ServiceAccount.Email)
+		reqLogger.Error(err, "could delete service account key", "Service Account Name", serviceAccount.Email)
 		return reconcile.Result{}, err
 	}
 
-	key, err := gClient.CreateServiceAccountKey(ServiceAccount.Email)
+	key, err := gClient.CreateServiceAccountKey(serviceAccount.Email)
 	if err != nil {
-		reqLogger.Error(err, "could create service account key", "Service Account Name", ServiceAccount.Email)
+		reqLogger.Error(err, "could create service account key", "Service Account Name", serviceAccount.Email)
 		return reconcile.Result{}, err
 	}
 

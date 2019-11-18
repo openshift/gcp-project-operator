@@ -3,6 +3,7 @@ package clusterdeployment
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
 	"google.golang.org/api/cloudresourcemanager/v1"
@@ -158,47 +159,75 @@ func checkDeploymentConfigRequirements(cd *hivev1alpha1.ClusterDeployment) error
 	return nil
 }
 
-// getOSDRequiredBindingMap returns a map of requiredBindings OSD role bindings for the added members
-func getOSDRequiredBindingMap(roles []string, members string) map[string]cloudresourcemanager.Binding {
+// addOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.
+// If the required binding does not exist it creates a new binding for the role
+// it returns a []*cloudresourcemanager.Binding that contains all the previous bindings and the new ones if no new bindings are required it returns false
+func addOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requiredBindings []string, serviceAccount string) ([]*cloudresourcemanager.Binding, bool) {
+	Modified := false
+	// get map of required rolebindings
+	requiredBindingMap := rolebindingMap(requiredBindings, serviceAccount)
+	var result []*cloudresourcemanager.Binding
+
+	for i, eBinding := range existingBindings {
+		if rBinding, ok := requiredBindingMap[eBinding.Role]; ok {
+			result = append(result, &cloudresourcemanager.Binding{
+				Members: eBinding.Members,
+				Role:    eBinding.Role,
+			})
+			// check if members list contains from existing contains members from required
+			for _, rMember := range rBinding.Members {
+				exist, _ := InArray(rMember, eBinding.Members)
+				if !exist {
+					Modified = true
+					// If required member is not in existing member list add it
+					result[i].Members = append(result[i].Members, rMember)
+				}
+			}
+			// delete processed key from requiredBindings
+			delete(requiredBindingMap, eBinding.Role)
+		}
+	}
+
+	if len(requiredBindingMap) > 0 {
+		Modified = true
+		for _, binding := range requiredBindingMap {
+			result = append(result, &cloudresourcemanager.Binding{
+				Members: binding.Members,
+				Role:    binding.Role,
+			})
+		}
+	}
+	return result, Modified
+}
+
+// roleBindingMap returns a map of requiredBindings role bindings for the added members
+func rolebindingMap(roles []string, member string) map[string]cloudresourcemanager.Binding {
 	requiredBindings := make(map[string]cloudresourcemanager.Binding)
 	for _, role := range roles {
 		requiredBindings[role] = cloudresourcemanager.Binding{
-			Members: []string{"serviceAccount:" + members},
+			Members: []string{"serviceAccount:" + member},
 			Role:    role,
 		}
 	}
 	return requiredBindings
 }
 
-// addOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.
-// If the required binding does not exist it creates a new binding for the role
-// it returns a []*cloudresourcemanager.Binding that contains all the previous bindings and the new ones if no new bindings are required it returns false
-func addOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requiredBindings map[string]cloudresourcemanager.Binding) ([]*cloudresourcemanager.Binding, bool) {
-	Modified := false
+func InArray(needle interface{}, haystack interface{}) (exists bool, index int) {
+	exists = false
+	index = -1
 
-	for _, eBinding := range existingBindings {
-		if rBinding, ok := requiredBindings[eBinding.Role]; ok {
-			// check if members list contains from existing contains members from required
-			for _, rMember := range rBinding.Members {
-				if !stringInSlice(rMember, eBinding.Members) {
-					Modified = true
-					// If required member is not in existing member list add it
-					eBinding.Members = append(eBinding.Members, rMember)
-				}
+	switch reflect.TypeOf(haystack).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(haystack)
+
+		for i := 0; i < s.Len(); i++ {
+			if reflect.DeepEqual(needle, s.Index(i).Interface()) == true {
+				index = i
+				exists = true
+				return
 			}
-			// delete processed key from requiredBindings
-			delete(requiredBindings, eBinding.Role)
-		}
-
-	}
-
-	// take the remaining bindings from map of required bindings and append it to the list of existing bindings
-	if len(requiredBindings) > 0 {
-		Modified = true
-		for _, binding := range requiredBindings {
-			existingBindings = append(existingBindings, &binding)
 		}
 	}
 
-	return existingBindings, Modified
+	return
 }
