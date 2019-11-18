@@ -58,6 +58,33 @@ oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=0
 oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=1
 ```
 
+**GCP secret creation**
+
+```bash
+export GCPSA_NAME=gcp-account-operator
+export GCP_ORG_NAME=osd-management
+# ServiceDelivery org ID
+export GCP_ROOT_ORG_NAME=240634451310 
+
+gcloud beta iam service-accounts create $GCPSA_NAME \
+    --description "$GCPSA_NAME" \
+    --display-name "$GCPSA_NAME"
+
+# TODO: this does not work due perm error
+gcloud projects add-iam-policy-binding $GCP_ROOT_ORG_NAME \
+  --member serviceAccount:$GCPSA_NAME@$GCP_ORG_NAME.iam.gserviceaccount.com \
+  --role roles/owner --role roles/resourcemanager.projectCreator \
+  --role roles/resourcemanager.folderAdmin
+
+gcloud iam service-accounts keys create key.json \
+  --iam-account $GCPSA_NAME@$GCP_ROOT_ORG_NAME.iam.gserviceaccount.com
+
+
+# billindacount.txt contains billing ID from https://console.cloud.google.com/billing
+kubectl create secret generic gcp-project-operator --from-file=key.json=secrets/key.json --from-file=billingaccount=secrets/billingaccount.txt -n gcp-project-operator
+
+```
+
 **TODO**:
 -  Creation of project for the cluster
   - Some of this code is mocked out but not tested since we do not have a test org yet.

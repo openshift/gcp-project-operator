@@ -78,25 +78,50 @@ func newGCPSecretCR(namespace, creds string) *corev1.Secret {
 	}
 }
 
-func getOrgGCPCreds(kubeClient kubeclientpkg.Client, namespace string) ([]byte, error) {
+func getGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(context.TODO(),
 		kubetypes.NamespacedName{
 			Namespace: namespace,
-			Name:      orgGcpSecretName,
+			Name:      name,
 		},
 		secret)
 	if err != nil {
-		return []byte{}, fmt.Errorf("clusterdeployment.GetGCPClientFromSecret.Get %v", err)
+		return []byte{}, fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get %v", err)
 	}
-
-	osServiceAccountJson, ok := secret.Data[osServiceAccountKey]
+	var osServiceAccountJson []byte
+	var ok bool
+	osServiceAccountJson, ok = secret.Data["osServiceAccount.json"]
+	if !ok {
+		osServiceAccountJson, ok = secret.Data["key.json"]
+	}
 	if !ok {
 		return []byte{}, fmt.Errorf("GCP credentials secret %v did not contain key %v",
-			orgGcpSecretName, osServiceAccountKey)
+			name, "{osServiceAccount,key}.json")
 	}
 
 	return osServiceAccountJson, nil
+}
+
+func getBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
+	secret := &corev1.Secret{}
+	err := kubeClient.Get(context.TODO(),
+		kubetypes.NamespacedName{
+			Namespace: namespace,
+			Name:      name,
+		},
+		secret)
+	if err != nil {
+		return []byte{}, fmt.Errorf("clusterdeployment.getBillingAccountFromSecret.Get %v", err)
+	}
+
+	billingAccount, ok := secret.Data["billingaccount"]
+	if !ok {
+		return []byte{}, fmt.Errorf("GCP credentials secret %v did not contain key %v",
+			name, "billingaccount")
+	}
+
+	return billingAccount, nil
 }
 
 // checkDeploymentConfigRequirements checks that parameters required exist and that they are set correctly. If not it returns an error

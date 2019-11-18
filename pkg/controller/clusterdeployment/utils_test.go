@@ -314,7 +314,7 @@ func TestGetOrgGCPCreds(t *testing.T) {
 			}(),
 			secretNamespace: "testNamespace",
 			expectedCreds:   []byte{},
-			expectedErr:     fmt.Errorf("GCP credentials secret %v did not contain key %v", orgGcpSecretName, osServiceAccountKey),
+			expectedErr:     fmt.Errorf("GCP credentials secret %v did not contain key {osServiceAccount,key}.json", orgGcpSecretName),
 			validateResult: func(t *testing.T, expected, result []byte) {
 				assert.Equal(t, expected, result)
 			},
@@ -328,7 +328,7 @@ func TestGetOrgGCPCreds(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mocks := setupDefaultMocks(t, test.localObjects)
 
-			result, err := getOrgGCPCreds(mocks.fakeKubeClient, test.secretNamespace)
+			result, err := getGCPCredentialsFromSecret(mocks.fakeKubeClient, test.secretNamespace, "testCreds")
 
 			if test.expectedErr != nil {
 				assert.Error(t, err)

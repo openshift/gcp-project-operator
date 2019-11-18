@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gcp-project-operator
+  namespace: gcp-project-operator
 spec:
   replicas: 1
   selector:

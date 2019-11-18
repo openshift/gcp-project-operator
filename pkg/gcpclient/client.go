@@ -6,12 +6,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 
 	"golang.org/x/oauth2/google"
+	cloudbilling "google.golang.org/api/cloudbilling/v1"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
+	dns "google.golang.org/api/dns/v1"
+	"google.golang.org/api/googleapi"
 	iam "google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
+	serviceManagment "google.golang.org/api/servicemanagement/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
+
+var log = logf.Log.WithName("gcpclient")
 
 // Client is a wrapper object for actual GCP libraries to allow for easier mocking/testing.
 type Client interface {
@@ -26,6 +34,13 @@ type Client interface {
 	SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIamPolicyRequest) (*cloudresourcemanager.Policy, error)
 	CreateProject(parentFolder string) (*cloudresourcemanager.Operation, error)
 	DeleteProject(parentFolder string) (*cloudresourcemanager.Empty, error)
+
+	// ServiceManagement
+	EnableDNSAPI(projectID string) error
+	EnableCloudBillingAPI(projectID string) error
+
+	// CloudBilling
+	CreateCloudBillingAccount(projectID, billingAccount string) error
 }
 
 type gcpClient struct {
@@ -33,6 +48,14 @@ type gcpClient struct {
 	creds                      *google.Credentials
 	cloudResourceManagerClient *cloudresourcemanager.Service
 	iamClient                  *iam.Service
+	dnsClient                  *dns.Service
+	serviceManagmentClient     *serviceManagment.APIService
+	cloudBillingClient         *cloudbilling.APIService
+
+	// Some actions requires new individual client to be
+	// initiated. we try to re-use clients, but we store
+	// credentials for these methods
+	credentials *google.Credentials
 }
 
 // NewClient creates our client wrapper object for interacting with GCP.
@@ -55,11 +78,24 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 		return nil, fmt.Errorf("gcpclient.iam.NewService %v", err)
 	}
 
+	serviceManagmentClient, err := serviceManagment.NewService(ctx, option.WithCredentials(creds))
+	if err != nil {
+		return nil, fmt.Errorf("gcpclient.serviceManagement.NewService %v", err)
+	}
+
+	cloudBillingClient, err := cloudbilling.NewService(ctx, option.WithCredentials(creds))
+	if err != nil {
+		return nil, fmt.Errorf("gcpclient.cloudBillingClient.NewService %v", err)
+	}
+
 	return &gcpClient{
 		projectName:                projectName,
 		creds:                      creds,
 		cloudResourceManagerClient: cloudResourceManagerClient,
 		iamClient:                  iamClient,
+		serviceManagmentClient:     serviceManagmentClient,
+		cloudBillingClient:         cloudBillingClient,
+		credentials:                creds,
 	}, nil
 }
 
@@ -77,6 +113,12 @@ func (c *gcpClient) CreateProject(parentFolderID string) (*cloudresourcemanager.
 
 	operation, err := c.cloudResourceManagerClient.Projects.Create(&project).Do()
 	if err != nil {
+		ae, ok := err.(*googleapi.Error)
+		// google uses 409 for "already exists"
+		// we continue as it was created
+		if ok && ae.Code == http.StatusConflict {
+			return &cloudresourcemanager.Operation{}, nil
+		}
 		return &cloudresourcemanager.Operation{}, fmt.Errorf("gcpclient.CreateProject.Projects.Create %v", err)
 	}
 	return operation, nil
@@ -90,9 +132,6 @@ func (c *gcpClient) DeleteProject(parentFolder string) (*cloudresourcemanager.Em
 	}
 	return empty, nil
 }
-
-// TODO(Raf) SetQuotas
-// TODO(Raf) Enable APIs
 
 // GetServiceAccount returns a service account if it exists
 func (c *gcpClient) GetServiceAccount(accountName string) (*iam.ServiceAccount, error) {
@@ -183,4 +222,42 @@ func (c *gcpClient) SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIa
 		return &cloudresourcemanager.Policy{}, fmt.Errorf("gcpclient.SetIamPolicy.Projects.ServiceAccounts.SetIamPolicy %v", err)
 	}
 	return policy, nil
+}
+
+func (c *gcpClient) EnableCloudBillingAPI(projectID string) error {
+	enableServicerequest := &serviceManagment.EnableServiceRequest{
+		ConsumerId: fmt.Sprintf("project:%s", projectID),
+	}
+	_, err := c.serviceManagmentClient.Services.Enable("cloudbilling.googleapis.com", enableServicerequest).Do()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *gcpClient) EnableDNSAPI(projectID string) error {
+	enableServiceRequest := &serviceManagment.EnableServiceRequest{
+		ConsumerId: fmt.Sprintf("project:%s", projectID),
+	}
+	_, err := c.serviceManagmentClient.Services.Enable("dns.googleapis.com", enableServiceRequest).Do()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *gcpClient) CreateCloudBillingAccount(projectID, billingAccountID string) error {
+	projectBillingInfo := &cloudbilling.ProjectBillingInfo{
+		BillingAccountName: fmt.Sprintf("billingAccounts/%s", billingAccountID),
+		BillingEnabled:     true,
+	}
+
+	_, err := c.cloudBillingClient.Projects.UpdateBillingInfo(fmt.Sprintf("projects/%s", projectID), projectBillingInfo).Do()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
