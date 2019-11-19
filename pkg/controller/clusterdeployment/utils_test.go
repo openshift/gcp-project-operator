@@ -148,7 +148,7 @@ func TestSecretExists(t *testing.T) {
 			secretName:      "testName",
 			secretNamespace: "testNamespace",
 			localObjects: []runtime.Object{
-				testSecret("testName", "testNamespace", "testCreds"),
+				newtestSecretBuilder("testName", "testNamespace", "testCreds").getTestSecret(),
 			},
 		},
 		{
@@ -157,7 +157,7 @@ func TestSecretExists(t *testing.T) {
 			secretName:      "badName",
 			secretNamespace: "testNamespace",
 			localObjects: []runtime.Object{
-				testSecret("testName", "testNamespace", "testCreds"),
+				newtestSecretBuilder("testName", "testNamespace", "testCreds").getTestSecret(),
 			},
 		},
 	}
@@ -188,9 +188,9 @@ func TestGetSecret(t *testing.T) {
 			secretName:      "testName",
 			secretNamespace: "testNamespace",
 			localObjects: []runtime.Object{
-				testSecret("testName", "testNamespace", "testCreds"),
+				newtestSecretBuilder("testName", "testNamespace", "testCreds").getTestSecret(),
 			},
-			expectedSecret: testSecret("testName", "testNamespace", "testCreds"),
+			expectedSecret: newtestSecretBuilder("testName", "testNamespace", "testCreds").getTestSecret(),
 			expectedErr:    false,
 			validateResult: func(t *testing.T, expected, result *corev1.Secret) {
 				assert.Equal(t, expected, result)
@@ -201,7 +201,7 @@ func TestGetSecret(t *testing.T) {
 			secretName:      "badName",
 			secretNamespace: "testNamespace",
 			localObjects: []runtime.Object{
-				testSecret("testName", "testNamespace", "testCreds"),
+				newtestSecretBuilder("testName", "testNamespace", "testCreds").getTestSecret(),
 			},
 			expectedSecret: &corev1.Secret{},
 			expectedErr:    true,
@@ -245,7 +245,7 @@ func TestNewGCPSecretCR(t *testing.T) {
 			secretName:      gcpSecretName,
 			secretNamespace: "testNamespace",
 			secretCreds:     "testCreds",
-			expectedSecret:  testSecret(gcpSecretName, "testNamespace", "testCreds"),
+			expectedSecret:  newtestSecretBuilder(gcpSecretName, "testNamespace", "testCreds").wihtoutKey("billingaccount").getTestSecret(),
 			validateResult: func(t *testing.T, expected, result *corev1.Secret) {
 				assert.Equal(t, expected, result)
 			},
@@ -277,10 +277,10 @@ func TestGetOrgGCPCreds(t *testing.T) {
 		{
 			name: "Correct ORG GCP Secert",
 			localObjects: []runtime.Object{
-				testSecret(orgGcpSecretName, "testNamespace", "testCreds"),
+				newtestSecretBuilder("testCreds", "testNamespace", "testCredsContent").getTestSecret(),
 			},
 			secretNamespace: "testNamespace",
-			expectedCreds:   []byte("testCreds"),
+			expectedCreds:   []byte("testCredsContent"),
 			//ExpectedErr:     nil,
 			validateResult: func(t *testing.T, expected, result []byte) {
 				assert.Equal(t, expected, result)
@@ -314,7 +314,7 @@ func TestGetOrgGCPCreds(t *testing.T) {
 			}(),
 			secretNamespace: "testNamespace",
 			expectedCreds:   []byte{},
-			expectedErr:     fmt.Errorf("GCP credentials secret %v did not contain key {osServiceAccount,key}.json", orgGcpSecretName),
+			expectedErr:     fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get secrets \"%v\" not found", "testCreds"),
 			validateResult: func(t *testing.T, expected, result []byte) {
 				assert.Equal(t, expected, result)
 			},

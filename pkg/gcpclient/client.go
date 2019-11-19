@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"golang.org/x/oauth2/google"
 	cloudbilling "google.golang.org/api/cloudbilling/v1"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
@@ -20,6 +22,8 @@ import (
 )
 
 var log = logf.Log.WithName("gcpclient")
+
+const gcpAPIRetriesCount = 3
 
 // Client is a wrapper object for actual GCP libraries to allow for easier mocking/testing.
 type Client interface {
@@ -101,6 +105,7 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 
 // CreateProject creates a project in a given folder.
 func (c *gcpClient) CreateProject(parentFolderID string) (*cloudresourcemanager.Operation, error) {
+	log.Info("gcpClient.CreateProject")
 	project := cloudresourcemanager.Project{
 		//Labels:          nil,
 		Name: c.projectName,
@@ -110,7 +115,6 @@ func (c *gcpClient) CreateProject(parentFolderID string) (*cloudresourcemanager.
 		},
 		ProjectId: c.projectName,
 	}
-
 	operation, err := c.cloudResourceManagerClient.Projects.Create(&project).Do()
 	if err != nil {
 		ae, ok := err.(*googleapi.Error)
@@ -225,38 +229,89 @@ func (c *gcpClient) SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIa
 }
 
 func (c *gcpClient) EnableCloudBillingAPI(projectID string) error {
+	log.Info("gcpClient.EnableCloudBillingAPI")
+	api := "cloudbilling.googleapis.com"
 	enableServicerequest := &serviceManagment.EnableServiceRequest{
 		ConsumerId: fmt.Sprintf("project:%s", projectID),
 	}
-	_, err := c.serviceManagmentClient.Services.Enable("cloudbilling.googleapis.com", enableServicerequest).Do()
-	if err != nil {
-		return err
-	}
 
-	return nil
+	req := c.serviceManagmentClient.Services.Enable(api, enableServicerequest)
+
+	var retry int
+	for {
+		retry++
+		time.Sleep(time.Second)
+
+		_, err := req.Do()
+		if err != nil {
+			ae, ok := err.(*googleapi.Error)
+			// Retry rules below:
+
+			// sometimes we get 403 - Permission denied when even project
+			// creation is completed and marked as Done.
+			// Something is not propagating in the backend.
+			if ok && ae.Code == http.StatusForbidden && retry <= gcpAPIRetriesCount {
+				log.Info(fmt.Sprintf("retry %d for enable cloudbilling api", retry))
+				continue
+			}
+			return err
+		}
+		return nil
+	}
 }
 
 func (c *gcpClient) EnableDNSAPI(projectID string) error {
+	api := "dns.googleapis.com"
 	enableServiceRequest := &serviceManagment.EnableServiceRequest{
 		ConsumerId: fmt.Sprintf("project:%s", projectID),
 	}
-	_, err := c.serviceManagmentClient.Services.Enable("dns.googleapis.com", enableServiceRequest).Do()
+	req := c.serviceManagmentClient.Services.Enable(api, enableServiceRequest)
+
+	resp, err := req.Do()
 	if err != nil {
 		return err
+	}
+	for !resp.Done && resp.HTTPStatusCode != 200 {
+		log.Info("waiting for dns api to be ready")
+		time.Sleep(time.Second)
+		spew.Dump(resp)
 	}
 
 	return nil
 }
 
 func (c *gcpClient) CreateCloudBillingAccount(projectID, billingAccountID string) error {
+	project := fmt.Sprintf("projects/%s", projectID)
+	billingAccount := fmt.Sprintf("billingAccounts/%s", billingAccountID)
 	projectBillingInfo := &cloudbilling.ProjectBillingInfo{
-		BillingAccountName: fmt.Sprintf("billingAccounts/%s", billingAccountID),
+		BillingAccountName: billingAccount,
 		BillingEnabled:     true,
 	}
 
-	_, err := c.cloudBillingClient.Projects.UpdateBillingInfo(fmt.Sprintf("projects/%s", projectID), projectBillingInfo).Do()
+	info, err := c.cloudBillingClient.Projects.GetBillingInfo(project).Do()
 	if err != nil {
 		return err
+	}
+	// if we dont have set billing account
+	if len(info.BillingAccountName) == 0 {
+		_, err := c.cloudBillingClient.Projects.UpdateBillingInfo(project, projectBillingInfo).Do()
+		if err != nil {
+			return err
+		}
+	}
+	if len(info.BillingAccountName) > 0 && info.BillingAccountName != billingAccount {
+		projectBillingDisable := &cloudbilling.ProjectBillingInfo{
+			BillingAccountName: "",
+			BillingEnabled:     false,
+		}
+		_, err := c.cloudBillingClient.Projects.UpdateBillingInfo(project, projectBillingDisable).Do()
+		if err != nil {
+			return err
+		}
+		_, err = c.cloudBillingClient.Projects.UpdateBillingInfo(project, projectBillingInfo).Do()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

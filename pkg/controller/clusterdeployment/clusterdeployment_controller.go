@@ -205,7 +205,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	_, err = getBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
+	billingAccount, err := getBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
 		reqLogger.Error(err, "could not get org billingAccount from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
@@ -218,12 +218,14 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		reqLogger.Error(err, "error enabling CloudBilling")
 		return reconcile.Result{}, err
 	}
+
 	// TODO(MJ): Perm issue in the api
-	//err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
-	//if err != nil {
-	//	reqLogger.Error(err, "error creating CloudBilling")
-	//	return reconcile.Result{}, err
-	//}
+	// https://groups.google.com/forum/#!topic/gce-discussion/K_x9E0VIckk
+	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
+	if err != nil {
+		reqLogger.Error(err, "error creating CloudBilling")
+		return reconcile.Result{}, err
+	}
 
 	err = gClient.EnableDNSAPI(cd.Spec.Platform.GCP.ProjectID)
 	if err != nil {

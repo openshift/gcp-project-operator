@@ -108,18 +108,18 @@ func (mr *MockClientMockRecorder) DeleteServiceAccountKeys(serviceAccountEmail i
 }
 
 // GetIamPolicy mocks base method
-func (m *MockClient) GetIamPolicy() (*v1.Policy, error) {
+func (m *MockClient) GetIamPolicy(projectName string) (*v1.Policy, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIamPolicy")
+	ret := m.ctrl.Call(m, "GetIamPolicy", projectName)
 	ret0, _ := ret[0].(*v1.Policy)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetIamPolicy indicates an expected call of GetIamPolicy
-func (mr *MockClientMockRecorder) GetIamPolicy() *gomock.Call {
+func (mr *MockClientMockRecorder) GetIamPolicy(projectName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIamPolicy", reflect.TypeOf((*MockClient)(nil).GetIamPolicy))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIamPolicy", reflect.TypeOf((*MockClient)(nil).GetIamPolicy), projectName)
 }
 
 // SetIamPolicy mocks base method

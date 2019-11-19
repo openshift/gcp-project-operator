@@ -18,12 +18,12 @@ import (
 )
 
 const (
-	testClusterName          = "foo"
+	testClusterName          = "clusterName"
 	testUID                  = types.UID("1234")
-	testNamespace            = "foonamespace"
+	testNamespace            = "namespace"
 	testBaseDomain           = "testing.example.com"
-	testGCPCredentialsSecret = "GC"
-	testProject              = "test-project"
+	testGCPCredentialsSecret = "GCPCredentialsSecret"
+	testProject              = "project"
 	testRegion               = "us-east1"
 )
 
@@ -35,30 +35,48 @@ type mocks struct {
 
 // setupDefaultMocks is an easy way to setup all of the default mocks
 func setupDefaultMocks(t *testing.T, localObjects []runtime.Object) *mocks {
-	mocks := &mocks{
-		fakeKubeClient: fakekubeclient.NewFakeClient(localObjects...),
-		mockCtrl:       gomock.NewController(t),
-	}
+	mockKubeClient := fakekubeclient.NewFakeClient(localObjects...)
+	mockCtrl := gomock.NewController(t)
+	mockGCPClient := mockGCP.NewMockClient(mockCtrl)
 
-	mocks.mockGCPClient = mockGCP.NewMockClient(mocks.mockCtrl)
-	return mocks
+	return &mocks{
+		fakeKubeClient: mockKubeClient,
+		mockCtrl:       mockCtrl,
+		mockGCPClient:  mockGCPClient,
+	}
 }
 
-func testSecret(secretName, namespace, creds string) *corev1.Secret {
-	return &corev1.Secret{
-		Type: "Opaque",
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: namespace,
-		},
-		Data: map[string][]byte{
-			"osServiceAccount.json": []byte(creds),
+type testSecretBuilder struct {
+	s corev1.Secret
+}
+
+func (t *testSecretBuilder) getTestSecret() *corev1.Secret {
+	return &t.s
+}
+
+func newtestSecretBuilder(secretName, namespace, creds string) *testSecretBuilder {
+	return &testSecretBuilder{
+		s: corev1.Secret{
+			Type: "Opaque",
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Secret",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      secretName,
+				Namespace: namespace,
+			},
+			Data: map[string][]byte{
+				"osServiceAccount.json": []byte(creds),
+				"billingaccount":        []byte("billingaccount"),
+			},
 		},
 	}
+}
+
+func (t *testSecretBuilder) wihtoutKey(key string) *testSecretBuilder {
+	delete(t.s.Data, key)
+	return t
 }
 
 type testClusterDeploymentBuilder struct {

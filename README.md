@@ -77,7 +77,7 @@ gcloud projects add-iam-policy-binding $GCP_ROOT_ORG_NAME \
   --role roles/resourcemanager.folderAdmin
 
 gcloud iam service-accounts keys create key.json \
-  --iam-account $GCPSA_NAME@$GCP_ROOT_ORG_NAME.iam.gserviceaccount.com
+  --iam-account $GCPSA_NAME@$GCP_ORG_NAME.iam.gserviceaccount.com
 
 
 # billindacount.txt contains billing ID from https://console.cloud.google.com/billing
