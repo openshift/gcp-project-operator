@@ -1,11 +1,10 @@
-package clusterdeployment
+package util
 
 import (
 	"context"
 	"fmt"
 	"reflect"
 
-	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,31 +13,26 @@ import (
 	kubeclientpkg "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
+const (
+	// Operator config
+	operatorNamespace = "gcp-project-operator"
+	controllerName    = "clusterdeployment"
 
-// remove removes a given index from a []string
-func remove(slice []string, s int) []string {
-	return append(slice[:s], slice[s+1:]...)
-}
+	// clusterDeploymentManagedLabel is the label on the cluster deployment which indicates whether or not a cluster is OSD
+	clusterDeploymentManagedLabel = "api.openshift.com/managed"
+	// clusterPlatformLabel is the label on a cluster deployment which indicates whether or not a cluster is on GCP platform
+	clusterPlatformLabel = "hive.openshift.io/cluster-platform"
+	clusterPlatformGCP   = "gcp"
+	orgParentFolderID    = "240634451310" // Service Delivery org subfolder
 
-func findMemberIndex(searchMember string, members []string) int {
-	for index, value := range members {
-		if value == searchMember {
-			return index
-		}
-	}
-	return -1
-}
+	// secret information
+	gcpSecretName         = "gcp"
+	orgGcpSecretName      = "gcp-project-operator"
+	osdServiceAccountName = "osd-managed-admin"
+)
 
-// secretExists returns a boolean to the caller based on the secretName and namespace args.
-func secretExists(kubeClient client.Client, secretName, namespace string) bool {
+// SecretExists returns a boolean to the caller based on the secretName and namespace args.
+func SecretExists(kubeClient client.Client, secretName, namespace string) bool {
 	s := &corev1.Secret{}
 
 	err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: secretName, Namespace: namespace}, s)
@@ -62,7 +56,7 @@ func getSecret(kubeClient client.Client, secretName, namespace string) (*corev1.
 }
 
 // newGCPSecretCR returns a Secret CR formatted for GCP
-func newGCPSecretCR(namespace, creds string) *corev1.Secret {
+func NewGCPSecretCR(namespace, creds string) *corev1.Secret {
 	return &corev1.Secret{
 		Type: "Opaque",
 		TypeMeta: metav1.TypeMeta{
@@ -79,7 +73,7 @@ func newGCPSecretCR(namespace, creds string) *corev1.Secret {
 	}
 }
 
-func getGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
+func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(context.TODO(),
 		kubetypes.NamespacedName{
@@ -104,7 +98,7 @@ func getGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	return osServiceAccountJson, nil
 }
 
-func getBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
+func GetBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(context.TODO(),
 		kubetypes.NamespacedName{
@@ -125,44 +119,11 @@ func getBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	return billingAccount, nil
 }
 
-// checkDeploymentConfigRequirements checks that parameters required exist and that they are set correctly. If not it returns an error
-func checkDeploymentConfigRequirements(cd *hivev1alpha1.ClusterDeployment) error {
-	// Do not make do anything if the cluster is not a GCP cluster.
-	val, ok := cd.Labels[clusterPlatformLabel]
-	if !ok || val != clusterPlatformGCP {
-		return ErrNotGCPCluster
-	}
-
-	// Do not do anything if the cluster is not a Red Hat managed cluster.
-	val, ok = cd.Labels[clusterDeploymentManagedLabel]
-	if !ok || val != "true" {
-		return ErrNotManagedCluster
-	}
-
-	//Do not reconcile if cluster is installed or remove cleanup and remove project
-	if cd.Spec.Installed {
-		return ErrClusterInstalled
-	}
-
-	if cd.Spec.Platform.GCP.Region == "" {
-		return ErrMissingRegion
-	}
-
-	if cd.Spec.Platform.GCP.ProjectID == "" {
-		return ErrMissingProjectID
-	}
-
-	if _, ok := supportedRegions[cd.Spec.Platform.GCP.Region]; !ok {
-		return ErrRegionNotSupported
-	}
-
-	return nil
-}
-
-// addOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.
+// AddOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.
 // If the required binding does not exist it creates a new binding for the role
 // it returns a []*cloudresourcemanager.Binding that contains all the previous bindings and the new ones if no new bindings are required it returns false
-func addOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requiredBindings []string, serviceAccount string) ([]*cloudresourcemanager.Binding, bool) {
+// TODO(MJ): add tests
+func AddOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requiredBindings []string, serviceAccount string) ([]*cloudresourcemanager.Binding, bool) {
 	Modified := false
 	// get map of required rolebindings
 	requiredBindingMap := rolebindingMap(requiredBindings, serviceAccount)

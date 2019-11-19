@@ -7,13 +7,19 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
-	mockGCP "github.com/openshift/gcp-project-operator/pkg/gcpclient/mock"
+	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
+	builders "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	hiveapis "github.com/openshift/hive/pkg/apis"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+const (
+	testClusterName = "clusterName"
+	testNamespace   = "namespace"
 )
 
 func TestReconcile(t *testing.T) {
@@ -34,7 +40,7 @@ func TestReconcile(t *testing.T) {
 			name:        "CD check fail ErrMissingRegion",
 			expectedErr: fmt.Errorf("MissingRegion"),
 			localObjects: []runtime.Object{
-				newtestClusterDeploymentBuilder().withOutRegion().getClusterDeployment(),
+				builders.NewTestClusterDeploymentBuilder().WithOutRegion().GetClusterDeployment(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
@@ -42,7 +48,7 @@ func TestReconcile(t *testing.T) {
 			name:        "CD check fail ErrClusterInstalled",
 			expectedErr: nil,
 			localObjects: []runtime.Object{
-				newtestClusterDeploymentBuilder().installed().getClusterDeployment(),
+				builders.NewTestClusterDeploymentBuilder().Installed().GetClusterDeployment(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
@@ -50,7 +56,7 @@ func TestReconcile(t *testing.T) {
 			name:        "failed to get ORG creds",
 			expectedErr: fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get secrets \"gcp-project-operator\" not found"),
 			localObjects: []runtime.Object{
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
+				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
@@ -58,9 +64,9 @@ func TestReconcile(t *testing.T) {
 			name:        "final secret exists",
 			expectedErr: nil,
 			localObjects: []runtime.Object{
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				newtestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").getTestSecret(),
-				newtestSecretBuilder(gcpSecretName, testNamespace, "testCreds").getTestSecret(),
+				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
+				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
+				builders.NewTestSecretBuilder(gcpSecretName, testNamespace, "testCreds").GetTestSecret(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
@@ -68,8 +74,8 @@ func TestReconcile(t *testing.T) {
 			name:        "no billing key in secret",
 			expectedErr: fmt.Errorf("GCP credentials secret gcp-project-operator did not contain key billingaccount"),
 			localObjects: []runtime.Object{
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				newtestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").wihtoutKey("billingaccount").getTestSecret(),
+				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
+				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").WihtoutKey("billingaccount").GetTestSecret(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {
 				gomock.InOrder(
@@ -82,19 +88,19 @@ func TestReconcile(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Arrage
-			mocks := setupDefaultMocks(t, test.localObjects)
-			test.setupGCPMock(mocks.mockGCPClient.EXPECT())
+			mocks := builders.SetupDefaultMocks(t, test.localObjects)
+			test.setupGCPMock(mocks.MockGCPClient.EXPECT())
 
 			gcpBuilder := func(projectName string, authJSON []byte) (gcpclient.Client, error) {
-				return mocks.mockGCPClient, nil
+				return mocks.MockGCPClient, nil
 			}
 
 			// This is necessary for the mocks to report failures like methods not being called an expected number of times.
 			// after mocks is defined
-			defer mocks.mockCtrl.Finish()
+			defer mocks.MockCtrl.Finish()
 
 			rcd := &ReconcileClusterDeployment{
-				mocks.fakeKubeClient,
+				mocks.FakeKubeClient,
 				scheme.Scheme,
 				gcpBuilder,
 			}

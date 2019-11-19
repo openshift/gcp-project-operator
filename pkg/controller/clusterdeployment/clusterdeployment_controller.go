@@ -3,10 +3,11 @@ package clusterdeployment
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
+	"github.com/openshift/gcp-project-operator/pkg/util"
+	"github.com/openshift/gcp-project-operator/pkg/util/errors"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iam/v1"
@@ -73,26 +74,6 @@ var supportedRegions = map[string]bool{
 	"us-west1":                true,
 	"us-west2":                true,
 }
-
-// Custom errors
-
-// ErrRegionNotSupported indicates the region is not supported by OSD on GCP.
-var ErrRegionNotSupported = errors.New("RegionNotSupported")
-
-// ErrNotGCPCluster indicates that the cluster is not a gcp cluster
-var ErrNotGCPCluster = errors.New("NotGCPCluster")
-
-// ErrNotManagedCluster indicates this is not an OSD managed cluster
-var ErrNotManagedCluster = errors.New("NotManagedCluster")
-
-// ErrClusterInstalled indicates the cluster is already installed
-var ErrClusterInstalled = errors.New("ClusterInstalled")
-
-// ErrMissingProjectID indicates that the cluster deployment is missing the field ProjectID
-var ErrMissingProjectID = errors.New("MissingProjectID")
-
-// ErrMissingRegion indicates that the cluster deployment is missing the field Region
-var ErrMissingRegion = errors.New("MissingRegion")
 
 // Add creates a new ClusterDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -163,10 +144,10 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	switch err {
 	case nil:
 		break
-	case ErrMissingRegion, ErrMissingProjectID, ErrRegionNotSupported:
+	case errors.ErrMissingRegion, errors.ErrMissingProjectID, errors.ErrRegionNotSupported:
 		reqLogger.Error(err, "clusterDeployment failed validation", "Validation Error", err)
 		return reconcile.Result{}, err
-	case ErrClusterInstalled:
+	case errors.ErrClusterInstalled:
 		// TODO(Raf) Cleanup and remove project if being deleted once Hive is finished uninstalling
 		reqLogger.Info(fmt.Sprintf("cluster %v is in installed state", cd.Name))
 		return reconcile.Result{}, nil
@@ -179,13 +160,13 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	// TODO(Raf) check if secret is a valid gcp secret
 	// TODO(MJ): what if we need to update secret. We should think something better.
 	// But we need to be mindful about gcp api call ammount so we would not rate limit ourselfs out.
-	if secretExists(r.client, gcpSecretName, cd.Namespace) {
+	if util.SecretExists(r.client, gcpSecretName, cd.Namespace) {
 		reqLogger.Info(fmt.Sprintf("secret: %s already exists in Namespace: %s :: Nothing to do", gcpSecretName, cd.Namespace))
 		return reconcile.Result{}, nil
 	}
 
 	// Get org creds from secret
-	creds, err := getGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
+	creds, err := util.GetGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
 		reqLogger.Error(err, "could not get org Creds from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
@@ -205,7 +186,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	billingAccount, err := getBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
+	billingAccount, err := util.GetBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
 		reqLogger.Error(err, "could not get org billingAccount from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
@@ -260,8 +241,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	// TODO(MJ): TESTS TESTS TESTS!!!!!!
-	newBindings, modified := addOrUpdateBinding(policy.Bindings, OSDRequiredRoles, serviceAccount.Email)
+	newBindings, modified := util.AddOrUpdateBinding(policy.Bindings, OSDRequiredRoles, serviceAccount.Email)
 
 	// If existing bindings have been modified update the policy
 	if modified {
@@ -300,7 +280,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	secret := newGCPSecretCR(cd.Namespace, string(privateKeyString))
+	secret := util.NewGCPSecretCR(cd.Namespace, string(privateKeyString))
 
 	createErr := r.client.Create(context.TODO(), secret)
 	if createErr != nil {
