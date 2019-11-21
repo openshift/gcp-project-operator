@@ -168,32 +168,18 @@ func (mr *MockClientMockRecorder) DeleteProject(parentFolder interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteProject", reflect.TypeOf((*MockClient)(nil).DeleteProject), parentFolder)
 }
 
-// EnableDNSAPI mocks base method
-func (m *MockClient) EnableDNSAPI(projectID string) error {
+// EnableAPI mocks base method
+func (m *MockClient) EnableAPI(projectID, api string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnableDNSAPI", projectID)
+	ret := m.ctrl.Call(m, "EnableAPI", projectID, api)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// EnableDNSAPI indicates an expected call of EnableDNSAPI
-func (mr *MockClientMockRecorder) EnableDNSAPI(projectID interface{}) *gomock.Call {
+// EnableAPI indicates an expected call of EnableAPI
+func (mr *MockClientMockRecorder) EnableAPI(projectID, api interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnableDNSAPI", reflect.TypeOf((*MockClient)(nil).EnableDNSAPI), projectID)
-}
-
-// EnableCloudBillingAPI mocks base method
-func (m *MockClient) EnableCloudBillingAPI(projectID string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnableCloudBillingAPI", projectID)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// EnableCloudBillingAPI indicates an expected call of EnableCloudBillingAPI
-func (mr *MockClientMockRecorder) EnableCloudBillingAPI(projectID interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnableCloudBillingAPI", reflect.TypeOf((*MockClient)(nil).EnableCloudBillingAPI), projectID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnableAPI", reflect.TypeOf((*MockClient)(nil).EnableAPI), projectID, api)
 }
 
 // CreateCloudBillingAccount mocks base method

@@ -52,6 +52,18 @@ var OSDRequiredRoles = []string{
 	"roles/compute.admin",
 }
 
+// OSDRequiredAPIS is list of API's, required to setup
+// OpenShift cluster. Order is important.
+var OSDRequiredAPIS = []string{
+	"cloudbilling.googleapis.com",
+	"serviceusage.googleapis.com",
+	"cloudresourcemanager.googleapis.com",
+	"storage-component.googleapis.com",
+	"storage-api.googleapis.com",
+	"dns.googleapis.com",
+	"iam.googleapis.com",
+	"compute.googleapis.com"}
+
 var supportedRegions = map[string]bool{
 	"asia-east1":              true,
 	"asia-east2":              true,
@@ -186,17 +198,18 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
+	// TODO(Raf) Set quotas
+
 	billingAccount, err := util.GetBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
 		reqLogger.Error(err, "could not get org billingAccount from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
 	}
 
-	// TODO(Raf) Set quotas
-	// TODO(Raf) Enable APIs
-	err = gClient.EnableCloudBillingAPI(cd.Spec.Platform.GCP.ProjectID)
+	// TODO(MJ) These need to be time-out
+	err = gClient.EnableAPI(cd.Spec.Platform.GCP.ProjectID, "cloudbilling.googleapis.com")
 	if err != nil {
-		reqLogger.Error(err, "error enabling CloudBilling")
+		reqLogger.Error(err, fmt.Sprintf("error enabling %s api for project %s", "cloudbilling.googleapis.com", cd.Spec.Platform.GCP.ProjectID))
 		return reconcile.Result{}, err
 	}
 
@@ -208,9 +221,19 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	err = gClient.EnableDNSAPI(cd.Spec.Platform.GCP.ProjectID)
+	for _, a := range OSDRequiredAPIS {
+		err = gClient.EnableAPI(cd.Spec.Platform.GCP.ProjectID, a)
+		if err != nil {
+			reqLogger.Error(err, fmt.Sprintf("error enabling %s api for project %s", a, cd.Spec.Platform.GCP.ProjectID))
+			return reconcile.Result{}, err
+		}
+	}
+
+	// TODO(MJ): Perm issue in the api
+	// https://groups.google.com/forum/#!topic/gce-discussion/K_x9E0VIckk
+	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
 	if err != nil {
-		reqLogger.Error(err, "error enabling DNS API")
+		reqLogger.Error(err, "error creating CloudBilling")
 		return reconcile.Result{}, err
 	}
 
@@ -261,6 +284,8 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	}
 
 	// Delete service account keys if any exist
+	// TODO(MJ): If this gets executed it breaks all existing jwt grants/tokens.
+	// re-think this part
 	err = gClient.DeleteServiceAccountKeys(serviceAccount.Email)
 	if err != nil {
 		reqLogger.Error(err, "could delete service account key", "Service Account Name", serviceAccount.Email)

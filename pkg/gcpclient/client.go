@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"golang.org/x/oauth2/google"
 	cloudbilling "google.golang.org/api/cloudbilling/v1"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
@@ -44,8 +43,7 @@ type Client interface {
 	DeleteProject(parentFolder string) (*cloudresourcemanager.Empty, error)
 
 	// ServiceManagement
-	EnableDNSAPI(projectID string) error
-	EnableCloudBillingAPI(projectID string) error
+	EnableAPI(projectID, api string) error
 
 	// CloudBilling
 	CreateCloudBillingAccount(projectID, billingAccount string) error
@@ -232,9 +230,8 @@ func (c *gcpClient) SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIa
 	return policy, nil
 }
 
-func (c *gcpClient) EnableCloudBillingAPI(projectID string) error {
-	log.Info("gcpClient.EnableCloudBillingAPI")
-	api := "cloudbilling.googleapis.com"
+func (c *gcpClient) EnableAPI(projectID, api string) error {
+	log.Info(fmt.Sprintf("enable %s api", api))
 	enableServicerequest := &serviceManagment.EnableServiceRequest{
 		ConsumerId: fmt.Sprintf("project:%s", projectID),
 	}
@@ -255,33 +252,13 @@ func (c *gcpClient) EnableCloudBillingAPI(projectID string) error {
 			// creation is completed and marked as Done.
 			// Something is not propagating in the backend.
 			if ok && ae.Code == http.StatusForbidden && retry <= gcpAPIRetriesCount {
-				log.Info(fmt.Sprintf("retry %d for enable cloudbilling api", retry))
+				log.Info(fmt.Sprintf("retry %d for enable %s api", retry, api))
 				continue
 			}
 			return err
 		}
 		return nil
 	}
-}
-
-func (c *gcpClient) EnableDNSAPI(projectID string) error {
-	api := "dns.googleapis.com"
-	enableServiceRequest := &serviceManagment.EnableServiceRequest{
-		ConsumerId: fmt.Sprintf("project:%s", projectID),
-	}
-	req := c.serviceManagmentClient.Services.Enable(api, enableServiceRequest)
-
-	resp, err := req.Do()
-	if err != nil {
-		return err
-	}
-	for !resp.Done && resp.HTTPStatusCode != 200 {
-		log.Info("waiting for dns api to be ready")
-		time.Sleep(time.Second)
-		spew.Dump(resp)
-	}
-
-	return nil
 }
 
 func (c *gcpClient) CreateCloudBillingAccount(projectID, billingAccountID string) error {
