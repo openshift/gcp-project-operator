@@ -55,7 +55,6 @@ var OSDRequiredRoles = []string{
 // OSDRequiredAPIS is list of API's, required to setup
 // OpenShift cluster. Order is important.
 var OSDRequiredAPIS = []string{
-	"cloudbilling.googleapis.com",
 	"serviceusage.googleapis.com",
 	"cloudresourcemanager.googleapis.com",
 	"storage-component.googleapis.com",
@@ -199,7 +198,6 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	}
 
 	// TODO(Raf) Set quotas
-
 	billingAccount, err := util.GetBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
 		reqLogger.Error(err, "could not get org billingAccount from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
@@ -212,7 +210,6 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		reqLogger.Error(err, fmt.Sprintf("error enabling %s api for project %s", "cloudbilling.googleapis.com", cd.Spec.Platform.GCP.ProjectID))
 		return reconcile.Result{}, err
 	}
-
 	// TODO(MJ): Perm issue in the api
 	// https://groups.google.com/forum/#!topic/gce-discussion/K_x9E0VIckk
 	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
@@ -227,14 +224,6 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 			reqLogger.Error(err, fmt.Sprintf("error enabling %s api for project %s", a, cd.Spec.Platform.GCP.ProjectID))
 			return reconcile.Result{}, err
 		}
-	}
-
-	// TODO(MJ): Perm issue in the api
-	// https://groups.google.com/forum/#!topic/gce-discussion/K_x9E0VIckk
-	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
-	if err != nil {
-		reqLogger.Error(err, "error creating CloudBilling")
-		return reconcile.Result{}, err
 	}
 
 	gClient, err = r.gcpClientBuilder(cd.Spec.GCP.ProjectID, creds)

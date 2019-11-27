@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2/google"
@@ -261,26 +262,27 @@ func (c *gcpClient) EnableAPI(projectID, api string) error {
 	}
 }
 
+// CreateCloudBillingAccount associates cloud billing account with project
+// TODO: This needs unit testing. Sensitive place
 func (c *gcpClient) CreateCloudBillingAccount(projectID, billingAccountID string) error {
 	project := fmt.Sprintf("projects/%s", projectID)
-	billingAccount := fmt.Sprintf("billingAccounts/%s", billingAccountID)
-	projectBillingInfo := &cloudbilling.ProjectBillingInfo{
-		BillingAccountName: billingAccount,
-		BillingEnabled:     true,
-	}
-
+	billingAccount := fmt.Sprintf("billingAccounts/%s", strings.TrimSuffix(billingAccountID, "\n"))
 	info, err := c.cloudBillingClient.Projects.GetBillingInfo(project).Do()
 	if err != nil {
 		return err
 	}
+
 	// if we dont have set billing account
 	if len(info.BillingAccountName) == 0 {
-		_, err := c.cloudBillingClient.Projects.UpdateBillingInfo(project, projectBillingInfo).Do()
+		info.BillingAccountName = billingAccount
+		info.BillingEnabled = true
+		_, err := c.cloudBillingClient.Projects.UpdateBillingInfo(project, info).Do()
 		if err != nil {
 			return err
 		}
 	}
 	if len(info.BillingAccountName) > 0 && info.BillingAccountName != billingAccount {
+		info.BillingAccountName = billingAccount
 		projectBillingDisable := &cloudbilling.ProjectBillingInfo{
 			BillingAccountName: "",
 			BillingEnabled:     false,
@@ -289,7 +291,7 @@ func (c *gcpClient) CreateCloudBillingAccount(projectID, billingAccountID string
 		if err != nil {
 			return err
 		}
-		_, err = c.cloudBillingClient.Projects.UpdateBillingInfo(project, projectBillingInfo).Do()
+		_, err = c.cloudBillingClient.Projects.UpdateBillingInfo(project, info).Do()
 		if err != nil {
 			return err
 		}

@@ -34,4 +34,7 @@ clean:
 	rm -rf ${BINFILE}
 
 run:
-	go run cmd/manager/main.go 
+	go run cmd/manager/main.go
+
+image:
+	buildah build-using-dockerfile --network=host -f build/Dockerfile -t quay.io/${USER}/gcp-project-operator
