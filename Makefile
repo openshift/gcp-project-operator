@@ -11,20 +11,30 @@ TESTOPTS :=
 
 include project.mk
 
-default: gogenerate gobuild
+default: generate build
 
 .PHONY: clean
 clean:
-	rm -rf ./build/_output
+	rm -rf build/_output/bin/
 
-.PHONY: gotest
-gotest:
+.PHONY: test
+test:
 	go test $(TESTOPTS) $(TESTTARGETS)
 
-.PHONY: gogenerate
-gogenerate:
+.PHONY: generate
+generate:
 	go generate pkg/gcpclient/client.go
 
-.PHONY: gobuild
-gobuild: gotest ## Build binary
+.PHONY: build
+build: clean ## Build binary
 	${GOENV} go build ${GOFLAGS} -o ${BINFILE} ${MAINPACKAGE}
+
+.PHONY: clean
+clean:
+	rm -rf ${BINFILE}
+
+run:
+	go run cmd/manager/main.go
+
+image:
+	buildah build-using-dockerfile --network=host -f build/Dockerfile -t quay.io/${USER}/gcp-project-operator

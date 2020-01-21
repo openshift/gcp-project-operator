@@ -3,13 +3,15 @@ package clusterdeployment
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
+	"github.com/openshift/gcp-project-operator/pkg/util"
+	"github.com/openshift/gcp-project-operator/pkg/util/errors"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
 	"google.golang.org/api/cloudresourcemanager/v1"
-	k8serr "k8s.io/apimachinery/pkg/api/errors"
+	"google.golang.org/api/iam/v1"
+	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -32,15 +34,12 @@ const (
 	// clusterPlatformLabel is the label on a cluster deployment which indicates whether or not a cluster is on GCP platform
 	clusterPlatformLabel = "hive.openshift.io/cluster-platform"
 	clusterPlatformGCP   = "gcp"
-	// TODO(Raf) get name of org parent folder and ensure it exists
-	orgParentFolderID = ""
+	orgParentFolderID    = "240634451310" // Service Delivery org subfolder
 
 	// secret information
-	gcpSecretName       = "gcp"
-	orgGcpSecretName    = "gcp-project-operator-creds"
-	osServiceAccountKey = "osServiceAccount.json"
-	// TODO(Raf) uncomment the line below once we are using individual projects per cluster
-	// osdServiceAccountName = "osdmangedadmin"
+	gcpSecretName         = "gcp"
+	orgGcpSecretName      = "gcp-project-operator"
+	osdServiceAccountName = "osd-managed-admin"
 )
 
 var OSDRequiredRoles = []string{
@@ -53,29 +52,39 @@ var OSDRequiredRoles = []string{
 	"roles/compute.admin",
 }
 
+// OSDRequiredAPIS is list of API's, required to setup
+// OpenShift cluster. Order is important.
+var OSDRequiredAPIS = []string{
+	"serviceusage.googleapis.com",
+	"cloudresourcemanager.googleapis.com",
+	"storage-component.googleapis.com",
+	"storage-api.googleapis.com",
+	"dns.googleapis.com",
+	"iam.googleapis.com",
+	"compute.googleapis.com"}
+
 var supportedRegions = map[string]bool{
-	"us-east1": true,
+	"asia-east1":              true,
+	"asia-east2":              true,
+	"asia-northeast1":         true,
+	"asia-northeast2":         true,
+	"asia-south1":             true,
+	"asia-southeast1":         true,
+	"australia-southeast1":    true,
+	"europe-north1":           true,
+	"europe-west1":            true,
+	"europe-west2":            true,
+	"europe-west3":            true,
+	"europe-west4":            true,
+	"europe-west6":            true,
+	"northamerica-northeast1": true,
+	"southamerica-east1":      true,
+	"us-central1":             true,
+	"us-east1":                true,
+	"us-east4":                true,
+	"us-west1":                true,
+	"us-west2":                true,
 }
-
-// Custom errors
-
-// ErrRegionNotSupported indicates the region is not supported by OSD on GCP.
-var ErrRegionNotSupported = errors.New("RegionNotSupported")
-
-// ErrNotGCPCluster indicates that the cluster is not a gcp cluster
-var ErrNotGCPCluster = errors.New("NotGCPCluster")
-
-// ErrNotManagedCluster indicates this is not an OSD managed cluster
-var ErrNotManagedCluster = errors.New("NotManagedCluster")
-
-// ErrClusterInstalled indicates the cluster is already installed
-var ErrClusterInstalled = errors.New("ClusterInstalled")
-
-// ErrMissingProjectID indicates that the cluster deployment is missing the field ProjectID
-var ErrMissingProjectID = errors.New("MissingProjectID")
-
-// ErrMissingRegion indicates that the cluster deployment is missing the field Region
-var ErrMissingRegion = errors.New("MissingRegion")
 
 // Add creates a new ClusterDeployment Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -130,9 +139,9 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 
 	// Fetch the ClusterDeployment instance
 	cd := &hivev1alpha1.ClusterDeployment{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, cd)
+	err := r.client.Get(context.Background(), request.NamespacedName, cd)
 	if err != nil {
-		if k8serr.IsNotFound(err) {
+		if kerrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
@@ -146,10 +155,10 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	switch err {
 	case nil:
 		break
-	case ErrMissingRegion, ErrMissingProjectID, ErrRegionNotSupported:
+	case errors.ErrMissingRegion, errors.ErrMissingProjectID, errors.ErrRegionNotSupported:
 		reqLogger.Error(err, "clusterDeployment failed validation", "Validation Error", err)
 		return reconcile.Result{}, err
-	case ErrClusterInstalled:
+	case errors.ErrClusterInstalled:
 		// TODO(Raf) Cleanup and remove project if being deleted once Hive is finished uninstalling
 		reqLogger.Info(fmt.Sprintf("cluster %v is in installed state", cd.Name))
 		return reconcile.Result{}, nil
@@ -158,72 +167,94 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, nil
 	}
 
+	// Check if gcpSecretName in cd.Namespace exists we are done
+	// TODO(Raf) check if secret is a valid gcp secret
+	// TODO(MJ): what if we need to update secret. We should think something better.
+	// But we need to be mindful about gcp api call ammount so we would not rate limit ourselfs out.
+	if util.SecretExists(r.client, gcpSecretName, cd.Namespace) {
+		reqLogger.Info(fmt.Sprintf("secret: %s already exists in Namespace: %s :: Nothing to do", gcpSecretName, cd.Namespace))
+		return reconcile.Result{}, nil
+	}
+
 	// Get org creds from secret
-	creds, err := getOrgGCPCreds(r.client, operatorNamespace)
+	creds, err := util.GetGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
 		reqLogger.Error(err, "could not get org Creds from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
 	}
 
-	// Check if gcpSecretName in cd.Namespace exists we are done
-	// TODO(Raf) check if secret is a valid gcp secret
-	if secretExists(r.client, gcpSecretName, cd.Namespace) {
-		reqLogger.Info(fmt.Sprintf("secret: %s already exists in Namespace: %s :: Nothing to do", gcpSecretName, cd.Namespace))
-		return reconcile.Result{}, nil
-	}
-
-	// Skip code block to create project for now until we have permissions to test
-	if false {
-		// Get gcpclient with creds
-		gClient, err := r.gcpClientBuilder(cd.Spec.GCP.ProjectID, creds)
-		if err != nil {
-			reqLogger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
-			return reconcile.Result{}, err
-		}
-
-		// TODO(Raf) Check that operation is complete before continuing , make sure project Name does not exits , How to handle those errors
-		_, err = gClient.CreateProject(orgParentFolderID)
-		if err != nil {
-			reqLogger.Error(err, "could create project", "Parent Folder ID", orgParentFolderID, "Requested Project Name", cd.Spec.Platform.GCP.ProjectID, "Requested Region Name", cd.Spec.GCP.Region)
-			return reconcile.Result{}, err
-		}
-
-		// TODO(Raf) Set quotas
-		// TODO(Raf) Enable APIs
-	}
-
+	// Get gcpclient with creds
 	gClient, err := r.gcpClientBuilder(cd.Spec.GCP.ProjectID, creds)
 	if err != nil {
 		reqLogger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
 	}
 
-	// TODO(Raf) delete the line below once we are using individual projects per cluster
-	osdServiceAccountName := fmt.Sprintf("%s-installer", cd.Spec.ClusterName)
+	// TODO(Raf) Check that operation is complete before continuing , make sure project Name does not exits , How to handle those errors
+	_, err = gClient.CreateProject(orgParentFolderID)
+	if err != nil {
+		reqLogger.Error(err, "could create project", "Parent Folder ID", orgParentFolderID, "Requested Project Name", cd.Spec.Platform.GCP.ProjectID, "Requested Region Name", cd.Spec.GCP.Region)
+		return reconcile.Result{}, err
+	}
+
+	// TODO(Raf) Set quotas
+	billingAccount, err := util.GetBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
+	if err != nil {
+		reqLogger.Error(err, "could not get org billingAccount from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
+		return reconcile.Result{}, err
+	}
+
+	// TODO(MJ) These need to be time-out
+	err = gClient.EnableAPI(cd.Spec.Platform.GCP.ProjectID, "cloudbilling.googleapis.com")
+	if err != nil {
+		reqLogger.Error(err, fmt.Sprintf("error enabling %s api for project %s", "cloudbilling.googleapis.com", cd.Spec.Platform.GCP.ProjectID))
+		return reconcile.Result{}, err
+	}
+	// TODO(MJ): Perm issue in the api
+	// https://groups.google.com/forum/#!topic/gce-discussion/K_x9E0VIckk
+	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
+	if err != nil {
+		reqLogger.Error(err, "error creating CloudBilling")
+		return reconcile.Result{}, err
+	}
+
+	for _, a := range OSDRequiredAPIS {
+		err = gClient.EnableAPI(cd.Spec.Platform.GCP.ProjectID, a)
+		if err != nil {
+			reqLogger.Error(err, fmt.Sprintf("error enabling %s api for project %s", a, cd.Spec.Platform.GCP.ProjectID))
+			return reconcile.Result{}, err
+		}
+	}
+
+	gClient, err = r.gcpClientBuilder(cd.Spec.GCP.ProjectID, creds)
+	if err != nil {
+		reqLogger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
+		return reconcile.Result{}, err
+	}
+
 	// See if GCP service account exists if not create it
-	ServiceAccount, err := gClient.GetServiceAccount(osdServiceAccountName)
+	var serviceAccount *iam.ServiceAccount
+	serviceAccount, err = gClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
 		// Create OSDManged Service account
-		Account, err := gClient.CreateServiceAccount(osdServiceAccountName, osdServiceAccountName)
+		account, err := gClient.CreateServiceAccount(osdServiceAccountName, osdServiceAccountName)
 		if err != nil {
 			reqLogger.Error(err, "could create service account", "Service Account Name", osdServiceAccountName)
 			return reconcile.Result{}, err
 		}
-		ServiceAccount = Account
+		serviceAccount = account
 	}
 
 	// Configure policy
 	// Get policy from project
-	policy, err := gClient.GetIamPolicy()
+	policy, err := gClient.GetIamPolicy(cd.Spec.GCP.ProjectID)
 	if err != nil {
 		reqLogger.Error(err, "could not get policy from project", "Project Name", cd.Spec.GCP.ProjectID)
 		return reconcile.Result{}, err
 	}
 
-	// Create requiredBindings with the new member
-	requiredBindings := getOSDRequiredBindingMap(OSDRequiredRoles, ServiceAccount.Email)
-	// Get combined bindings
-	newBindings, modified := addOrUpdateBinding(policy.Bindings, requiredBindings)
+	newBindings, modified := util.AddOrUpdateBinding(policy.Bindings, OSDRequiredRoles, serviceAccount.Email)
+
 	// If existing bindings have been modified update the policy
 	if modified {
 		// update policy
@@ -242,15 +273,17 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	}
 
 	// Delete service account keys if any exist
-	err = gClient.DeleteServiceAccountKeys(ServiceAccount.Email)
+	// TODO(MJ): If this gets executed it breaks all existing jwt grants/tokens.
+	// re-think this part
+	err = gClient.DeleteServiceAccountKeys(serviceAccount.Email)
 	if err != nil {
-		reqLogger.Error(err, "could delete service account key", "Service Account Name", ServiceAccount.Email)
+		reqLogger.Error(err, "could delete service account key", "Service Account Name", serviceAccount.Email)
 		return reconcile.Result{}, err
 	}
 
-	key, err := gClient.CreateServiceAccountKey(ServiceAccount.Email)
+	key, err := gClient.CreateServiceAccountKey(serviceAccount.Email)
 	if err != nil {
-		reqLogger.Error(err, "could create service account key", "Service Account Name", ServiceAccount.Email)
+		reqLogger.Error(err, "could create service account key", "Service Account Name", serviceAccount.Email)
 		return reconcile.Result{}, err
 	}
 
@@ -261,7 +294,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, err
 	}
 
-	secret := newGCPSecretCR(cd.Namespace, string(privateKeyString))
+	secret := util.NewGCPSecretCR(cd.Namespace, string(privateKeyString))
 
 	createErr := r.client.Create(context.TODO(), secret)
 	if createErr != nil {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
 	"runtime"
 
 	// Hive provides cluster deployment status
@@ -43,6 +42,12 @@ func printVersion() {
 }
 
 func main() {
+	if err := run(); err != nil {
+		panic(err)
+	}
+}
+
+func run() error {
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
 	pflag.CommandLine.AddFlagSet(zap.FlagSet())
@@ -63,19 +68,21 @@ func main() {
 	// uniform and structured logs.
 	logf.SetLogger(zap.Logger())
 
+	stopCh := signals.SetupSignalHandler()
+
 	printVersion()
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
 		log.Error(err, "Failed to get watch namespace")
-		os.Exit(1)
+		return err
 	}
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Error(err, "")
-		os.Exit(1)
+		return err
 	}
 
 	ctx := context.TODO()
@@ -84,7 +91,7 @@ func main() {
 	err = leader.Become(ctx, "gcp-project-operator-lock")
 	if err != nil {
 		log.Error(err, "")
-		os.Exit(1)
+		return err
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
@@ -95,7 +102,7 @@ func main() {
 	})
 	if err != nil {
 		log.Error(err, "")
-		os.Exit(1)
+		return err
 	}
 
 	log.Info("Registering Components.")
@@ -103,19 +110,19 @@ func main() {
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
-		os.Exit(1)
+		return err
 	}
 
 	// Assemble hivev1alpha1 runtime scheme.
 	if err := hivev1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "error registering hive objects")
-		os.Exit(1)
+		return err
 	}
 
 	// Setup all Controllers
 	if err := controller.AddToManager(mgr); err != nil {
 		log.Error(err, "")
-		os.Exit(1)
+		return err
 	}
 
 	// Create Service object to expose the metrics port.
@@ -124,11 +131,13 @@ func main() {
 		log.Info(err.Error())
 	}
 
+	// start cache and wait for sync
+	log.Info("init chache")
+	cache := mgr.GetCache()
+	go cache.Start(stopCh)
+	cache.WaitForCacheSync(stopCh)
 	log.Info("Starting the Cmd.")
 
 	// Start the Cmd
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
-		log.Error(err, "Manager exited non-zero")
-		os.Exit(1)
-	}
+	return mgr.Start(stopCh)
 }

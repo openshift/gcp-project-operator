@@ -1,20 +1,25 @@
 package clusterdeployment
 
 import (
-	"errors"
+	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
-	mockGCP "github.com/openshift/gcp-project-operator/pkg/gcpclient/mock"
+	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
+	builders "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	hiveapis "github.com/openshift/hive/pkg/apis"
-	"github.com/stretchr/testify/assert"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
-	iam "google.golang.org/api/iam/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+)
+
+const (
+	testClusterName = "clusterName"
+	testNamespace   = "namespace"
 )
 
 func TestReconcile(t *testing.T) {
@@ -22,226 +27,60 @@ func TestReconcile(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		expectedErr  bool
+		expectedErr  error
 		localObjects []runtime.Object
 		setupGCPMock func(r *mockGCP.MockClientMockRecorder)
 	}{
 		{
-			name:         "Cluster Deployment not found",
-			expectedErr:  false,
+			name:         "cluster deployment not found",
+			expectedErr:  nil,
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
 			name:        "CD check fail ErrMissingRegion",
-			expectedErr: true,
+			expectedErr: fmt.Errorf("MissingRegion"),
 			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().withOutRegion().getClusterDeployment(),
+				builders.NewTestClusterDeploymentBuilder().WithOutRegion().GetClusterDeployment(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
 			name:        "CD check fail ErrClusterInstalled",
-			expectedErr: false,
+			expectedErr: nil,
 			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().installed().getClusterDeployment(),
+				builders.NewTestClusterDeploymentBuilder().Installed().GetClusterDeployment(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
-			name:        "Failed to get ORG Creds",
-			expectedErr: true,
+			name:        "failed to get ORG creds",
+			expectedErr: fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get secrets \"gcp-project-operator\" not found"),
 			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
+				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
-			name:        "Failed to get ORG Creds",
-			expectedErr: true,
+			name:        "final secret exists",
+			expectedErr: nil,
 			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
+				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
+				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
+				builders.NewTestSecretBuilder(gcpSecretName, testNamespace, "testCreds").GetTestSecret(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
-			name:        "Final Secret Exists",
-			expectedErr: false,
+			name:        "no billing key in secret",
+			expectedErr: fmt.Errorf("GCP credentials secret gcp-project-operator did not contain key billingaccount"),
 			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				// GCP org secret in operator namespace
-				testSecret(orgGcpSecretName, operatorNamespace, "testCreds"),
-				// GCP secret in cluster deployment namespace
-				testSecret(gcpSecretName, testNamespace, "testCreds"),
-			},
-			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
-		},
-		{
-			name:        "GetServiceAccount & CreateServiceAccount Error",
-			expectedErr: true,
-			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				// GCP org secret in operator namespace
-				testSecret(orgGcpSecretName, operatorNamespace, "testCreds"),
+				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
+				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").WihtoutKey("billingaccount").GetTestSecret(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {
 				gomock.InOrder(
-					r.GetServiceAccount(gomock.Any()).Return(
-						&iam.ServiceAccount{}, errors.New("GetServiceAccount Error")).Times(1),
-					r.CreateServiceAccount(gomock.Any(), gomock.Any()).Return(
-						&iam.ServiceAccount{}, errors.New("CreateServiceAccount Error")).Times(1))
-			},
-		},
-		{
-			name:        "GetIamPolicy Error",
-			expectedErr: true,
-			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				// GCP org secret in operator namespace
-				testSecret(orgGcpSecretName, operatorNamespace, "testCreds"),
-			},
-			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {
-				gomock.InOrder(
-					r.GetServiceAccount(gomock.Any()).Return(
-						&iam.ServiceAccount{}, errors.New("GetServiceAccount Error")).Times(1),
-					r.CreateServiceAccount(gomock.Any(), gomock.Any()).Return(
-						&iam.ServiceAccount{}, nil).Times(1),
-					r.GetIamPolicy().Return(&cloudresourcemanager.Policy{}, errors.New("GetIamPolicy Error")).Times(1))
-			},
-		},
-		{
-			name:        "SetIamPolicy Error",
-			expectedErr: true,
-			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				// GCP org secret in operator namespace
-				testSecret(orgGcpSecretName, operatorNamespace, "testCreds"),
-			},
-			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {
-				gomock.InOrder(
-					r.GetServiceAccount(gomock.Any()).Return(
-						&iam.ServiceAccount{}, errors.New("GetServiceAccount Error")).Times(1),
-					r.CreateServiceAccount(gomock.Any(), gomock.Any()).Return(
-						&iam.ServiceAccount{}, nil).Times(1),
-					r.GetIamPolicy().Return(
-						&cloudresourcemanager.Policy{}, nil).Times(1),
-					r.SetIamPolicy(gomock.Any()).Return(
-						&cloudresourcemanager.Policy{}, errors.New("SetIamPolicy Error")).Times(1))
-			},
-		},
-		{
-			name:        "DeleteServiceAccountKeys Error",
-			expectedErr: true,
-			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				// GCP org secret in operator namespace
-				testSecret(orgGcpSecretName, operatorNamespace, "testCreds"),
-			},
-			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {
-				gomock.InOrder(
-					r.GetServiceAccount(gomock.Any()).Return(
-						&iam.ServiceAccount{}, errors.New("GetServiceAccount Error")).Times(1),
-					r.CreateServiceAccount(gomock.Any(), gomock.Any()).Return(
-						&iam.ServiceAccount{}, nil).Times(1),
-					r.GetIamPolicy().Return(
-						&cloudresourcemanager.Policy{}, nil).Times(1),
-					r.SetIamPolicy(gomock.Any()).Return(
-						&cloudresourcemanager.Policy{}, nil).Times(1),
-					r.DeleteServiceAccountKeys(gomock.Any()).Return(
-						errors.New("DeleteServiceAccountKeys Error")).Times(1))
-			},
-		},
-		{
-			name:        "CreateServiceAccountKey Error",
-			expectedErr: true,
-			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				// GCP org secret in operator namespace
-				testSecret(orgGcpSecretName, operatorNamespace, "testCreds"),
-			},
-			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {
-				gomock.InOrder(
-					r.GetServiceAccount(gomock.Any()).Return(
-						&iam.ServiceAccount{}, errors.New("GetServiceAccount Error")).Times(1),
-					r.CreateServiceAccount(gomock.Any(), gomock.Any()).Return(
-						&iam.ServiceAccount{}, nil).Times(1),
-					r.GetIamPolicy().Return(
-						&cloudresourcemanager.Policy{}, nil).Times(1),
-					r.SetIamPolicy(gomock.Any()).Return(
-						&cloudresourcemanager.Policy{}, nil).Times(1),
-					r.DeleteServiceAccountKeys(gomock.Any()).Return(
-						nil).Times(1),
-					r.CreateServiceAccountKey(gomock.Any()).Return(
-						&iam.ServiceAccountKey{}, errors.New("CreateServiceAccountKey Error")).Times(1))
-			},
-		},
-		{
-			name:        "Error decoding base64",
-			expectedErr: true,
-			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				// GCP org secret in operator namespace
-				testSecret(orgGcpSecretName, operatorNamespace, "testCreds"),
-			},
-			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {
-				gomock.InOrder(
-					r.GetServiceAccount(gomock.Any()).Return(
-						&iam.ServiceAccount{}, errors.New("GetServiceAccount Error")).Times(1),
-					r.CreateServiceAccount(gomock.Any(), gomock.Any()).Return(
-						&iam.ServiceAccount{}, nil).Times(1),
-					r.GetIamPolicy().Return(
-						&cloudresourcemanager.Policy{}, nil).Times(1),
-					r.SetIamPolicy(gomock.Any()).Return(
-						&cloudresourcemanager.Policy{}, nil).Times(1),
-					r.DeleteServiceAccountKeys(gomock.Any()).Return(
-						nil).Times(1),
-					r.CreateServiceAccountKey(gomock.Any()).Return(
-						&iam.ServiceAccountKey{
-							PrivateKeyData: "Fake private data",
-						}, nil).Times(1))
-			},
-		},
-		{
-			name:        "No errors without final Secret",
-			expectedErr: false,
-			localObjects: []runtime.Object{
-				// test cluster deployment
-				newtestClusterDeploymentBuilder().getClusterDeployment(),
-				// GCP org secret in operator namespace
-				testSecret(orgGcpSecretName, operatorNamespace, "testCreds"),
-			},
-			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {
-				gomock.InOrder(
-					r.GetServiceAccount(gomock.Any()).Return(
-						&iam.ServiceAccount{}, errors.New("GetServiceAccount Error")).Times(1),
-					r.CreateServiceAccount(gomock.Any(), gomock.Any()).Return(
-						&iam.ServiceAccount{}, nil).Times(1),
-					r.GetIamPolicy().Return(
-						&cloudresourcemanager.Policy{
-							Bindings: []*cloudresourcemanager.Binding{
-								{
-									Members: []string{"serviceAccount:service1@google.com"},
-									Role:    "roles/storage.admin",
-								},
-							}}, nil).Times(1),
-					r.SetIamPolicy(gomock.Any()).Return(
-						&cloudresourcemanager.Policy{}, nil).Times(1),
-					r.DeleteServiceAccountKeys(gomock.Any()).Return(
-						nil).Times(1),
-					r.CreateServiceAccountKey(gomock.Any()).Return(
-						&iam.ServiceAccountKey{
-							PrivateKeyData: "IkZha2UgcHJpdmF0ZSBkYXRhIg==",
-						}, nil).Times(1))
+					r.CreateProject(gomock.Any()).Return(
+						&cloudresourcemanager.Operation{}, nil).Times(1))
 			},
 		},
 	}
@@ -249,19 +88,19 @@ func TestReconcile(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Arrage
-			mocks := setupDefaultMocks(t, test.localObjects)
-			test.setupGCPMock(mocks.mockGCPClient.EXPECT())
+			mocks := builders.SetupDefaultMocks(t, test.localObjects)
+			test.setupGCPMock(mocks.MockGCPClient.EXPECT())
 
 			gcpBuilder := func(projectName string, authJSON []byte) (gcpclient.Client, error) {
-				return mocks.mockGCPClient, nil
+				return mocks.MockGCPClient, nil
 			}
 
 			// This is necessary for the mocks to report failures like methods not being called an expected number of times.
 			// after mocks is defined
-			defer mocks.mockCtrl.Finish()
+			defer mocks.MockCtrl.Finish()
 
 			rcd := &ReconcileClusterDeployment{
-				mocks.fakeKubeClient,
+				mocks.FakeKubeClient,
 				scheme.Scheme,
 				gcpBuilder,
 			}
@@ -275,10 +114,8 @@ func TestReconcile(t *testing.T) {
 			})
 
 			// Assert
-			if test.expectedErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
+			if !reflect.DeepEqual(err, test.expectedErr) {
+				t.Errorf("%s: expected error: %v, got error: %v", test.name, test.expectedErr, err)
 			}
 
 		})
