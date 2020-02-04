@@ -3,6 +3,15 @@ kind: CustomResourceDefinition
 metadata:
   name: projectclaims.gcp.managed.openshift.io
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.state
+    description: Status of the project claim
+    name: State
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    description: Age since the project claim was created
+    name: Age
+    type: date
   group: gcp.managed.openshift.io
   names:
     kind: ProjectClaim
@@ -28,8 +37,86 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            gcpCredentialSecret:
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
+            gcpProjectName:
+              type: string
+            legalEntity:
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+              required:
+              - name
+              - id
+              type: object
+            projectCRLink:
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
+            region:
+              type: string
+          required:
+          - legalEntity
+          - gcpCredentialSecret
+          - region
+          - gcpProjectName
+          - projectCRLink
           type: object
         status:
+          properties:
+            conditions:
+              items:
+                properties:
+                  lastProbeTime:
+                    description: LastProbeTime is the last time we probed the condition.
+                    format: date-time
+                    type: string
+                  lastTransitionTime:
+                    description: LastTransitionTime is the last time the condition
+                      transitioned from one status to another.
+                    format: date-time
+                    type: string
+                  message:
+                    description: Message is a human-readable message indicating details
+                      about last transition.
+                    type: string
+                  reason:
+                    description: Reason is a unique, one-word, CamelCase reason for
+                      the condition's last transition.
+                    type: string
+                  status:
+                    description: Status is the status of the condition.
+                    type: string
+                  type:
+                    description: Type is the type of the condition.
+                    type: string
+                required:
+                - type
+                - status
+                type: object
+              type: array
+            state:
+              type: string
+          required:
+          - conditions
+          - state
           type: object
   version: v1alpha1
   versions:

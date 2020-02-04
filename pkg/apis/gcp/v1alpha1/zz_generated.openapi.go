@@ -67,10 +67,40 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref common.ReferenceCallback)
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "ProjectClaimSpec defines the desired state of ProjectClaim",
-				Properties:  map[string]spec.Schema{},
+				Properties: map[string]spec.Schema{
+					"legalEntity": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity"),
+						},
+					},
+					"gcpCredentialSecret": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
+						},
+					},
+					"region": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"gcpProjectName": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"projectCRLink": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
+						},
+					},
+				},
+				Required: []string{"legalEntity", "gcpCredentialSecret", "region", "gcpProjectName", "projectCRLink"},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity", "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"},
 	}
 }
 
@@ -79,9 +109,30 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimStatus(ref common.ReferenceCallbac
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "ProjectClaimStatus defines the observed state of ProjectClaim",
-				Properties:  map[string]spec.Schema{},
+				Properties: map[string]spec.Schema{
+					"conditions": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimCondition"),
+									},
+								},
+							},
+						},
+					},
+					"state": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+				Required: []string{"conditions", "state"},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimCondition"},
 	}
 }
