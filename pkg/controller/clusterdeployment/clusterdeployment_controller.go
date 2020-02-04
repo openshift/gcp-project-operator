@@ -9,7 +9,6 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/util"
 	"github.com/openshift/gcp-project-operator/pkg/util/errors"
 	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
-	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iam/v1"
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -245,31 +244,10 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		serviceAccount = account
 	}
 
-	// Configure policy
-	// Get policy from project
-	policy, err := gClient.GetIamPolicy(cd.Spec.GCP.ProjectID)
+	err = SetIAMPolicy(gClient, cd.Spec.GCP.ProjectID, serviceAccount.Email)
 	if err != nil {
-		reqLogger.Error(err, "could not get policy from project", "Project Name", cd.Spec.GCP.ProjectID)
+		reqLogger.Error(err, "could not update policy on project", "Project Name", cd.Spec.GCP.ProjectID)
 		return reconcile.Result{}, err
-	}
-
-	newBindings, modified := util.AddOrUpdateBinding(policy.Bindings, OSDRequiredRoles, serviceAccount.Email)
-
-	// If existing bindings have been modified update the policy
-	if modified {
-		// update policy
-		policy.Bindings = newBindings
-
-		setIamPolicyRequest := &cloudresourcemanager.SetIamPolicyRequest{
-			Policy: policy,
-		}
-
-		//TODO(Raf) Set Etag in policy to version policies so we get the latest always
-		_, err = gClient.SetIamPolicy(setIamPolicyRequest)
-		if err != nil {
-			reqLogger.Error(err, "could not update policy on project", "Project Name", cd.Spec.GCP.ProjectID)
-			return reconcile.Result{}, err
-		}
 	}
 
 	// Delete service account keys if any exist
@@ -304,5 +282,3 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 
 	return reconcile.Result{}, nil
 }
-
-// TODO(Raf) Clean serviceAccount from member in bindings

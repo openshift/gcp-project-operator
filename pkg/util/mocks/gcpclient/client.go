@@ -8,8 +8,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v1 "google.golang.org/api/cloudresourcemanager/v1"
-	v10 "google.golang.org/api/iam/v1"
+	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
+	iam "google.golang.org/api/iam/v1"
 )
 
 // MockClient is a mock of Client interface
@@ -36,10 +36,10 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // GetServiceAccount mocks base method
-func (m *MockClient) GetServiceAccount(accountName string) (*v10.ServiceAccount, error) {
+func (m *MockClient) GetServiceAccount(accountName string) (*iam.ServiceAccount, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetServiceAccount", accountName)
-	ret0, _ := ret[0].(*v10.ServiceAccount)
+	ret0, _ := ret[0].(*iam.ServiceAccount)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -51,10 +51,10 @@ func (mr *MockClientMockRecorder) GetServiceAccount(accountName interface{}) *go
 }
 
 // CreateServiceAccount mocks base method
-func (m *MockClient) CreateServiceAccount(name, displayName string) (*v10.ServiceAccount, error) {
+func (m *MockClient) CreateServiceAccount(name, displayName string) (*iam.ServiceAccount, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateServiceAccount", name, displayName)
-	ret0, _ := ret[0].(*v10.ServiceAccount)
+	ret0, _ := ret[0].(*iam.ServiceAccount)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -80,10 +80,10 @@ func (mr *MockClientMockRecorder) DeleteServiceAccount(accountEmail interface{})
 }
 
 // CreateServiceAccountKey mocks base method
-func (m *MockClient) CreateServiceAccountKey(serviceAccountEmail string) (*v10.ServiceAccountKey, error) {
+func (m *MockClient) CreateServiceAccountKey(serviceAccountEmail string) (*iam.ServiceAccountKey, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateServiceAccountKey", serviceAccountEmail)
-	ret0, _ := ret[0].(*v10.ServiceAccountKey)
+	ret0, _ := ret[0].(*iam.ServiceAccountKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -109,10 +109,10 @@ func (mr *MockClientMockRecorder) DeleteServiceAccountKeys(serviceAccountEmail i
 }
 
 // GetIamPolicy mocks base method
-func (m *MockClient) GetIamPolicy(projectName string) (*v1.Policy, error) {
+func (m *MockClient) GetIamPolicy(projectName string) (*cloudresourcemanager.Policy, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetIamPolicy", projectName)
-	ret0, _ := ret[0].(*v1.Policy)
+	ret0, _ := ret[0].(*cloudresourcemanager.Policy)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -124,10 +124,10 @@ func (mr *MockClientMockRecorder) GetIamPolicy(projectName interface{}) *gomock.
 }
 
 // SetIamPolicy mocks base method
-func (m *MockClient) SetIamPolicy(setIamPolicyRequest *v1.SetIamPolicyRequest) (*v1.Policy, error) {
+func (m *MockClient) SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIamPolicyRequest) (*cloudresourcemanager.Policy, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetIamPolicy", setIamPolicyRequest)
-	ret0, _ := ret[0].(*v1.Policy)
+	ret0, _ := ret[0].(*cloudresourcemanager.Policy)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -139,10 +139,10 @@ func (mr *MockClientMockRecorder) SetIamPolicy(setIamPolicyRequest interface{}) 
 }
 
 // CreateProject mocks base method
-func (m *MockClient) CreateProject(parentFolder string) (*v1.Operation, error) {
+func (m *MockClient) CreateProject(parentFolder string) (*cloudresourcemanager.Operation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateProject", parentFolder)
-	ret0, _ := ret[0].(*v1.Operation)
+	ret0, _ := ret[0].(*cloudresourcemanager.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -154,10 +154,10 @@ func (mr *MockClientMockRecorder) CreateProject(parentFolder interface{}) *gomoc
 }
 
 // DeleteProject mocks base method
-func (m *MockClient) DeleteProject(parentFolder string) (*v1.Empty, error) {
+func (m *MockClient) DeleteProject(parentFolder string) (*cloudresourcemanager.Empty, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteProject", parentFolder)
-	ret0, _ := ret[0].(*v1.Empty)
+	ret0, _ := ret[0].(*cloudresourcemanager.Empty)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
