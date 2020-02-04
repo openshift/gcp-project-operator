@@ -96,7 +96,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref common.ReferenceCallback)
 						},
 					},
 				},
-				Required: []string{"legalEntity", "gcpCredentialSecret", "region", "gcpProjectName", "projectCRLink"},
+				Required: []string{"legalEntity", "gcpCredentialSecret", "region"},
 			},
 		},
 		Dependencies: []string{

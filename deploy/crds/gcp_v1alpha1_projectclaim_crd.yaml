@@ -76,8 +76,6 @@ spec:
           - legalEntity
           - gcpCredentialSecret
           - region
-          - gcpProjectName
-          - projectCRLink
           type: object
         status:
           properties:

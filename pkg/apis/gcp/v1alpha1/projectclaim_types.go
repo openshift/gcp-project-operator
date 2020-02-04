@@ -1,4 +1,4 @@
-  package v1alpha1
+package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -14,8 +14,8 @@ type ProjectClaimSpec struct {
 	LegalEntity         LegalEntity    `json:"legalEntity"`
 	GCPCredentialSecret NamespacedName `json:"gcpCredentialSecret"`
 	Region              string         `json:"region"`
-	GCPProjectName      string         `json:"gcpProjectName"`
-	ProjectCRLink       NamespacedName `json:"projectCRLink"`
+	GCPProjectName      string         `json:"gcpProjectName,omitempty"`
+	ProjectCRLink       NamespacedName `json:"projectCRLink,omitempty"`
 }
 
 // ProjectClaimStatus defines the observed state of ProjectClaim
@@ -57,7 +57,7 @@ const (
 	ClaimConditionVerification ProjectClaimConditionType = "Verification"
 	// ClaimConditionError is set when a project claim state changes to Error
 	ClaimConditionError ProjectClaimConditionType = "Error"
-	)
+)
 
 // ClaimStatus is a valid value from ProjectClaim.Status
 type ClaimStatus string
