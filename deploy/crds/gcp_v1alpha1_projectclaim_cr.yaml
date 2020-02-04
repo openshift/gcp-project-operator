@@ -1,0 +1,7 @@
+apiVersion: gcp.managed.openshift.io/v1alpha1
+kind: ProjectClaim
+metadata:
+  name: example-projectclaim
+spec:
+  # Add fields here
+  size: 3
