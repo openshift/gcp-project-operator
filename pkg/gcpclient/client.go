@@ -226,7 +226,7 @@ func (c *gcpClient) GetIamPolicy(projectName string) (*cloudresourcemanager.Poli
 func (c *gcpClient) SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIamPolicyRequest) (*cloudresourcemanager.Policy, error) {
 	policy, err := c.cloudResourceManagerClient.Projects.SetIamPolicy(c.projectName, setIamPolicyRequest).Do()
 	if err != nil {
-		return &cloudresourcemanager.Policy{}, fmt.Errorf("gcpclient.SetIamPolicy.Projects.ServiceAccounts.SetIamPolicy %v", err)
+		return &cloudresourcemanager.Policy{}, err
 	}
 	return policy, nil
 }
