@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gcp-project-operator-client
+rules:
+- apiGroups:
+  - "gcp.managed.openshift.io"
+  resources:
+  - projectclaims
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
