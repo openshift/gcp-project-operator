@@ -1,40 +1,17 @@
 SHELL := /usr/bin/env bash
 
-BINFILE=build/_output/bin/$(OPERATOR_NAME)
-MAINPACKAGE=./cmd/manager
-GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
-GOFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
+OPERATOR_DOCKERFILE = ./build/Dockerfile
 
-TESTTARGETS := $(shell go list -e ./... | egrep -v "/(vendor)/")
-# ex, -v
-TESTOPTS :=
-
+# Include shared Makefiles
 include project.mk
+include standard.mk
 
-default: generate build
+default: gobuild
 
-.PHONY: clean
-clean:
-	rm -rf build/_output/bin/
+# Extend Makefile after here
 
-.PHONY: test
-test:
-	go test $(TESTOPTS) $(TESTTARGETS)
+.PHONY: docker-build
+docker-build: build
 
-.PHONY: generate
 generate:
 	go generate pkg/gcpclient/client.go
-
-.PHONY: build
-build: clean ## Build binary
-	${GOENV} go build ${GOFLAGS} -o ${BINFILE} ${MAINPACKAGE}
-
-.PHONY: clean
-clean:
-	rm -rf ${BINFILE}
-
-run:
-	go run cmd/manager/main.go
-
-image:
-	buildah build-using-dockerfile --network=host -f build/Dockerfile -t quay.io/${USER}/gcp-project-operator
