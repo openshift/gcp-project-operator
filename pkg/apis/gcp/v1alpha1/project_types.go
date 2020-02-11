@@ -11,7 +11,7 @@ import (
 // ProjectSpec defines the desired state of Project
 // +k8s:openapi-gen=true
 type ProjectSpec struct {
-	ProjectName        string         `json:"projectName,omitempty"`
+	GCPProjectName     string         `json:"gcpProjectName,omitempty"`
 	ProjectClaimCRLink NamespacedName `json:"projectClaimCRLink"`
 	LegalEntity        LegalEntity    `json:"legalEntity"`
 }
