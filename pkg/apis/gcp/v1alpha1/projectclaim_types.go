@@ -51,7 +51,7 @@ type ProjectClaimConditionType string
 const (
 	// ClaimConditionReady is set when a Project claim state changes Ready state
 	ClaimConditionReady ProjectClaimConditionType = "Ready"
-	// ConditionPending is set when a project claim state changes to Pending
+	// ClaimConditionPending is set when a project claim state changes to Pending
 	ClaimConditionPending ProjectClaimConditionType = "Pending"
 	// ClaimConditionVerification is set when a project claim state changes to Verification state
 	ClaimConditionVerification ProjectClaimConditionType = "Verification"
@@ -69,7 +69,7 @@ const (
 	ClaimStatusReady ClaimStatus = "Ready"
 	// ClaimStatusError error status for a claim
 	ClaimStatusError ClaimStatus = "Error"
-	// ClaimStatusPendingVerification pending verification status for a claim
+	// ClaimStatusVerification pending verification status for a claim
 	ClaimStatusVerification ClaimStatus = "Verification"
 )
 
@@ -95,18 +95,6 @@ type ProjectClaimList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ProjectClaim `json:"items"`
-}
-
-// LegalEntity contains Red Hat specific identifiers to the original creator the clusters
-type LegalEntity struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-}
-
-// NamespacedName contains the name of a secret and its namespace
-type NamespacedName struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
 }
 
 func init() {
