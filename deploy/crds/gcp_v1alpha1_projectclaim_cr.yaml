@@ -8,10 +8,10 @@ spec:
   gcpCredentialSecret:
     name: gcp-secret
     namespace: example-clusternamespace
-  projectCRLink: 
-    name: example-project
+  gcpprojectCRLink: 
+    name: example-gcpproject
     namespace: gcp-project-operator
   legalEntity:
     name: example-entity
     id: example-id
-  gcpProjectName: example-GCPproject
+  gcpProjectID: example-GCPprojectID

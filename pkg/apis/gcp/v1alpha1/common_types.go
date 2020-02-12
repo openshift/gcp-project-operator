@@ -6,7 +6,7 @@ type LegalEntity struct {
 	ID   string `json:"id"`
 }
 
-// NamespacedName contains the name of a secret and its namespace
+// NamespacedName contains the name of a object and its namespace
 type NamespacedName struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`

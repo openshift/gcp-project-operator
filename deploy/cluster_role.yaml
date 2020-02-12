@@ -56,6 +56,6 @@ rules:
   - gcp.managed.openshift.io
   resources:
   - '*'
-  - projects
+  - gcpprojects
   verbs:
   - '*'

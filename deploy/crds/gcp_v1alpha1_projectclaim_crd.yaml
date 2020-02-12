@@ -48,7 +48,17 @@ spec:
               - name
               - namespace
               type: object
-            gcpProjectName:
+            gcpProjectCRLink:
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
+            gcpProjectID:
               type: string
             legalEntity:
               properties:
@@ -59,16 +69,6 @@ spec:
               required:
               - name
               - id
-              type: object
-            projectCRLink:
-              properties:
-                name:
-                  type: string
-                namespace:
-                  type: string
-              required:
-              - name
-              - namespace
               type: object
             region:
               type: string

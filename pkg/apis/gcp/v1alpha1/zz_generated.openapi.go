@@ -13,20 +13,20 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.Project":            schema_pkg_apis_gcp_v1alpha1_Project(ref),
+		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.GCPProject":         schema_pkg_apis_gcp_v1alpha1_GCPProject(ref),
+		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.GCPProjectSpec":     schema_pkg_apis_gcp_v1alpha1_GCPProjectSpec(ref),
+		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.GCPProjectStatus":   schema_pkg_apis_gcp_v1alpha1_GCPProjectStatus(ref),
 		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaim":       schema_pkg_apis_gcp_v1alpha1_ProjectClaim(ref),
 		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimSpec":   schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref),
 		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimStatus": schema_pkg_apis_gcp_v1alpha1_ProjectClaimStatus(ref),
-		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectSpec":        schema_pkg_apis_gcp_v1alpha1_ProjectSpec(ref),
-		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectStatus":      schema_pkg_apis_gcp_v1alpha1_ProjectStatus(ref),
 	}
 }
 
-func schema_pkg_apis_gcp_v1alpha1_Project(ref common.ReferenceCallback) common.OpenAPIDefinition {
+func schema_pkg_apis_gcp_v1alpha1_GCPProject(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "Project is the Schema for the projects API",
+				Description: "GCPProject is the Schema for the GCPprojects API",
 				Properties: map[string]spec.Schema{
 					"kind": {
 						SchemaProps: spec.SchemaProps{
@@ -49,19 +49,82 @@ func schema_pkg_apis_gcp_v1alpha1_Project(ref common.ReferenceCallback) common.O
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectSpec"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.GCPProjectSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectStatus"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.GCPProjectStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectSpec", "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.GCPProjectSpec", "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.GCPProjectStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_gcp_v1alpha1_GCPProjectSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GCPProjectSpec defines the desired state of Project",
+				Properties: map[string]spec.Schema{
+					"gcpProjectID": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"projectClaimCRLink": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
+						},
+					},
+					"legalEntity": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity"),
+						},
+					},
+				},
+				Required: []string{"projectClaimCRLink", "legalEntity"},
+			},
+		},
+		Dependencies: []string{
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity", "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"},
+	}
+}
+
+func schema_pkg_apis_gcp_v1alpha1_GCPProjectStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "GCPProjectStatus defines the observed state of Project",
+				Properties: map[string]spec.Schema{
+					"conditions": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.GCPProjectCondition"),
+									},
+								},
+							},
+						},
+					},
+					"state": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.GCPProjectCondition"},
 	}
 }
 
@@ -130,13 +193,13 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref common.ReferenceCallback)
 							Format: "",
 						},
 					},
-					"gcpProjectName": {
+					"gcpProjectID": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "",
 						},
 					},
-					"projectCRLink": {
+					"gcpProjectCRLink": {
 						SchemaProps: spec.SchemaProps{
 							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
 						},
@@ -180,68 +243,5 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimStatus(ref common.ReferenceCallbac
 		},
 		Dependencies: []string{
 			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimCondition"},
-	}
-}
-
-func schema_pkg_apis_gcp_v1alpha1_ProjectSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ProjectSpec defines the desired state of Project",
-				Properties: map[string]spec.Schema{
-					"projectName": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-					"projectClaimCRLink": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
-						},
-					},
-					"legalEntity": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity"),
-						},
-					},
-				},
-				Required: []string{"projectClaimCRLink", "legalEntity"},
-			},
-		},
-		Dependencies: []string{
-			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity", "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"},
-	}
-}
-
-func schema_pkg_apis_gcp_v1alpha1_ProjectStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
-	return common.OpenAPIDefinition{
-		Schema: spec.Schema{
-			SchemaProps: spec.SchemaProps{
-				Description: "ProjectStatus defines the observed state of Project",
-				Properties: map[string]spec.Schema{
-					"conditions": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectCondition"),
-									},
-								},
-							},
-						},
-					},
-					"state": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
-				},
-			},
-		},
-		Dependencies: []string{
-			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectCondition"},
 	}
 }

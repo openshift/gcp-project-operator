@@ -14,8 +14,8 @@ type ProjectClaimSpec struct {
 	LegalEntity         LegalEntity    `json:"legalEntity"`
 	GCPCredentialSecret NamespacedName `json:"gcpCredentialSecret"`
 	Region              string         `json:"region"`
-	GCPProjectName      string         `json:"gcpProjectName,omitempty"`
-	ProjectCRLink       NamespacedName `json:"projectCRLink,omitempty"`
+	GCPProjectID        string         `json:"gcpProjectID,omitempty"`
+	GCPProjectCRLink    NamespacedName `json:"gcpProjectCRLink,omitempty"`
 }
 
 // ProjectClaimStatus defines the observed state of ProjectClaim
