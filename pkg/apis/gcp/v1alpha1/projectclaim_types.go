@@ -5,17 +5,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ProjectClaimSpec defines the desired state of ProjectClaim
 // +k8s:openapi-gen=true
 type ProjectClaimSpec struct {
-	LegalEntity         LegalEntity    `json:"legalEntity"`
-	GCPCredentialSecret NamespacedName `json:"gcpCredentialSecret"`
-	Region              string         `json:"region"`
-	GCPProjectID        string         `json:"gcpProjectID,omitempty"`
-	GCPProjectCRLink    NamespacedName `json:"gcpProjectCRLink,omitempty"`
+	LegalEntity            LegalEntity    `json:"legalEntity"`
+	GCPCredentialSecret    NamespacedName `json:"gcpCredentialSecret"`
+	Region                 string         `json:"region"`
+	GCPProjectID           string         `json:"gcpProjectID,omitempty"`
+	ProjectReferenceCRLink NamespacedName `json:"projectReferenceCRLink,omitempty"`
 }
 
 // ProjectClaimStatus defines the observed state of ProjectClaim

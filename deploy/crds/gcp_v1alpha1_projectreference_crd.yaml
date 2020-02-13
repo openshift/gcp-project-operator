@@ -1,31 +1,31 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: gcpprojects.gcp.managed.openshift.io
+  name: projectreferences.gcp.managed.openshift.io
 spec:
   additionalPrinterColumns:
   - JSONPath: .status.state
-    description: Status of the GCPproject
+    description: Status of the ProjectReference
     name: State
     type: string
-  - JSONPath: .spec.gcpprojectClaimCRLink.name
+  - JSONPath: .spec.projectClaimCRLink.name
     description: Name of corresponding project claim CR
     name: ClaimName
     type: string
-  - JSONPath: .spec.gcpprojectClaimCRLink.namespace
+  - JSONPath: .spec.projectClaimCRLink.namespace
     description: Namesspace of corresponding project claim CR
     name: ClaimNameSpace
     type: string
   - JSONPath: .metadata.creationTimestamp
-    description: Age since the GCPproject was created
+    description: Age since the ProjectReference was created
     name: Age
     type: date
   group: gcp.managed.openshift.io
   names:
-    kind: GCPProject
-    listKind: GCPProjectList
-    plural: gcpprojects
-    singular: gcpproject
+    kind: ProjectReference
+    listKind: ProjectReferenceList
+    plural: projectreferences
+    singular: projectreference
   scope: Namespaced
   subresources:
     status: {}
