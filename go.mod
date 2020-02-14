@@ -13,16 +13,16 @@ require (
 	github.com/go-openapi/spec v0.18.0
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
 	github.com/golang/mock v1.4.0
-	github.com/google/btree v1.0.0 // indirect
-	github.com/google/uuid v1.0.0 // indirect
+	github.com/google/go-cmp v0.4.0
+	github.com/google/uuid v1.0.0
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190318015731-ff9851476e98 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
-	github.com/onsi/ginkgo v1.7.0 // indirect
-	github.com/onsi/gomega v1.4.3 // indirect
+	github.com/onsi/ginkgo v1.12.0
+	github.com/onsi/gomega v1.9.0
 	github.com/openshift/api v3.9.1-0.20190927182313-d4a64ec2cbd8+incompatible // indirect
 	github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e // indirect
 	github.com/openshift/hive v0.0.0-20191114203647-105cae8c337d

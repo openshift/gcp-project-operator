@@ -14,13 +14,13 @@ import (
 )
 
 const (
-	testClusterName          = "clusterName"
-	testUID                  = types.UID("1234")
-	testNamespace            = "namespace"
-	testBaseDomain           = "testing.example.com"
-	testGCPCredentialsSecret = "GCPCredentialsSecret"
-	testProject              = "project"
-	testRegion               = "us-east1"
+	testClusterName = "clusterName"
+	testUID         = types.UID("1234")
+	testNamespace   = "namespace"
+	testBaseDomain  = "testing.example.com"
+	//testGCPCredentialsSecret = "GCPCredentialsSecret"
+	testProject = "project"
+	testRegion  = "us-east1"
 
 	clusterPlatformLabel          = "hive.openshift.io/cluster-platform"
 	clusterPlatformGCP            = "gcp"
