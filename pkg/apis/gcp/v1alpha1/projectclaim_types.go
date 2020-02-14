@@ -5,17 +5,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ProjectClaimSpec defines the desired state of ProjectClaim
 // +k8s:openapi-gen=true
 type ProjectClaimSpec struct {
-	LegalEntity         LegalEntity    `json:"legalEntity"`
-	GCPCredentialSecret NamespacedName `json:"gcpCredentialSecret"`
-	Region              string         `json:"region"`
-	GCPProjectName      string         `json:"gcpProjectName,omitempty"`
-	ProjectCRLink       NamespacedName `json:"projectCRLink,omitempty"`
+	LegalEntity            LegalEntity    `json:"legalEntity"`
+	GCPCredentialSecret    NamespacedName `json:"gcpCredentialSecret"`
+	Region                 string         `json:"region"`
+	GCPProjectID           string         `json:"gcpProjectID,omitempty"`
+	ProjectReferenceCRLink NamespacedName `json:"projectReferenceCRLink,omitempty"`
 }
 
 // ProjectClaimStatus defines the observed state of ProjectClaim
@@ -51,7 +48,7 @@ type ProjectClaimConditionType string
 const (
 	// ClaimConditionReady is set when a Project claim state changes Ready state
 	ClaimConditionReady ProjectClaimConditionType = "Ready"
-	// ConditionPending is set when a project claim state changes to Pending
+	// ClaimConditionPending is set when a project claim state changes to Pending
 	ClaimConditionPending ProjectClaimConditionType = "Pending"
 	// ClaimConditionVerification is set when a project claim state changes to Verification state
 	ClaimConditionVerification ProjectClaimConditionType = "Verification"
@@ -69,7 +66,7 @@ const (
 	ClaimStatusReady ClaimStatus = "Ready"
 	// ClaimStatusError error status for a claim
 	ClaimStatusError ClaimStatus = "Error"
-	// ClaimStatusPendingVerification pending verification status for a claim
+	// ClaimStatusVerification pending verification status for a claim
 	ClaimStatusVerification ClaimStatus = "Verification"
 )
 
@@ -95,18 +92,6 @@ type ProjectClaimList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ProjectClaim `json:"items"`
-}
-
-// LegalEntity contains Red Hat specific identifiers to the original creator the clusters
-type LegalEntity struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
-}
-
-// NamespacedName contains the name of a secret and its namespace
-type NamespacedName struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
 }
 
 func init() {

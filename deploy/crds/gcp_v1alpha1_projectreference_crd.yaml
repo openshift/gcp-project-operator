@@ -1,23 +1,31 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: projectclaims.gcp.managed.openshift.io
+  name: projectreferences.gcp.managed.openshift.io
 spec:
   additionalPrinterColumns:
   - JSONPath: .status.state
-    description: Status of the project claim
+    description: Status of the ProjectReference
     name: State
     type: string
+  - JSONPath: .spec.projectClaimCRLink.name
+    description: Name of corresponding project claim CR
+    name: ClaimName
+    type: string
+  - JSONPath: .spec.projectClaimCRLink.namespace
+    description: Namesspace of corresponding project claim CR
+    name: ClaimNameSpace
+    type: string
   - JSONPath: .metadata.creationTimestamp
-    description: Age since the project claim was created
+    description: Age since the ProjectReference was created
     name: Age
     type: date
   group: gcp.managed.openshift.io
   names:
-    kind: ProjectClaim
-    listKind: ProjectClaimList
-    plural: projectclaims
-    singular: projectclaim
+    kind: ProjectReference
+    listKind: ProjectReferenceList
+    plural: projectreferences
+    singular: projectreference
   scope: Namespaced
   subresources:
     status: {}
@@ -38,16 +46,6 @@ spec:
           type: object
         spec:
           properties:
-            gcpCredentialSecret:
-              properties:
-                name:
-                  type: string
-                namespace:
-                  type: string
-              required:
-              - name
-              - namespace
-              type: object
             gcpProjectID:
               type: string
             legalEntity:
@@ -60,7 +58,7 @@ spec:
               - name
               - id
               type: object
-            projectReferenceCRLink:
+            projectClaimCRLink:
               properties:
                 name:
                   type: string
@@ -70,12 +68,9 @@ spec:
               - name
               - namespace
               type: object
-            region:
-              type: string
           required:
+          - projectClaimCRLink
           - legalEntity
-          - gcpCredentialSecret
-          - region
           type: object
         status:
           properties:
@@ -112,9 +107,6 @@ spec:
               type: array
             state:
               type: string
-          required:
-          - conditions
-          - state
           type: object
   version: v1alpha1
   versions:
