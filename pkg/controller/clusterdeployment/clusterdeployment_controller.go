@@ -33,11 +33,11 @@ const (
 	// clusterPlatformLabel is the label on a cluster deployment which indicates whether or not a cluster is on GCP platform
 	clusterPlatformLabel = "hive.openshift.io/cluster-platform"
 	clusterPlatformGCP   = "gcp"
-	orgParentFolderID    = "240634451310" // Service Delivery org subfolder
 
 	// secret information
 	gcpSecretName         = "gcp"
 	orgGcpSecretName      = "gcp-project-operator"
+	orgGcpConfigMap       = "gcp-project-operator"
 	osdServiceAccountName = "osd-managed-admin"
 )
 
@@ -180,6 +180,13 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	if err != nil {
 		reqLogger.Error(err, "could not get org Creds from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
+	}
+
+	// Get org orgParentFolderID from configmap, use default one if not exist
+	orgParentFolderID, err := util.GetGCPParentFolderFromConfigMap(r.client, operatorNamespace, orgGcpConfigMap)
+	if err != nil {
+		reqLogger.Info("could not get orgParentFolderID from configmap", "ConfigMap Name", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
+		reqLogger.Info("moving with default value:", orgParentFolderID)
 	}
 
 	// Get gcpclient with creds

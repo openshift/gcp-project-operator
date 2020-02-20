@@ -23,7 +23,6 @@ const (
 	// clusterPlatformLabel is the label on a cluster deployment which indicates whether or not a cluster is on GCP platform
 	clusterPlatformLabel = "hive.openshift.io/cluster-platform"
 	clusterPlatformGCP   = "gcp"
-	orgParentFolderID    = "240634451310" // Service Delivery org subfolder
 
 	// secret information
 	gcpSecretName         = "gcp"
@@ -71,6 +70,28 @@ func NewGCPSecretCR(namespace, creds string) *corev1.Secret {
 			"osServiceAccount.json": []byte(creds),
 		},
 	}
+}
+
+// GetGCPParentFolderFromConfigMap returns a configmap value if it's exist
+func GetGCPParentFolderFromConfigMap(kubeClient kubeclientpkg.Client, namespace, name string) (string, error) {
+	var orgParentFolderID = "240634451310" // Service Delivery hard coded org subfolder
+	configmap := &corev1.ConfigMap{}
+	err := kubeClient.Get(context.TODO(),
+		kubetypes.NamespacedName{
+			Namespace: namespace,
+			Name:      name,
+		},
+		configmap)
+	if err != nil {
+		return orgParentFolderID, fmt.Errorf("clusterdeployment.GetGCPParentFolderFromConfigMap.Get %v", err)
+	}
+	orgParentFolderIDconfig, ok := configmap.Data["orgParentFolderID"]
+	if !ok {
+		return orgParentFolderID, fmt.Errorf("GCP config %v did not contain key %v",
+			name, "orgParentFolderID")
+	}
+
+	return orgParentFolderIDconfig, nil
 }
 
 func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
