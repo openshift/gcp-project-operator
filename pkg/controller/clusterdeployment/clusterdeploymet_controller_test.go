@@ -82,16 +82,6 @@ func TestReconcile(t *testing.T) {
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
-			name:        "failed to get orgParentFolderID from configmap, moving with default",
-			expectedErr: nil,
-			localObjects: []runtime.Object{
-				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
-				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
-				builders.NewTestSecretBuilder(gcpSecretName, testNamespace, "testCreds").GetTestSecret(),
-			},
-			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
-		},
-		{
 			name:        "no billing key in secret",
 			expectedErr: fmt.Errorf("GCP credentials secret gcp-project-operator did not contain key billingaccount"),
 			localObjects: []runtime.Object{
