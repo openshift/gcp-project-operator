@@ -71,13 +71,11 @@ func TestReconcile(t *testing.T) {
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
-			name:        "get orgParentFolderID from configmap",
-			expectedErr: nil,
+			name:        "if there's no valid orgParentFolderID in configmap",
+			expectedErr: fmt.Errorf("GCP configmap gcp-project-operator did not contain key orgParentFolderID"),
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
-				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").GetConfigMap(),
-				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
-				builders.NewTestSecretBuilder(gcpSecretName, testNamespace, "testCreds").GetTestSecret(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").WihtoutKey("orgParentFolderID").GetConfigMap(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},

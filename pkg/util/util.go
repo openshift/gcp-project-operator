@@ -168,7 +168,7 @@ func GetGCPParentFolderFromConfigMap(kubeClient kubeclientpkg.Client, name, name
 
 	orgParentFolderIDconfig, ok := configmap.Data["orgParentFolderID"]
 	if !ok {
-		return "", fmt.Errorf("GCP config %v did not contain key %v",
+		return "", fmt.Errorf("GCP configmap %v did not contain key %v",
 			name, "orgParentFolderID")
 	}
 
