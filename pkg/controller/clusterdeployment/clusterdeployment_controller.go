@@ -23,6 +23,11 @@ import (
 
 var log = logf.Log.WithName("controller_clusterdeployment")
 
+// Configmap related configs
+const orgGcpConfigMap = "gcp-project-operator"
+
+var orgParentFolderID = "240634451310"
+
 const (
 	// Operator config
 	operatorNamespace = "gcp-project-operator"
@@ -37,7 +42,6 @@ const (
 	// secret information
 	gcpSecretName         = "gcp"
 	orgGcpSecretName      = "gcp-project-operator"
-	orgGcpConfigMap       = "gcp-project-operator"
 	osdServiceAccountName = "osd-managed-admin"
 )
 
@@ -166,6 +170,19 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, nil
 	}
 
+	// Check orgParentFolderID from configmap, create a new config map with the default value if it does not exist.
+	// If the valid configmap does not contain orgParentFolderID key, return err
+	if util.ConfigMapExist(r.client, operatorNamespace, orgGcpConfigMap) {
+		orgParentFolderID, err = util.GetGCPParentFolderFromConfigMap(r.client, operatorNamespace, orgGcpConfigMap)
+		if err != nil {
+			reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
+			return reconcile.Result{}, err
+		}
+	} else {
+		configmap := util.NewConfigMapCR(orgGcpConfigMap, operatorNamespace, orgParentFolderID)
+		reqLogger.Info(fmt.Sprintf("%s has been created in Namespace: %s :: Moving with default orgParentFolderID", configmap.GetName(), operatorNamespace))
+	}
+
 	// Check if gcpSecretName in cd.Namespace exists we are done
 	// TODO(Raf) check if secret is a valid gcp secret
 	// TODO(MJ): what if we need to update secret. We should think something better.
@@ -180,13 +197,6 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	if err != nil {
 		reqLogger.Error(err, "could not get org Creds from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
-	}
-
-	// Get org orgParentFolderID from configmap, use default one if not exist
-	orgParentFolderID, err := util.GetGCPParentFolderFromConfigMap(r.client, operatorNamespace, orgGcpConfigMap)
-	if err != nil {
-		reqLogger.Info("could not get orgParentFolderID from configmap", "ConfigMap Name", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
-		reqLogger.Info("moving with default value:", orgParentFolderID)
 	}
 
 	// Get gcpclient with creds

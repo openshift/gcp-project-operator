@@ -72,28 +72,6 @@ func NewGCPSecretCR(namespace, creds string) *corev1.Secret {
 	}
 }
 
-// GetGCPParentFolderFromConfigMap returns a configmap value if it's exist
-func GetGCPParentFolderFromConfigMap(kubeClient kubeclientpkg.Client, namespace, name string) (string, error) {
-	var orgParentFolderID = "240634451310" // Service Delivery hard coded org subfolder
-	configmap := &corev1.ConfigMap{}
-	err := kubeClient.Get(context.TODO(),
-		kubetypes.NamespacedName{
-			Namespace: namespace,
-			Name:      name,
-		},
-		configmap)
-	if err != nil {
-		return orgParentFolderID, fmt.Errorf("clusterdeployment.GetGCPParentFolderFromConfigMap.Get %v", err)
-	}
-	orgParentFolderIDconfig, ok := configmap.Data["orgParentFolderID"]
-	if !ok {
-		return orgParentFolderID, fmt.Errorf("GCP config %v did not contain key %v",
-			name, "orgParentFolderID")
-	}
-
-	return orgParentFolderIDconfig, nil
-}
-
 func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(context.TODO(),
@@ -138,6 +116,63 @@ func GetBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	}
 
 	return billingAccount, nil
+}
+
+// NewTestConfigMapCR creates a ConfigMap in specified namespace with default orgParentFolderID value
+func NewConfigMapCR(name, namespace, orgParentFolderID string) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ConfigMap",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Data: map[string]string{
+			"orgParentFolderID": orgParentFolderID,
+		},
+	}
+}
+
+// ConfigMapExist checks if the configmap is defined before
+func ConfigMapExist(kubeClient kubeclientpkg.Client, name, namespace string) bool {
+	c := &corev1.ConfigMap{}
+
+	err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: name, Namespace: namespace}, c)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+// getConfigMap returns a configmap that should contain orgParentFolderID.
+func getConfigMap(kubeClient client.Client, name, namespace string) (*corev1.ConfigMap, error) {
+	c := &corev1.ConfigMap{}
+
+	err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: name, Namespace: namespace}, c)
+
+	if err != nil {
+		return &corev1.ConfigMap{}, err
+	}
+	return c, nil
+}
+
+// GetGCPParentFolderFromConfigMap returns orgParentFolderID if the value exists in configmap
+func GetGCPParentFolderFromConfigMap(kubeClient kubeclientpkg.Client, name, namespace string) (string, error) {
+	configmap, err := getConfigMap(kubeClient, name, namespace)
+	if err != nil {
+		return "", fmt.Errorf("clusterdeployment.GetGCPParentFolderFromConfigMap.Get %v", err)
+	}
+
+	orgParentFolderIDconfig, ok := configmap.Data["orgParentFolderID"]
+	if !ok {
+		return "", fmt.Errorf("GCP config %v did not contain key %v",
+			name, "orgParentFolderID")
+	}
+
+	return orgParentFolderIDconfig, nil
 }
 
 // AddOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.
