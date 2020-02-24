@@ -46,6 +46,11 @@ type ProjectReferenceConditionType string
 // ProjectReferenceState is a valid value from ProjectReference.Status
 type ProjectReferenceState string
 
+// ProjectReferenceNamespace namespace, where ProjectReference CRs will be created
+const (
+	ProjectReferenceNamespace string = "gcp-project-operator"
+)
+
 const (
 	// ProjectReferenceStatusCreating creating status for a ProjectReference CR
 	ProjectReferenceStatusCreating ProjectReferenceState = "Creating"
