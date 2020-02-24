@@ -135,16 +135,6 @@ func NewConfigMap(name, namespace, orgParentFolderID string) *corev1.ConfigMap {
 	}
 }
 
-// ConfigMapExist checks if the configmap is defined before
-func ConfigMapExist(kubeClient kubeclientpkg.Client, name, namespace string) error {
-	c := &corev1.ConfigMap{}
-	if err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: name, Namespace: namespace}, c); err != nil {
-		return fmt.Errorf("clusterdeployment.ConfigMapExist %v", err)
-	}
-
-	return nil
-}
-
 // getConfigMap returns a configmap
 func getConfigMap(kubeClient client.Client, name, namespace string) (*corev1.ConfigMap, error) {
 	c := &corev1.ConfigMap{}

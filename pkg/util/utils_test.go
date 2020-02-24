@@ -12,45 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func TestConfigMapExists(t *testing.T) {
-	tests := []struct {
-		name               string
-		localObjects       []runtime.Object
-		ConfigMap          string
-		ConfigMapNamespace string
-		expectedResult     error
-	}{
-		{
-			name:               "ConfigMap Exists",
-			expectedResult:     nil,
-			ConfigMap:          "testName",
-			ConfigMapNamespace: "testNamespace",
-			localObjects: []runtime.Object{
-				builders.NewTestConfigMapBuilder("testName", "testNamespace", "111111111").GetConfigMap(),
-			},
-		},
-		{
-			name:               "ConfigMap does not exist",
-			expectedResult:     errors.New("clusterdeployment.ConfigMapExist configmaps \"badName\" not found"),
-			ConfigMap:          "badName",
-			ConfigMapNamespace: "testNamespace",
-			localObjects: []runtime.Object{
-				builders.NewTestConfigMapBuilder("testName", "testNamespace", "111111111").GetConfigMap(),
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			mocks := builders.SetupDefaultMocks(t, test.localObjects)
-
-			result := ConfigMapExist(mocks.FakeKubeClient, test.ConfigMap, test.ConfigMapNamespace)
-			assert.Equal(t, test.expectedResult, result)
-		})
-	}
-
-}
-
 func TestGetConfigMap(t *testing.T) {
 	tests := []struct {
 		name               string

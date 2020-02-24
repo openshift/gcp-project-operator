@@ -174,18 +174,10 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, nil
 	}
 
-	// Check orgParentFolderID from configmap, create a new config map with the default value if it does not exist.
-	// If the valid configmap does not contain orgParentFolderID key, return err
-	err = util.ConfigMapExist(r.client, operatorNamespace, orgGcpConfigMap)
-	if err != nil {
-		reqLogger.Error(err, "could not get ConfigMap, will be reconciled again after 60 secs")
-		return reconcileResultConfigMap, err
-	}
-
 	orgParentFolderID, err := util.GetGCPParentFolderFromConfigMap(r.client, operatorNamespace, orgGcpConfigMap)
 	if err != nil {
 		reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
-		return reconcile.Result{}, err
+		return reconcileResultConfigMap, err
 	}
 
 	// Check if gcpSecretName in cd.Namespace exists we are done
