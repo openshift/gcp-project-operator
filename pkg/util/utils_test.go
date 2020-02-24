@@ -70,39 +70,6 @@ func TestGetConfigMap(t *testing.T) {
 
 }
 
-func TestNewConfigMap(t *testing.T) {
-	tests := []struct {
-		name               string
-		ConfigMap          string
-		ConfigMapNamespace string
-		orgParentFolderID  string
-		expectedConfigMap  *corev1.ConfigMap
-		validateResult     func(*testing.T, *corev1.ConfigMap, *corev1.ConfigMap)
-	}{
-		{
-			name:               "Correct GCP Secert",
-			ConfigMap:          "gcp-project-operator",
-			ConfigMapNamespace: "gcp-project-operator",
-			orgParentFolderID:  "12",
-			expectedConfigMap:  builders.NewTestConfigMapBuilder("gcp-project-operator", "gcp-project-operator", "12").GetConfigMap(),
-			validateResult: func(t *testing.T, expected, result *corev1.ConfigMap) {
-				assert.Equal(t, expected, result)
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-
-			result := NewConfigMap(test.ConfigMap, test.ConfigMapNamespace, test.orgParentFolderID)
-
-			if test.validateResult != nil {
-				test.validateResult(t, test.expectedConfigMap, result)
-			}
-		})
-	}
-}
-
 func TestGetGCPParentFolderFromConfigMap(t *testing.T) {
 	tests := []struct {
 		name                      string

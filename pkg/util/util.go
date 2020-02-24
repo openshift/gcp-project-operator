@@ -118,23 +118,6 @@ func GetBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	return billingAccount, nil
 }
 
-// NewConfigMap creates a ConfigMap in specified namespace with default orgParentFolderID value
-func NewConfigMap(name, namespace, orgParentFolderID string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ConfigMap",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Data: map[string]string{
-			"orgParentFolderID": orgParentFolderID,
-		},
-	}
-}
-
 // getConfigMap returns a configmap
 func getConfigMap(kubeClient client.Client, name, namespace string) (*corev1.ConfigMap, error) {
 	c := &corev1.ConfigMap{}
