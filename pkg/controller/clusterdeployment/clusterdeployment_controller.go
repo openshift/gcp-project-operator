@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
@@ -23,6 +24,14 @@ import (
 
 var log = logf.Log.WithName("controller_clusterdeployment")
 
+// Configmap related configs
+const orgGcpConfigMap = "gcp-project-operator"
+
+var (
+	reconcilePeriodConfigMap = 60 * time.Second
+	reconcileResultConfigMap = reconcile.Result{RequeueAfter: reconcilePeriodConfigMap}
+)
+
 const (
 	// Operator config
 	operatorNamespace = "gcp-project-operator"
@@ -33,7 +42,6 @@ const (
 	// clusterPlatformLabel is the label on a cluster deployment which indicates whether or not a cluster is on GCP platform
 	clusterPlatformLabel = "hive.openshift.io/cluster-platform"
 	clusterPlatformGCP   = "gcp"
-	orgParentFolderID    = "240634451310" // Service Delivery org subfolder
 
 	// secret information
 	gcpSecretName         = "gcp"
@@ -164,6 +172,12 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	default:
 		reqLogger.Info(fmt.Sprintf("clusterDeployment failed validation due to Error:%s", err))
 		return reconcile.Result{}, nil
+	}
+
+	orgParentFolderID, err := util.GetGCPParentFolderFromConfigMap(r.client, operatorNamespace, orgGcpConfigMap)
+	if err != nil {
+		reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
+		return reconcileResultConfigMap, err
 	}
 
 	// Check if gcpSecretName in cd.Namespace exists we are done

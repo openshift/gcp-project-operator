@@ -56,6 +56,7 @@ func TestReconcile(t *testing.T) {
 			name:        "failed to get ORG creds",
 			expectedErr: fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get secrets \"gcp-project-operator\" not found"),
 			localObjects: []runtime.Object{
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").GetConfigMap(),
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
@@ -65,8 +66,18 @@ func TestReconcile(t *testing.T) {
 			expectedErr: nil,
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").GetConfigMap(),
 				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
 				builders.NewTestSecretBuilder(gcpSecretName, testNamespace, "testCreds").GetTestSecret(),
+			},
+			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
+		},
+		{
+			name:        "if there's no valid orgParentFolderID in configmap",
+			expectedErr: fmt.Errorf("GCP configmap gcp-project-operator did not contain key orgParentFolderID"),
+			localObjects: []runtime.Object{
+				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").WihtoutKey("orgParentFolderID").GetConfigMap(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
@@ -75,6 +86,7 @@ func TestReconcile(t *testing.T) {
 			expectedErr: fmt.Errorf("GCP credentials secret gcp-project-operator did not contain key billingaccount"),
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").GetConfigMap(),
 				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").WihtoutKey("billingaccount").GetTestSecret(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {

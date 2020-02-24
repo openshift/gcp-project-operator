@@ -37,3 +37,34 @@ func (t *testSecretBuilder) WihtoutKey(key string) *testSecretBuilder {
 	delete(t.s.Data, key)
 	return t
 }
+
+type testConfigMapBuilder struct {
+	cfg corev1.ConfigMap
+}
+
+func (c *testConfigMapBuilder) GetConfigMap() *corev1.ConfigMap {
+	return &c.cfg
+}
+
+func NewTestConfigMapBuilder(name, namespace, orgParentFolderID string) *testConfigMapBuilder {
+	return &testConfigMapBuilder{
+		cfg: corev1.ConfigMap{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "ConfigMap",
+				APIVersion: "v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Data: map[string]string{
+				"orgParentFolderID": orgParentFolderID,
+			},
+		},
+	}
+}
+
+func (c *testConfigMapBuilder) WihtoutKey(key string) *testConfigMapBuilder {
+	delete(c.cfg.Data, key)
+	return c
+}

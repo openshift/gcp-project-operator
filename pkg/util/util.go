@@ -23,7 +23,6 @@ const (
 	// clusterPlatformLabel is the label on a cluster deployment which indicates whether or not a cluster is on GCP platform
 	clusterPlatformLabel = "hive.openshift.io/cluster-platform"
 	clusterPlatformGCP   = "gcp"
-	orgParentFolderID    = "240634451310" // Service Delivery org subfolder
 
 	// secret information
 	gcpSecretName         = "gcp"
@@ -117,6 +116,32 @@ func GetBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	}
 
 	return billingAccount, nil
+}
+
+// getConfigMap returns a configmap
+func getConfigMap(kubeClient client.Client, name, namespace string) (*corev1.ConfigMap, error) {
+	c := &corev1.ConfigMap{}
+	if err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: name, Namespace: namespace}, c); err != nil {
+		return &corev1.ConfigMap{}, err
+	}
+
+	return c, nil
+}
+
+// GetGCPParentFolderFromConfigMap returns orgParentFolderID if the value exists in configmap
+func GetGCPParentFolderFromConfigMap(kubeClient kubeclientpkg.Client, name, namespace string) (string, error) {
+	configmap, err := getConfigMap(kubeClient, name, namespace)
+	if err != nil {
+		return "", fmt.Errorf("clusterdeployment.GetGCPParentFolderFromConfigMap.Get %v", err)
+	}
+
+	orgParentFolderIDconfig, ok := configmap.Data["orgParentFolderID"]
+	if !ok {
+		return "", fmt.Errorf("GCP configmap %v did not contain key %v",
+			name, "orgParentFolderID")
+	}
+
+	return orgParentFolderIDconfig, nil
 }
 
 // AddOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.
