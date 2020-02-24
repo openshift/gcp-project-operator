@@ -1,8 +1,25 @@
-**GCP-PROJECT-OPERATOR**
+
+   * [Info](#info)
+      * [Workflow](#workflow)
+      * [Requirements](#requirements)
+   * [Deployment](#deployment)
+      * [Building](#building)
+      * [Local Dev](#local-dev)
+         * [Prerequisites](#prerequisites)
+         * [Load Hive CRDS](#load-hive-crds)
+         * [Start operator locally](#start-operator-locally)
+      * [Remote](#remote)
+         * [Pushing Image To quay](#pushing-image-to-quay)
+         * [Deploying code](#deploying-code)
+      * [GCP secret creation](#gcp-secret-creation)
+   * [TODO](#todo)
+
+# Info
 
 The gcp project operator is reponsible for creating projects and service accounts in GCP and storing the credentials in a secret.
 
-**workflow**:
+## Workflow
+
 - The operator would watch clusterdeployments in all namespaces.
 - Operator would check that the clusterdeployment’s labels “api.openshift.com/managed = true” and “hive.openshift.io/cluster-platform = gcp"
   - If both labels are as expected and clusterdeployment field “Spec.Installed = false”
@@ -17,7 +34,8 @@ The gcp project operator is reponsible for creating projects and service account
     - The operator will delete the service account and project
     - The operator will remove the finalizer
 
-**Requirements**:
+## Requirements
+
 - OCM will provide a clusterdeployment with the following
   - An agreed upon secret name in "Spec.PlatformSecrets.GCP.Credentials.Name" now it is using name **_gcp_**
   - Unique name in projectID “Spec.Platform.GCP.ProjectID”
@@ -25,11 +43,48 @@ The gcp project operator is reponsible for creating projects and service account
   - Ssh Key in the clusterdeployment namesapcew with the clusterdeployment  "Spec.SshKey.Name" filled out
 -- Service account credentials with permissions to create projects, service accounts, and service account keys  in the operator namespace _**gcp-project-operator**_
 
-**Building code**
+# Deployment
 
-`make`
+## Building
 
-**Pushing Image To quay**
+Just run `make`.
+
+## Local Dev
+
+### Prerequisites
+
+* Typically you'll want to use [CRC](https://github.com/code-ready/crc/), though it's fine if you're running OpenShift another way.
+* You need to have [the operator-sdk binary](https://github.com/operator-framework/operator-sdk/releases) in your `$PATH`.
+
+### Load Hive CRDS
+
+For gcp-project-operator to work, the cluster needs to have CRDs from [Hive](https://github.com/openshift/hive) present in the system.
+
+Note: the `git clone` below *isn't* using the `master` branch.
+
+```
+git clone --branch v1alpha1 https://github.com/openshift/hive
+for crd in hive/config/crds/hive_v1alpha1_*.yaml; do (set -x; oc apply -f $crd); done
+```
+
+### Start operator locally
+
+```
+oc new-project gcp-project-operator
+oc apply -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
+oc apply -f deploy/crds/gcp_v1alpha1_projectreference_crd.yaml
+
+operator-sdk run --local --namespace gcp-project-operator
+```
+
+If everything went ok, you should see some startup logs from the operator in your terminal window.
+
+There are example CRs in `deploy/crds/` you might want to use to see how the operator reacts to their presence (and absence if you delete them).
+
+
+## Remote
+
+### Pushing Image To quay
 
 If you have permissions to push to quay.io/razevedo/gcp-project-operator. You can use the following commands to push the latest code
 
@@ -39,7 +94,7 @@ podman build . -f build/Dockerfile -t quay.io/razevedo/gcp-project-operator
 podman push quay.io/razevedo/gcp-project-operator
 ```
 
-**Deploying code**
+### Deploying code
 
 Currently it is being deployed using image 'quay.io/razevedo/gcp-project-operator' Update deploy/operator.yaml with image you would like deployed.
 
@@ -58,7 +113,7 @@ oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=0
 oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=1
 ```
 
-**GCP secret creation**
+## GCP secret creation
 
 ```bash
 export GCPSA_NAME=gcp-account-operator
@@ -85,7 +140,7 @@ kubectl create secret generic gcp-project-operator --from-file=key.json=secrets/
 
 ```
 
-**TODO**:
+# TODO
 -  Creation of project for the cluster
   - Some of this code is mocked out but not tested since we do not have a test org yet.
 - Enabling the required APIs.
