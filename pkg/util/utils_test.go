@@ -18,11 +18,11 @@ func TestConfigMapExists(t *testing.T) {
 		localObjects       []runtime.Object
 		ConfigMap          string
 		ConfigMapNamespace string
-		expectedResult     bool
+		expectedResult     error
 	}{
 		{
 			name:               "ConfigMap Exists",
-			expectedResult:     true,
+			expectedResult:     nil,
 			ConfigMap:          "testName",
 			ConfigMapNamespace: "testNamespace",
 			localObjects: []runtime.Object{
@@ -31,7 +31,7 @@ func TestConfigMapExists(t *testing.T) {
 		},
 		{
 			name:               "ConfigMap does not exist",
-			expectedResult:     false,
+			expectedResult:     errors.New("clusterdeployment.ConfigMapExist configmaps \"badName\" not found"),
 			ConfigMap:          "badName",
 			ConfigMapNamespace: "testNamespace",
 			localObjects: []runtime.Object{
@@ -109,7 +109,7 @@ func TestGetConfigMap(t *testing.T) {
 
 }
 
-func TestNewConfigMapCR(t *testing.T) {
+func TestNewConfigMap(t *testing.T) {
 	tests := []struct {
 		name               string
 		ConfigMap          string
@@ -133,7 +133,7 @@ func TestNewConfigMapCR(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 
-			result := NewConfigMapCR(test.ConfigMap, test.ConfigMapNamespace, test.orgParentFolderID)
+			result := NewConfigMap(test.ConfigMap, test.ConfigMapNamespace, test.orgParentFolderID)
 
 			if test.validateResult != nil {
 				test.validateResult(t, test.expectedConfigMap, result)

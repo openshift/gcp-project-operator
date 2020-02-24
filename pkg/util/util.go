@@ -118,8 +118,8 @@ func GetBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	return billingAccount, nil
 }
 
-// NewConfigMapCR creates a ConfigMap in specified namespace with default orgParentFolderID value
-func NewConfigMapCR(name, namespace, orgParentFolderID string) *corev1.ConfigMap {
+// NewConfigMap creates a ConfigMap in specified namespace with default orgParentFolderID value
+func NewConfigMap(name, namespace, orgParentFolderID string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -136,16 +136,16 @@ func NewConfigMapCR(name, namespace, orgParentFolderID string) *corev1.ConfigMap
 }
 
 // ConfigMapExist checks if the configmap is defined before
-func ConfigMapExist(kubeClient kubeclientpkg.Client, name, namespace string) bool {
+func ConfigMapExist(kubeClient kubeclientpkg.Client, name, namespace string) error {
 	c := &corev1.ConfigMap{}
 	if err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: name, Namespace: namespace}, c); err != nil {
-		return false
+		return fmt.Errorf("clusterdeployment.ConfigMapExist %v", err)
 	}
 
-	return true
+	return nil
 }
 
-// getConfigMap returns a configmap that should contain orgParentFolderID.
+// getConfigMap returns a configmap
 func getConfigMap(kubeClient client.Client, name, namespace string) (*corev1.ConfigMap, error) {
 	c := &corev1.ConfigMap{}
 	if err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: name, Namespace: namespace}, c); err != nil {

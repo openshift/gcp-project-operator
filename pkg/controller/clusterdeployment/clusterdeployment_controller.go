@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
@@ -26,7 +27,10 @@ var log = logf.Log.WithName("controller_clusterdeployment")
 // Configmap related configs
 const orgGcpConfigMap = "gcp-project-operator"
 
-var orgParentFolderID = "240634451310"
+var (
+	reconcilePeriodConfigMap = 60 * time.Second
+	reconcileResultConfigMap = reconcile.Result{RequeueAfter: reconcilePeriodConfigMap}
+)
 
 const (
 	// Operator config
@@ -172,15 +176,16 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 
 	// Check orgParentFolderID from configmap, create a new config map with the default value if it does not exist.
 	// If the valid configmap does not contain orgParentFolderID key, return err
-	if util.ConfigMapExist(r.client, operatorNamespace, orgGcpConfigMap) {
-		orgParentFolderID, err = util.GetGCPParentFolderFromConfigMap(r.client, operatorNamespace, orgGcpConfigMap)
-		if err != nil {
-			reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
-			return reconcile.Result{}, err
-		}
-	} else {
-		configmap := util.NewConfigMapCR(orgGcpConfigMap, operatorNamespace, orgParentFolderID)
-		reqLogger.Info(fmt.Sprintf("%s has been created in Namespace: %s :: Moving with default orgParentFolderID", configmap.GetName(), operatorNamespace))
+	err = util.ConfigMapExist(r.client, operatorNamespace, orgGcpConfigMap)
+	if err != nil {
+		reqLogger.Error(err, "could not get ConfigMap, will be reconciled again after 60 secs")
+		return reconcileResultConfigMap, err
+	}
+
+	orgParentFolderID, err := util.GetGCPParentFolderFromConfigMap(r.client, operatorNamespace, orgGcpConfigMap)
+	if err != nil {
+		reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
+		return reconcile.Result{}, err
 	}
 
 	// Check if gcpSecretName in cd.Namespace exists we are done
