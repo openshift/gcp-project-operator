@@ -74,9 +74,19 @@ func (c *ConfigMapOperations) getValue(key string) (string, error) {
 	return value, nil
 }
 
-// GetParentFolder returns orgParentFolderID if the value exists in configmap
+// GetParentFolder returns orgParentFolderID if the key exists in configmap
 func (c *ConfigMapOperations) GetParentFolder() (string, error) {
 	value, err := c.getValue("orgParentFolderID")
+	if err != nil {
+		return "", fmt.Errorf("configmap operations failed: %v", err)
+	}
+
+	return value, nil
+}
+
+// GetBillingAccount returns billingaccount if the key exists in configmap
+func (c *ConfigMapOperations) GetBillingAccount() (string, error) {
+	value, err := c.getValue("billingaccount")
 	if err != nil {
 		return "", fmt.Errorf("configmap operations failed: %v", err)
 	}
@@ -149,27 +159,6 @@ func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	}
 
 	return osServiceAccountJson, nil
-}
-
-func GetBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
-	secret := &corev1.Secret{}
-	err := kubeClient.Get(context.TODO(),
-		kubetypes.NamespacedName{
-			Namespace: namespace,
-			Name:      name,
-		},
-		secret)
-	if err != nil {
-		return []byte{}, fmt.Errorf("clusterdeployment.getBillingAccountFromSecret.Get %v", err)
-	}
-
-	billingAccount, ok := secret.Data["billingaccount"]
-	if !ok {
-		return []byte{}, fmt.Errorf("GCP credentials secret %v did not contain key %v",
-			name, "billingaccount")
-	}
-
-	return billingAccount, nil
 }
 
 // AddOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.

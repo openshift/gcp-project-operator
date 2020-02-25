@@ -83,7 +83,7 @@ func TestReconcile(t *testing.T) {
 		},
 		{
 			name:        "no billing key in secret",
-			expectedErr: fmt.Errorf("GCP credentials secret gcp-project-operator did not contain key billingaccount"),
+			expectedErr: fmt.Errorf("configmap operations failed: GCP configmap gcp-project-operator did not contain key billingaccount"),
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
 				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").GetConfigMap(),
