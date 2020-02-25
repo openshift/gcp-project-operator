@@ -158,6 +158,93 @@ func TestGetParentFolder(t *testing.T) {
 	}
 }
 
+func TestGetBillingAccount(t *testing.T) {
+	tests := []struct {
+		name                      string
+		ConfigMap                 string
+		localObjects              []runtime.Object
+		ConfigMapNamespace        string
+		expectedGetBillingAccount string
+		expectedErr               error
+		validateResult            func(*testing.T, string, string)
+		validateErr               func(*testing.T, error, error)
+	}{
+		{
+			name:      "Correct billingaccount",
+			ConfigMap: "test",
+			localObjects: []runtime.Object{
+				builders.NewTestConfigMapBuilder("test", "testNamespace", "foo", "1234567").GetConfigMap(),
+			},
+			ConfigMapNamespace:        "testNamespace",
+			expectedGetBillingAccount: "foo",
+			validateResult: func(t *testing.T, expected, result string) {
+				assert.Equal(t, expected, result)
+			},
+		},
+		{
+			name:                      "billingaccount not found",
+			ConfigMap:                 "test",
+			localObjects:              []runtime.Object{},
+			ConfigMapNamespace:        "testNamespace",
+			expectedGetBillingAccount: "",
+			expectedErr:               errors.New("error"),
+			validateResult: func(t *testing.T, expected, result string) {
+				assert.Equal(t, expected, result)
+			},
+		},
+		{
+			name:      "Bad data in ConfigMap",
+			ConfigMap: "test",
+			localObjects: func() []runtime.Object {
+				sec := &corev1.ConfigMap{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "testNamespace",
+					},
+				}
+				return []runtime.Object{sec}
+			}(),
+			ConfigMapNamespace:        "testNamespace",
+			expectedGetBillingAccount: "",
+			expectedErr:               fmt.Errorf("configmap operations failed: GCP configmap test did not contain key billingaccount"),
+			validateResult: func(t *testing.T, expected, result string) {
+				assert.Equal(t, expected, result)
+			},
+			validateErr: func(t *testing.T, expected, result error) {
+				assert.Equal(t, expected, result)
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mocks := builders.SetupDefaultMocks(t, test.localObjects)
+
+			configmap := GetConfigMapOperations(mocks.FakeKubeClient, test.ConfigMap, test.ConfigMapNamespace)
+			result, err := configmap.GetBillingAccount()
+
+			if test.expectedErr != nil {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			if test.validateResult != nil {
+				test.validateResult(t, test.expectedGetBillingAccount, result)
+			}
+
+			if test.validateErr != nil {
+				test.validateErr(t, test.expectedErr, err)
+			}
+
+		})
+	}
+}
+
 func TestSecretExists(t *testing.T) {
 	tests := []struct {
 		name            string

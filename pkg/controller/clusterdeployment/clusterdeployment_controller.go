@@ -214,7 +214,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	// TODO(Raf) Set quotas
 	billingAccount, err := configmap.GetBillingAccount()
 	if err != nil {
-		reqLogger.Error(err, "could not get org billingAccount from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
+		reqLogger.Error(err, "could not get org billingAccount from configmap", "Configmap", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
 	}
 
