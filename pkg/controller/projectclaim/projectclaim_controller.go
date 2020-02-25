@@ -3,13 +3,9 @@ package projectclaim
 import (
 	"context"
 
-	"github.com/go-logr/logr"
-	"github.com/openshift/cluster-api/pkg/util"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -88,129 +84,32 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 		return r.requeueOnErr(err)
 	}
 
-	projectReference := newMatchingProjectReference(instance)
+	reconciler := NewProjectClaimReconciler(instance, reqLogger, r.client)
 
-	if r.isProjectClaimDeletion(instance) {
-		err = r.finalizeProjectClaim(instance, projectReference)
+	if reconciler.isProjectClaimDeletion() {
+		err = reconciler.finalizeProjectClaim()
 		if err != nil {
 			return r.requeueOnErr(err)
 		}
 		return r.doNotRequeue()
 	}
 
-	err = r.ensureProjectReferenceExists(projectReference)
+	err = reconciler.ensureProjectReferenceExists()
 	if err != nil {
 		return r.requeueOnErr(err)
 	}
 
-	crChanged, err := r.ensureProjectReferenceLink(instance, projectReference)
+	crChanged, err := reconciler.ensureProjectReferenceLink()
 	if crChanged || err != nil {
 		return r.requeueOnErr(err)
 	}
 
-	crChanged, err = r.ensureFinalizer(reqLogger, instance)
+	crChanged, err = reconciler.ensureFinalizer()
 	if crChanged || err != nil {
 		return r.requeueOnErr(err)
 	}
 
 	return r.doNotRequeue()
-}
-
-func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1alpha1.ProjectReference {
-
-	return &gcpv1alpha1.ProjectReference{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      projectClaim.GetNamespace() + "-" + projectClaim.GetName(),
-			Namespace: gcpv1alpha1.ProjectReferenceNamespace,
-		},
-		Spec: gcpv1alpha1.ProjectReferenceSpec{
-			GCPProjectID: "",
-			ProjectClaimCRLink: gcpv1alpha1.NamespacedName{
-				Name:      projectClaim.GetName(),
-				Namespace: projectClaim.GetNamespace(),
-			},
-			LegalEntity: *projectClaim.Spec.LegalEntity.DeepCopy(),
-		},
-	}
-}
-
-func (r *ReconcileProjectClaim) projectReferenceExists(projectReference *gcpv1alpha1.ProjectReference) (bool, error) {
-	found := &gcpv1alpha1.ProjectReference{}
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: projectReference.Name, Namespace: projectReference.Namespace}, found)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-func (r *ReconcileProjectClaim) isProjectClaimDeletion(projectClaim *gcpv1alpha1.ProjectClaim) bool {
-	return projectClaim.DeletionTimestamp != nil
-}
-
-func (r *ReconcileProjectClaim) finalizeProjectClaim(projectClaim *gcpv1alpha1.ProjectClaim, projectReference *gcpv1alpha1.ProjectReference) error {
-	projectReferenceExists, err := r.projectReferenceExists(projectReference)
-	if err != nil {
-		return err
-	}
-
-	if projectReferenceExists {
-		err := r.client.Delete(context.TODO(), projectReference)
-		if err != nil {
-			return err
-		}
-	}
-	finalizers := projectClaim.GetFinalizers()
-	if util.Contains(finalizers, projectClaimFinalizer) {
-		projectClaim.SetFinalizers(util.Filter(finalizers, projectClaimFinalizer))
-		return r.client.Update(context.TODO(), projectClaim)
-	}
-	return nil
-}
-
-func (r *ReconcileProjectClaim) ensureProjectReferenceLink(projectClaim *gcpv1alpha1.ProjectClaim, projectReference *gcpv1alpha1.ProjectReference) (bool, error) {
-	expectedLink := gcpv1alpha1.NamespacedName{
-		Name:      projectReference.GetName(),
-		Namespace: projectReference.GetNamespace(),
-	}
-	if projectClaim.Spec.ProjectReferenceCRLink == expectedLink {
-		return false, nil
-	}
-	projectClaim.Spec.ProjectReferenceCRLink = expectedLink
-	err := r.client.Update(context.TODO(), projectClaim)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func (r *ReconcileProjectClaim) ensureFinalizer(reqLogger logr.Logger, projectClaim *gcpv1alpha1.ProjectClaim) (bool, error) {
-	if !util.Contains(projectClaim.GetFinalizers(), projectClaimFinalizer) {
-		reqLogger.Info("Adding Finalizer to the ProjectClaim")
-		projectClaim.SetFinalizers(append(projectClaim.GetFinalizers(), projectClaimFinalizer))
-
-		err := r.client.Update(context.TODO(), projectClaim)
-		if err != nil {
-			reqLogger.Error(err, "Failed to update ProjectClaim with finalizer")
-			return false, err
-		}
-		return true, nil
-	}
-	return false, nil
-}
-
-func (r *ReconcileProjectClaim) ensureProjectReferenceExists(projectReference *gcpv1alpha1.ProjectReference) error {
-	projectReferenceExists, err := r.projectReferenceExists(projectReference)
-	if err != nil {
-		return err
-	}
-
-	if !projectReferenceExists {
-		return r.client.Create(context.TODO(), projectReference)
-	}
-	return nil
 }
 
 func (r *ReconcileProjectClaim) doNotRequeue() (reconcile.Result, error) {
