@@ -74,7 +74,7 @@ func TestReconcile(t *testing.T) {
 		},
 		{
 			name:        "if there's no valid orgParentFolderID in configmap",
-			expectedErr: fmt.Errorf("GCP configmap gcp-project-operator did not contain key orgParentFolderID"),
+			expectedErr: fmt.Errorf("configmap operations failed: GCP configmap gcp-project-operator did not contain key orgParentFolderID"),
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
 				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").WihtoutKey("orgParentFolderID").GetConfigMap(),

@@ -174,7 +174,8 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, nil
 	}
 
-	orgParentFolderID, err := util.GetGCPParentFolderFromConfigMap(r.client, operatorNamespace, orgGcpConfigMap)
+	configmap := util.GetConfigMapOperations(r.client, orgGcpConfigMap, operatorNamespace)
+	orgParentFolderID, err := configmap.GetParentFolder()
 	if err != nil {
 		reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
 		return reconcileResultConfigMap, err

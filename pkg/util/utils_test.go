@@ -54,7 +54,8 @@ func TestGetConfigMap(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mocks := builders.SetupDefaultMocks(t, test.localObjects)
 
-			result, err := getConfigMap(mocks.FakeKubeClient, test.ConfigMap, test.ConfigMapNamespace)
+			configmap := GetConfigMapOperations(mocks.FakeKubeClient, test.ConfigMap, test.ConfigMapNamespace)
+			result, err := configmap.getConfigMap()
 
 			if test.expectedErr {
 				assert.Error(t, err)
@@ -70,9 +71,10 @@ func TestGetConfigMap(t *testing.T) {
 
 }
 
-func TestGetGCPParentFolderFromConfigMap(t *testing.T) {
+func TestGetParentFolder(t *testing.T) {
 	tests := []struct {
 		name                      string
+		ConfigMap                 string
 		localObjects              []runtime.Object
 		ConfigMapNamespace        string
 		expectedorgParentFolderID string
@@ -81,7 +83,8 @@ func TestGetGCPParentFolderFromConfigMap(t *testing.T) {
 		validateErr               func(*testing.T, error, error)
 	}{
 		{
-			name: "Correct orgParentFolderID",
+			name:      "Correct orgParentFolderID",
+			ConfigMap: "test",
 			localObjects: []runtime.Object{
 				builders.NewTestConfigMapBuilder("test", "testNamespace", "1234567").GetConfigMap(),
 			},
@@ -93,6 +96,7 @@ func TestGetGCPParentFolderFromConfigMap(t *testing.T) {
 		},
 		{
 			name:                      "orgParentFolderID not found",
+			ConfigMap:                 "test",
 			localObjects:              []runtime.Object{},
 			ConfigMapNamespace:        "testNamespace",
 			expectedorgParentFolderID: "",
@@ -102,7 +106,8 @@ func TestGetGCPParentFolderFromConfigMap(t *testing.T) {
 			},
 		},
 		{
-			name: "Bad data in ConfigMap",
+			name:      "Bad data in ConfigMap",
+			ConfigMap: "test",
 			localObjects: func() []runtime.Object {
 				sec := &corev1.ConfigMap{
 					TypeMeta: metav1.TypeMeta{
@@ -118,7 +123,7 @@ func TestGetGCPParentFolderFromConfigMap(t *testing.T) {
 			}(),
 			ConfigMapNamespace:        "testNamespace",
 			expectedorgParentFolderID: "",
-			expectedErr:               fmt.Errorf("GCP configmap test did not contain key orgParentFolderID"),
+			expectedErr:               fmt.Errorf("configmap operations failed: GCP configmap test did not contain key orgParentFolderID"),
 			validateResult: func(t *testing.T, expected, result string) {
 				assert.Equal(t, expected, result)
 			},
@@ -132,7 +137,8 @@ func TestGetGCPParentFolderFromConfigMap(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mocks := builders.SetupDefaultMocks(t, test.localObjects)
 
-			result, err := GetGCPParentFolderFromConfigMap(mocks.FakeKubeClient, "test", test.ConfigMapNamespace)
+			configmap := GetConfigMapOperations(mocks.FakeKubeClient, test.ConfigMap, test.ConfigMapNamespace)
+			result, err := configmap.GetParentFolder()
 
 			if test.expectedErr != nil {
 				assert.Error(t, err)
