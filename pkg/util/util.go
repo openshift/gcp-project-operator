@@ -118,7 +118,7 @@ func getSecret(kubeClient client.Client, secretName, namespace string) (*corev1.
 	return s, nil
 }
 
-// newGCPSecretCR returns a Secret CR formatted for GCP
+// NewGCPSecretCR returns a Secret CR formatted for GCP
 func NewGCPSecretCR(namespace, creds string) *corev1.Secret {
 	return &corev1.Secret{
 		Type: "Opaque",

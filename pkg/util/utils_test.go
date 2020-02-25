@@ -342,6 +342,39 @@ func TestGetSecret(t *testing.T) {
 
 }
 
+func TestNewGCPSecretCR(t *testing.T) {
+	tests := []struct {
+		name            string
+		secretName      string
+		secretNamespace string
+		secretCreds     string
+		expectedSecret  *corev1.Secret
+		validateResult  func(*testing.T, *corev1.Secret, *corev1.Secret)
+	}{
+		{
+			name:            "Correct GCP Secert",
+			secretName:      gcpSecretName,
+			secretNamespace: "testNamespace",
+			secretCreds:     "testCreds",
+			expectedSecret:  builders.NewTestSecretBuilder(gcpSecretName, "testNamespace", "testCreds").GetTestSecret(),
+			validateResult: func(t *testing.T, expected, result *corev1.Secret) {
+				assert.Equal(t, expected, result)
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			result := NewGCPSecretCR(test.secretNamespace, test.secretCreds)
+
+			if test.validateResult != nil {
+				test.validateResult(t, test.expectedSecret, result)
+			}
+		})
+	}
+}
+
 func TestGetOrgGCPCreds(t *testing.T) {
 	tests := []struct {
 		name            string
