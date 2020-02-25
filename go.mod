@@ -23,7 +23,7 @@ require (
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/onsi/ginkgo v1.12.0
 	github.com/onsi/gomega v1.9.0
-	github.com/openshift/api v3.9.1-0.20190927182313-d4a64ec2cbd8+incompatible // indirect
+	github.com/openshift/api v0.0.0-0.20190927182313-d4a64ec2cbd8+incompatible // indirect
 	github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e // indirect
 	github.com/openshift/hive v0.0.0-20191114203647-105cae8c337d
 	github.com/operator-framework/operator-sdk v0.8.3-0.20190722210327-daf62d44e47e
@@ -78,6 +78,6 @@ replace google.golang.org/api => google.golang.org/api v0.11.0
 // Pin hive dep
 replace github.com/openshift/cluster-network-operator => github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e
 
-replace github.com/openshift/api => github.com/openshift/api v3.9.1-0.20190927182313-d4a64ec2cbd8+incompatible
+replace github.com/openshift/api => github.com/openshift/api v0.0.0-20190927182313-d4a64ec2cbd8
 
 go 1.13
