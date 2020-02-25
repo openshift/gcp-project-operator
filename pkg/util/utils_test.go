@@ -27,9 +27,9 @@ func TestGetConfigMap(t *testing.T) {
 			ConfigMap:          "testName",
 			ConfigMapNamespace: "testNamespace",
 			localObjects: []runtime.Object{
-				builders.NewTestConfigMapBuilder("testName", "testNamespace", "111111").GetConfigMap(),
+				builders.NewTestConfigMapBuilder("testName", "testNamespace", "foo", "111111").GetConfigMap(),
 			},
-			expectedConfigMap: builders.NewTestConfigMapBuilder("testName", "testNamespace", "111111").GetConfigMap(),
+			expectedConfigMap: builders.NewTestConfigMapBuilder("testName", "testNamespace", "foo", "111111").GetConfigMap(),
 			expectedErr:       false,
 			validateResult: func(t *testing.T, expected, result *corev1.ConfigMap) {
 				assert.Equal(t, expected, result)
@@ -40,7 +40,7 @@ func TestGetConfigMap(t *testing.T) {
 			ConfigMap:          "badName",
 			ConfigMapNamespace: "testNamespace",
 			localObjects: []runtime.Object{
-				builders.NewTestConfigMapBuilder("testName", "testNamespace", "111111").GetConfigMap(),
+				builders.NewTestConfigMapBuilder("testName", "testNamespace", "foo", "111111").GetConfigMap(),
 			},
 			expectedConfigMap: &corev1.ConfigMap{},
 			expectedErr:       true,
@@ -86,7 +86,7 @@ func TestGetParentFolder(t *testing.T) {
 			name:      "Correct orgParentFolderID",
 			ConfigMap: "test",
 			localObjects: []runtime.Object{
-				builders.NewTestConfigMapBuilder("test", "testNamespace", "1234567").GetConfigMap(),
+				builders.NewTestConfigMapBuilder("test", "testNamespace", "foo", "1234567").GetConfigMap(),
 			},
 			ConfigMapNamespace:        "testNamespace",
 			expectedorgParentFolderID: "1234567",
@@ -253,39 +253,6 @@ func TestGetSecret(t *testing.T) {
 		})
 	}
 
-}
-
-func TestNewGCPSecretCR(t *testing.T) {
-	tests := []struct {
-		name            string
-		secretName      string
-		secretNamespace string
-		secretCreds     string
-		expectedSecret  *corev1.Secret
-		validateResult  func(*testing.T, *corev1.Secret, *corev1.Secret)
-	}{
-		{
-			name:            "Correct GCP Secert",
-			secretName:      gcpSecretName,
-			secretNamespace: "testNamespace",
-			secretCreds:     "testCreds",
-			expectedSecret:  builders.NewTestSecretBuilder(gcpSecretName, "testNamespace", "testCreds").WihtoutKey("billingaccount").GetTestSecret(),
-			validateResult: func(t *testing.T, expected, result *corev1.Secret) {
-				assert.Equal(t, expected, result)
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-
-			result := NewGCPSecretCR(test.secretNamespace, test.secretCreds)
-
-			if test.validateResult != nil {
-				test.validateResult(t, test.expectedSecret, result)
-			}
-		})
-	}
 }
 
 func TestGetOrgGCPCreds(t *testing.T) {
