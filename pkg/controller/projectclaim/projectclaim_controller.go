@@ -17,8 +17,6 @@ import (
 
 var log = logf.Log.WithName("controller_projectclaim")
 
-const projectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
-
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
@@ -84,28 +82,28 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 		return r.requeueOnErr(err)
 	}
 
-	reconciler := NewProjectClaimReconciler(instance, reqLogger, r.client)
+	adapter := NewCustomResourceAdapter(instance, reqLogger, r.client)
 
-	if reconciler.isProjectClaimDeletion() {
-		err = reconciler.finalizeProjectClaim()
+	if adapter.IsProjectClaimDeletion() {
+		err = adapter.FinalizeProjectClaim()
 		if err != nil {
 			return r.requeueOnErr(err)
 		}
 		return r.doNotRequeue()
 	}
 
-	err = reconciler.ensureProjectReferenceExists()
+	err = adapter.EnsureProjectReferenceExists()
 	if err != nil {
 		return r.requeueOnErr(err)
 	}
 
-	crChanged, err := reconciler.ensureProjectReferenceLink()
-	if crChanged || err != nil {
+	crState, err := adapter.EnsureProjectReferenceLink()
+	if crState == ObjectModified || err != nil {
 		return r.requeueOnErr(err)
 	}
 
-	crChanged, err = reconciler.ensureFinalizer()
-	if crChanged || err != nil {
+	crState, err = adapter.EnsureFinalizer()
+	if crState == ObjectModified || err != nil {
 		return r.requeueOnErr(err)
 	}
 

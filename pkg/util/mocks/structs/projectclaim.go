@@ -41,13 +41,18 @@ func NewProjectClaimBuilder() *testProjectClaimBuilder {
 	}
 }
 
+func (t *testProjectClaimBuilder) WithFinalizer(finalizers []string) *testProjectClaimBuilder {
+	t.p.Finalizers = finalizers
+	return t
+}
+
 type ProjectClaimMatcher struct {
 	ActualProjectClaim *api.ProjectClaim
 	FailReason         string
 }
 
 func NewProjectClaimMatcher() *ProjectClaimMatcher {
-	return &ProjectClaimMatcher{}
+	return &ProjectClaimMatcher{&api.ProjectClaim{}, ""}
 }
 
 func (m *ProjectClaimMatcher) Matches(x interface{}) bool {
