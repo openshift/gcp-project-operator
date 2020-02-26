@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
 	"github.com/openshift/gcp-project-operator/pkg/util/errors"
@@ -25,7 +26,7 @@ import (
 var log = logf.Log.WithName("controller_clusterdeployment")
 
 // Configmap related configs
-const orgGcpConfigMap = "gcp-project-operator"
+const configMapName = "gcp-project-operator"
 
 var (
 	reconcilePeriodConfigMap = 60 * time.Second
@@ -174,10 +175,10 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, nil
 	}
 
-	configmap := util.GetConfigMapOperations(r.client, orgGcpConfigMap, operatorNamespace)
+	configmap := configmap.GetGcpProjectOperatorConfigMap(r.client, configMapName, operatorNamespace)
 	orgParentFolderID, err := configmap.GetParentFolder()
 	if err != nil {
-		reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
+		reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", configMapName, "Operator Namespace", operatorNamespace)
 		return reconcileResultConfigMap, err
 	}
 
@@ -214,7 +215,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	// TODO(Raf) Set quotas
 	billingAccount, err := configmap.GetBillingAccount()
 	if err != nil {
-		reqLogger.Error(err, "could not get org billingAccount from configmap", "Configmap", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
+		reqLogger.Error(err, "could not get billingAccount from the ConfigMap:", configMapName, "Operator Namespace", operatorNamespace)
 		return reconcile.Result{}, err
 	}
 
