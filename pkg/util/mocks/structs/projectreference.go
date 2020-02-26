@@ -8,6 +8,7 @@ import (
 
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 type testProjectReferenceBuilder struct {
@@ -42,25 +43,31 @@ func NewProjectReferenceBuilder() *testProjectReferenceBuilder {
 	}
 }
 
-type projectIdMatcher struct {
-	ActualProjectId string
-	FailReason      string
+func (t *testProjectReferenceBuilder) WithNamespacedName(namespacedName types.NamespacedName) *testProjectReferenceBuilder {
+	t.p.ObjectMeta.Name = namespacedName.Name
+	t.p.ObjectMeta.Namespace = namespacedName.Namespace
+	return t
 }
 
-func NewProjectIdMatcher() *projectIdMatcher {
-	return &projectIdMatcher{}
+type ProjectReferenceMatcher struct {
+	ActualProjectReference api.ProjectReference
+	FailReason             string
 }
 
-func (m *projectIdMatcher) Matches(x interface{}) bool {
+func NewProjectReferenceMatcher() *ProjectReferenceMatcher {
+	return &ProjectReferenceMatcher{}
+}
+
+func (m *ProjectReferenceMatcher) Matches(x interface{}) bool {
 	ref, isCorrectType := x.(*api.ProjectReference)
 	if !isCorrectType {
 		m.FailReason = fmt.Sprintf("Unexpected type passed: want '%T', got '%T'", api.ProjectReference{}, x)
 		return false
 	}
-	m.ActualProjectId = ref.Spec.GCPProjectID
+	m.ActualProjectReference = *ref.DeepCopy()
 	return true
 }
 
-func (m *projectIdMatcher) String() string {
+func (m *ProjectReferenceMatcher) String() string {
 	return "Fail reason: " + m.FailReason
 }

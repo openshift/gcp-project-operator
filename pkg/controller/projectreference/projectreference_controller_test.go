@@ -74,12 +74,12 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 
 		Context("When project id is not set", func() {
 			It("Updates the project id", func() {
-				matcher := testStructs.NewProjectIdMatcher()
+				matcher := testStructs.NewProjectReferenceMatcher()
 				mockClient.EXPECT().Update(gomock.Any(), matcher)
 
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).NotTo(HaveOccurred())
-				Expect(matcher.ActualProjectId).NotTo(Equal(""))
+				Expect(matcher.ActualProjectReference.Spec.GCPProjectID).NotTo(Equal(""))
 			})
 		})
 
