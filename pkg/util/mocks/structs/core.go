@@ -45,7 +45,7 @@ func (c *testConfigMapBuilder) GetConfigMap() *corev1.ConfigMap {
 	return &c.cfg
 }
 
-func NewTestConfigMapBuilder(name, namespace, billingaccount, orgParentFolderID string) *testConfigMapBuilder {
+func NewTestConfigMapBuilder(name, namespace, billingAccount, ParentFolderID string) *testConfigMapBuilder {
 	return &testConfigMapBuilder{
 		cfg: corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -57,14 +57,14 @@ func NewTestConfigMapBuilder(name, namespace, billingaccount, orgParentFolderID 
 				Namespace: namespace,
 			},
 			Data: map[string]string{
-				"orgParentFolderID": orgParentFolderID,
-				"billingaccount":    billingaccount,
+				"parentFolderID": ParentFolderID,
+				"billingAccount": billingAccount,
 			},
 		},
 	}
 }
 
-func (c *testConfigMapBuilder) WihtoutKey(key string) *testConfigMapBuilder {
+func (c *testConfigMapBuilder) WithoutKey(key string) *testConfigMapBuilder {
 	delete(c.cfg.Data, key)
 	return c
 }

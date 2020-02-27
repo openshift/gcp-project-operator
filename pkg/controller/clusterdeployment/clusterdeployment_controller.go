@@ -25,9 +25,6 @@ import (
 
 var log = logf.Log.WithName("controller_clusterdeployment")
 
-// Configmap related configs
-const configMapName = "gcp-project-operator"
-
 var (
 	reconcilePeriodConfigMap = 60 * time.Second
 	reconcileResultConfigMap = reconcile.Result{RequeueAfter: reconcilePeriodConfigMap}
@@ -175,10 +172,16 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, nil
 	}
 
-	configmap := configmap.GetGcpProjectOperatorConfigMap(r.client, configMapName, operatorNamespace)
-	orgParentFolderID, err := configmap.GetParentFolder()
+	// Get operatorConfigMap with values, use it for getting some value
+	// If any field does not filled by GetOperatorConfigMap, check which mapping is empty and return err
+	operatorConfigMap, err := configmap.GetOperatorConfigMap(r.client)
 	if err != nil {
-		reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", configMapName, "Operator Namespace", operatorNamespace)
+		reqLogger.Error(err, "could not find the OperatorConfigMap")
+		return reconcileResultConfigMap, err
+	}
+
+	if err := configmap.CheckValueNotExist(operatorConfigMap); err != nil {
+		reqLogger.Error(err, "configmap didn't get filled properly")
 		return reconcileResultConfigMap, err
 	}
 
@@ -206,16 +209,9 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	}
 
 	// TODO(Raf) Check that operation is complete before continuing , make sure project Name does not exits , How to handle those errors
-	_, err = gClient.CreateProject(orgParentFolderID)
+	_, err = gClient.CreateProject(operatorConfigMap.ParentFolderID)
 	if err != nil {
-		reqLogger.Error(err, "could create project", "Parent Folder ID", orgParentFolderID, "Requested Project Name", cd.Spec.Platform.GCP.ProjectID, "Requested Region Name", cd.Spec.GCP.Region)
-		return reconcile.Result{}, err
-	}
-
-	// TODO(Raf) Set quotas
-	billingAccount, err := configmap.GetBillingAccount()
-	if err != nil {
-		reqLogger.Error(err, "could not get billingAccount from the ConfigMap:", configMapName, "Operator Namespace", operatorNamespace)
+		reqLogger.Error(err, "could create project", "Parent Folder ID", operatorConfigMap.ParentFolderID, "Requested Project Name", cd.Spec.Platform.GCP.ProjectID, "Requested Region Name", cd.Spec.GCP.Region)
 		return reconcile.Result{}, err
 	}
 
@@ -227,7 +223,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	}
 	// TODO(MJ): Perm issue in the api
 	// https://groups.google.com/forum/#!topic/gce-discussion/K_x9E0VIckk
-	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
+	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, operatorConfigMap.BillingAccount)
 	if err != nil {
 		reqLogger.Error(err, "error creating CloudBilling")
 		return reconcile.Result{}, err

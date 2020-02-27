@@ -3,64 +3,51 @@ package configmap
 import (
 	"context"
 	"fmt"
+	"reflect"
 
+	"github.com/mitchellh/mapstructure"
 	corev1 "k8s.io/api/core/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// GcpProjectOperatorConfigMap store informations required for operations
-type GcpProjectOperatorConfigMap struct {
-	name       string
-	namespace  string
-	kubeClient client.Client
+// OperatorConfigMapName holds the name of configmap
+const (
+	OperatorConfigMapName      = "gcp-project-operator"
+	operatorConfigMapNamespace = "gcp-project-operator"
+)
+
+// OperatorConfigMap store data for the specified configmap
+type OperatorConfigMap struct {
+	BillingAccount string `mapstructure:"billingAccount"`
+	ParentFolderID string `mapstructure:"parentFolderID"`
 }
 
-// GetGcpProjectOperatorConfigMap returns a new GcpProjectOperatorConfigMap object
-func GetGcpProjectOperatorConfigMap(kubeClient client.Client, name, namespace string) *GcpProjectOperatorConfigMap {
-	config := GcpProjectOperatorConfigMap{
-		name:       name,
-		namespace:  namespace,
-		kubeClient: kubeClient,
+// CheckValueNotExist checks if OperatorConfigMap filled properly
+func CheckValueNotExist(configmap OperatorConfigMap) error {
+	v := reflect.ValueOf(configmap)
+	typeOfS := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		if v.Field(i).Interface() == "" {
+			return fmt.Errorf("missing configmap key: %s", typeOfS.Field(i).Name)
+		}
 	}
 
-	return &config
+	return nil
 }
 
-// getConfigMap returns a configmap
-func (c *GcpProjectOperatorConfigMap) getConfigMap() (*corev1.ConfigMap, error) {
-	cfg := &corev1.ConfigMap{}
-	if err := c.kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: c.name, Namespace: c.namespace}, cfg); err != nil {
-		return &corev1.ConfigMap{}, err
+// GetOperatorConfigMap returns a configmap defined in requested namespace and name
+func GetOperatorConfigMap(kubeClient client.Client) (OperatorConfigMap, error) {
+	var OperatorConfigMap OperatorConfigMap
+	configmap := &corev1.ConfigMap{}
+	if err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: OperatorConfigMapName, Namespace: operatorConfigMapNamespace}, configmap); err != nil {
+		return OperatorConfigMap, fmt.Errorf("unable to get configmap: %v", err)
 	}
 
-	return cfg, nil
-}
-
-// getValue returns value if the key exists in configmap
-func (c *GcpProjectOperatorConfigMap) getValue(key string) (string, error) {
-	configmap, err := c.getConfigMap()
-	if err != nil {
-		return "", fmt.Errorf("clusterdeployment.GetGCPParentFolderFromConfigMap.Get %v", err)
+	if err := mapstructure.Decode(configmap.Data, &OperatorConfigMap); err != nil {
+		return OperatorConfigMap, fmt.Errorf("unable to unmarshal configmap: %v", err)
 	}
 
-	value, ok := configmap.Data[key]
-	if !ok {
-		return "", fmt.Errorf("GCP configmap %v did not contain key %v",
-			c.name, key)
-	}
-
-	return value, nil
-}
-
-// GetParentFolder returns orgParentFolderID if the key exists in configmap
-func (c *GcpProjectOperatorConfigMap) GetParentFolder() (string, error) {
-	value, err := c.getValue("orgParentFolderID")
-	return value, err
-}
-
-// GetBillingAccount returns billingaccount if the key exists in configmap
-func (c *GcpProjectOperatorConfigMap) GetBillingAccount() (string, error) {
-	value, err := c.getValue("billingaccount")
-	return value, err
+	return OperatorConfigMap, nil
 }
