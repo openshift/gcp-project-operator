@@ -27,7 +27,6 @@ func NewTestSecretBuilder(secretName, namespace, creds string) *testSecretBuilde
 			},
 			Data: map[string][]byte{
 				"osServiceAccount.json": []byte(creds),
-				"billingaccount":        []byte("billingaccount"),
 			},
 		},
 	}
@@ -46,7 +45,7 @@ func (c *testConfigMapBuilder) GetConfigMap() *corev1.ConfigMap {
 	return &c.cfg
 }
 
-func NewTestConfigMapBuilder(name, namespace, orgParentFolderID string) *testConfigMapBuilder {
+func NewTestConfigMapBuilder(name, namespace, billingAccount, parentFolderID string) *testConfigMapBuilder {
 	return &testConfigMapBuilder{
 		cfg: corev1.ConfigMap{
 			TypeMeta: metav1.TypeMeta{
@@ -58,13 +57,14 @@ func NewTestConfigMapBuilder(name, namespace, orgParentFolderID string) *testCon
 				Namespace: namespace,
 			},
 			Data: map[string]string{
-				"orgParentFolderID": orgParentFolderID,
+				"parentFolderID": parentFolderID,
+				"billingAccount": billingAccount,
 			},
 		},
 	}
 }
 
-func (c *testConfigMapBuilder) WihtoutKey(key string) *testConfigMapBuilder {
+func (c *testConfigMapBuilder) WithoutKey(key string) *testConfigMapBuilder {
 	delete(c.cfg.Data, key)
 	return c
 }

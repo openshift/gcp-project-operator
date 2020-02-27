@@ -54,7 +54,7 @@ func getSecret(kubeClient client.Client, secretName, namespace string) (*corev1.
 	return s, nil
 }
 
-// newGCPSecretCR returns a Secret CR formatted for GCP
+// NewGCPSecretCR returns a Secret CR formatted for GCP
 func NewGCPSecretCR(namespace, creds string) *corev1.Secret {
 	return &corev1.Secret{
 		Type: "Opaque",
@@ -95,53 +95,6 @@ func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	}
 
 	return osServiceAccountJson, nil
-}
-
-func GetBillingAccountFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
-	secret := &corev1.Secret{}
-	err := kubeClient.Get(context.TODO(),
-		kubetypes.NamespacedName{
-			Namespace: namespace,
-			Name:      name,
-		},
-		secret)
-	if err != nil {
-		return []byte{}, fmt.Errorf("clusterdeployment.getBillingAccountFromSecret.Get %v", err)
-	}
-
-	billingAccount, ok := secret.Data["billingaccount"]
-	if !ok {
-		return []byte{}, fmt.Errorf("GCP credentials secret %v did not contain key %v",
-			name, "billingaccount")
-	}
-
-	return billingAccount, nil
-}
-
-// getConfigMap returns a configmap
-func getConfigMap(kubeClient client.Client, name, namespace string) (*corev1.ConfigMap, error) {
-	c := &corev1.ConfigMap{}
-	if err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: name, Namespace: namespace}, c); err != nil {
-		return &corev1.ConfigMap{}, err
-	}
-
-	return c, nil
-}
-
-// GetGCPParentFolderFromConfigMap returns orgParentFolderID if the value exists in configmap
-func GetGCPParentFolderFromConfigMap(kubeClient kubeclientpkg.Client, name, namespace string) (string, error) {
-	configmap, err := getConfigMap(kubeClient, name, namespace)
-	if err != nil {
-		return "", fmt.Errorf("clusterdeployment.GetGCPParentFolderFromConfigMap.Get %v", err)
-	}
-
-	orgParentFolderIDconfig, ok := configmap.Data["orgParentFolderID"]
-	if !ok {
-		return "", fmt.Errorf("GCP configmap %v did not contain key %v",
-			name, "orgParentFolderID")
-	}
-
-	return orgParentFolderIDconfig, nil
 }
 
 // AddOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.

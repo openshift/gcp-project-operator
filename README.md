@@ -12,6 +12,7 @@
          * [Pushing Image To quay](#pushing-image-to-quay)
          * [Deploying code](#deploying-code)
       * [GCP secret creation](#gcp-secret-creation)
+      * [GCP configmap creation](#gcp-operator-configmap-creation)
    * [TODO](#todo)
 
 # Info
@@ -135,8 +136,17 @@ gcloud iam service-accounts keys create key.json \
   --iam-account $GCPSA_NAME@$GCP_ORG_NAME.iam.gserviceaccount.com
 
 
-# billindacount.txt contains billing ID from https://console.cloud.google.com/billing
-kubectl create secret generic gcp-project-operator --from-file=key.json=secrets/key.json --from-file=billingaccount=secrets/billingaccount.txt -n gcp-project-operator
+kubectl create secret generic gcp-project-operator --from-file=key.json=secrets/key.json -n gcp-project-operator
+
+```
+
+## GCP Operator configmap creation
+
+```bash
+export ORGPARENTFOLDERID="240634451310" # Google Cloud organization Parent Folder ID
+export BILLINGACCOUNT="" # obtain billing ID from https://console.cloud.google.com/billing
+
+kubectl create configmap gcp-project-operator --from-literal orgParentFolderID=$ORGPARENTFOLDERID --from-literal billingaccount=$BILLINGACCOUNT -n gcp-project-operator
 
 ```
 
