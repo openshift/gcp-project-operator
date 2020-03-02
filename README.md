@@ -143,7 +143,7 @@ kubectl create secret generic gcp-project-operator --from-file=key.json=secrets/
 ## GCP Operator configmap creation
 
 ```bash
-export ORGPARENTFOLDERID="240634451310" # Google Cloud organization Parent Folder ID
+export ORGPARENTFOLDERID="12345678" # Google Cloud organization Parent Folder ID
 export BILLINGACCOUNT="" # obtain billing ID from https://console.cloud.google.com/billing
 
 kubectl create configmap gcp-project-operator --from-literal orgParentFolderID=$ORGPARENTFOLDERID --from-literal billingaccount=$BILLINGACCOUNT -n gcp-project-operator
