@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
 	"github.com/openshift/gcp-project-operator/pkg/util/errors"
@@ -23,9 +24,6 @@ import (
 )
 
 var log = logf.Log.WithName("controller_clusterdeployment")
-
-// Configmap related configs
-const orgGcpConfigMap = "gcp-project-operator"
 
 var (
 	reconcilePeriodConfigMap = 60 * time.Second
@@ -174,9 +172,14 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		return reconcile.Result{}, nil
 	}
 
-	orgParentFolderID, err := util.GetGCPParentFolderFromConfigMap(r.client, operatorNamespace, orgGcpConfigMap)
+	operatorConfigMap, err := configmap.GetOperatorConfigMap(r.client)
 	if err != nil {
-		reqLogger.Error(err, "could not get orgParentFolderID from the ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
+		reqLogger.Error(err, "could not find the OperatorConfigMap")
+		return reconcileResultConfigMap, err
+	}
+
+	if err := configmap.ValidateOperatorConfigMap(operatorConfigMap); err != nil {
+		reqLogger.Error(err, "configmap didn't get filled properly")
 		return reconcileResultConfigMap, err
 	}
 
@@ -204,16 +207,9 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	}
 
 	// TODO(Raf) Check that operation is complete before continuing , make sure project Name does not exits , How to handle those errors
-	_, err = gClient.CreateProject(orgParentFolderID)
+	_, err = gClient.CreateProject(operatorConfigMap.ParentFolderID)
 	if err != nil {
-		reqLogger.Error(err, "could create project", "Parent Folder ID", orgParentFolderID, "Requested Project Name", cd.Spec.Platform.GCP.ProjectID, "Requested Region Name", cd.Spec.GCP.Region)
-		return reconcile.Result{}, err
-	}
-
-	// TODO(Raf) Set quotas
-	billingAccount, err := util.GetBillingAccountFromSecret(r.client, operatorNamespace, orgGcpSecretName)
-	if err != nil {
-		reqLogger.Error(err, "could not get org billingAccount from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
+		reqLogger.Error(err, "could not create project", "Parent Folder ID", operatorConfigMap.ParentFolderID, "Requested Project Name", cd.Spec.Platform.GCP.ProjectID, "Requested Region Name", cd.Spec.GCP.Region)
 		return reconcile.Result{}, err
 	}
 
@@ -225,7 +221,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	}
 	// TODO(MJ): Perm issue in the api
 	// https://groups.google.com/forum/#!topic/gce-discussion/K_x9E0VIckk
-	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, string(billingAccount))
+	err = gClient.CreateCloudBillingAccount(cd.Spec.Platform.GCP.ProjectID, operatorConfigMap.BillingAccount)
 	if err != nil {
 		reqLogger.Error(err, "error creating CloudBilling")
 		return reconcile.Result{}, err
@@ -252,7 +248,7 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 		// Create OSDManged Service account
 		account, err := gClient.CreateServiceAccount(osdServiceAccountName, osdServiceAccountName)
 		if err != nil {
-			reqLogger.Error(err, "could create service account", "Service Account Name", osdServiceAccountName)
+			reqLogger.Error(err, "could not create service account", "Service Account Name", osdServiceAccountName)
 			return reconcile.Result{}, err
 		}
 		serviceAccount = account
@@ -269,13 +265,13 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	// re-think this part
 	err = gClient.DeleteServiceAccountKeys(serviceAccount.Email)
 	if err != nil {
-		reqLogger.Error(err, "could delete service account key", "Service Account Name", serviceAccount.Email)
+		reqLogger.Error(err, "could not delete service account key", "Service Account Name", serviceAccount.Email)
 		return reconcile.Result{}, err
 	}
 
 	key, err := gClient.CreateServiceAccountKey(serviceAccount.Email)
 	if err != nil {
-		reqLogger.Error(err, "could create service account key", "Service Account Name", serviceAccount.Email)
+		reqLogger.Error(err, "could not create service account key", "Service Account Name", serviceAccount.Email)
 		return reconcile.Result{}, err
 	}
 

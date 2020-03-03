@@ -10,7 +10,6 @@ import (
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
 	builders "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	hiveapis "github.com/openshift/hive/pkg/apis"
-	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -56,7 +55,7 @@ func TestReconcile(t *testing.T) {
 			name:        "failed to get ORG creds",
 			expectedErr: fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get secrets \"gcp-project-operator\" not found"),
 			localObjects: []runtime.Object{
-				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").GetConfigMap(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").GetConfigMap(),
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
@@ -66,34 +65,31 @@ func TestReconcile(t *testing.T) {
 			expectedErr: nil,
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
-				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").GetConfigMap(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").GetConfigMap(),
 				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
 				builders.NewTestSecretBuilder(gcpSecretName, testNamespace, "testCreds").GetTestSecret(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
-			name:        "if there's no valid orgParentFolderID in configmap",
-			expectedErr: fmt.Errorf("GCP configmap gcp-project-operator did not contain key orgParentFolderID"),
+			name:        "no ParentFolderID in configmap",
+			expectedErr: fmt.Errorf("missing configmap key: ParentFolderID"),
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
-				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").WihtoutKey("orgParentFolderID").GetConfigMap(),
+				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").WithoutKey("parentFolderID").GetConfigMap(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
-			name:        "no billing key in secret",
-			expectedErr: fmt.Errorf("GCP credentials secret gcp-project-operator did not contain key billingaccount"),
+			name:        "no billing account in configmap",
+			expectedErr: fmt.Errorf("missing configmap key: BillingAccount"),
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
-				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "111111").GetConfigMap(),
-				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").WihtoutKey("billingaccount").GetTestSecret(),
+				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").WithoutKey("billingAccount").GetConfigMap(),
 			},
-			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) {
-				gomock.InOrder(
-					r.CreateProject(gomock.Any()).Return(
-						&cloudresourcemanager.Operation{}, nil).Times(1))
-			},
+			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 	}
 
