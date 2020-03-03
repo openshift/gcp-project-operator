@@ -14,20 +14,9 @@ import (
 )
 
 const (
-	// Operator config
-	operatorNamespace = "gcp-project-operator"
-	controllerName    = "clusterdeployment"
-
-	// clusterDeploymentManagedLabel is the label on the cluster deployment which indicates whether or not a cluster is OSD
-	clusterDeploymentManagedLabel = "api.openshift.com/managed"
-	// clusterPlatformLabel is the label on a cluster deployment which indicates whether or not a cluster is on GCP platform
-	clusterPlatformLabel = "hive.openshift.io/cluster-platform"
-	clusterPlatformGCP   = "gcp"
-
 	// secret information
-	gcpSecretName         = "gcp"
-	orgGcpSecretName      = "gcp-project-operator"
-	osdServiceAccountName = "osd-managed-admin"
+	gcpSecretName    = "gcp"
+	orgGcpSecretName = "gcp-project-operator"
 )
 
 // SecretExists returns a boolean to the caller based on the secretName and namespace args.
@@ -35,11 +24,7 @@ func SecretExists(kubeClient client.Client, secretName, namespace string) bool {
 	s := &corev1.Secret{}
 
 	err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: secretName, Namespace: namespace}, s)
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 // getSecret returns a secret based on a secretName and namespace.
@@ -55,6 +40,7 @@ func getSecret(kubeClient client.Client, secretName, namespace string) (*corev1.
 }
 
 // NewGCPSecretCR returns a Secret CR formatted for GCP
+// To be removed along with ClusterDeployment controller
 func NewGCPSecretCR(namespace, creds string) *corev1.Secret {
 	return &corev1.Secret{
 		Type: "Opaque",
@@ -65,6 +51,24 @@ func NewGCPSecretCR(namespace, creds string) *corev1.Secret {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      gcpSecretName,
 			Namespace: namespace,
+		},
+		Data: map[string][]byte{
+			"osServiceAccount.json": []byte(creds),
+		},
+	}
+}
+
+// NewGCPSecretCRV2 returns a Secret CR formatted for GCP for use in projectreference controller.
+func NewGCPSecretCRV2(creds string, namespacedNamed kubetypes.NamespacedName) *corev1.Secret {
+	return &corev1.Secret{
+		Type: "Opaque",
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      namespacedNamed.Name,
+			Namespace: namespacedNamed.Namespace,
 		},
 		Data: map[string][]byte{
 			"osServiceAccount.json": []byte(creds),
@@ -160,7 +164,7 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 		s := reflect.ValueOf(haystack)
 
 		for i := 0; i < s.Len(); i++ {
-			if reflect.DeepEqual(needle, s.Index(i).Interface()) == true {
+			if reflect.DeepEqual(needle, s.Index(i).Interface()) {
 				index = i
 				exists = true
 				return
