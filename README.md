@@ -169,3 +169,4 @@ kubectl create configmap gcp-project-operator --from-literal orgParentFolderID=$
 - Adding finalizer to the clusterdeployment
 - Cleaning up when clusterdeployment is removed
 - Credential Rotation
+
