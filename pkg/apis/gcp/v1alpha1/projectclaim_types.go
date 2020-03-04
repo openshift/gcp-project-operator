@@ -62,6 +62,8 @@ type ClaimStatus string
 const (
 	// ClaimStatusPending pending status for a claim
 	ClaimStatusPending ClaimStatus = "Pending"
+	// ClaimStatusPendingProject pending project status for a claim
+	ClaimStatusPendingProject ClaimStatus = "PendingProject"
 	// ClaimStatusReady ready status for a claim
 	ClaimStatusReady ClaimStatus = "Ready"
 	// ClaimStatusError error status for a claim
