@@ -11,8 +11,9 @@
       * [Remote](#remote)
          * [Pushing Image To quay](#pushing-image-to-quay)
          * [Deploying code](#deploying-code)
-      * [GCP secret creation](#gcp-secret-creation)
-      * [GCP configmap creation](#gcp-operator-configmap-creation)
+      * [Configuration](#configuration)
+         * [Auth Secret](#auth-secret)
+         * [Configmap](#configmap)
    * [TODO](#todo)
 
 # Info
@@ -114,33 +115,15 @@ oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=0
 oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=1
 ```
 
-## GCP secret creation
+## Configuration
 
-```bash
-export GCPSA_NAME=gcp-account-operator
-export GCP_ORG_NAME=osd-management
-# ServiceDelivery org ID
-export GCP_ROOT_ORG_NAME=240634451310
+For the operator to interact with GCP properly, it needs a bit of configuration first.
 
-gcloud beta iam service-accounts create $GCPSA_NAME \
-    --description "$GCPSA_NAME" \
-    --display-name "$GCPSA_NAME"
+### Auth Secret
 
-# TODO: this does not work due perm error
-gcloud projects add-iam-policy-binding $GCP_ROOT_ORG_NAME \
-  --member serviceAccount:$GCPSA_NAME@$GCP_ORG_NAME.iam.gserviceaccount.com \
-  --role roles/owner --role roles/resourcemanager.projectCreator \
-  --role roles/resourcemanager.folderAdmin
+TODO: short info on how to set up a service account with the right perms.
 
-gcloud iam service-accounts keys create key.json \
-  --iam-account $GCPSA_NAME@$GCP_ORG_NAME.iam.gserviceaccount.com
-
-
-kubectl create secret generic gcp-project-operator --from-file=key.json=secrets/key.json -n gcp-project-operator
-
-```
-
-## GCP Operator configmap creation
+### Configmap
 
 ```bash
 export ORGPARENTFOLDERID="12345678" # Google Cloud organization Parent Folder ID
