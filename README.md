@@ -119,6 +119,9 @@ oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=1
 
 For the operator to interact with GCP properly, it needs a bit of configuration first.
 
+Note: unless you're running this against your very own GCP org, someone likely already has this stuff prepared for you.
+Ask around.
+
 ### Auth Secret
 
 TODO: short info on how to set up a service account with the right perms.
