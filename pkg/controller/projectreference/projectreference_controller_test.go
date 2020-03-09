@@ -163,11 +163,36 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				projectReference.Status.State = api.ProjectReferenceStatusReady
 			})
 
-			It("It does not reconcile", func() {
-				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-				mockKubeClient.EXPECT().Status().Return(updaterNoErr{})
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
-				Expect(err).NotTo(HaveOccurred())
+			Context("When ProjectClaim GCPProjectID is empty", func() {
+				It("Updates ProjectClaim GCPPRojectID", func() {
+					matcher := testStructs.NewProjectClaimMatcher()
+					mockKubeClient.EXPECT().Update(gomock.Any(), matcher).Return(nil)
+					mockKubeClient.EXPECT().Status().Return(updaterNoErr{})
+					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					Expect(err).NotTo(HaveOccurred())
+					Expect(matcher.ActualProjectClaim.Spec.GCPProjectID).ToNot(Equal(""))
+				})
+			})
+
+			Context("When ProjectClaim GCPProjectID is empty and it fails to Update ProjectClaim", func() {
+				It("Reconciles with error", func() {
+					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake Update Error"))
+					mockKubeClient.EXPECT().Status().Return(updaterNoErr{})
+					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+			Context("When ProjectClaim GCPProjectID is not empty", func() {
+				BeforeEach(func() {
+					projectClaim.Spec.GCPProjectID = "Not Empty"
+				})
+
+				It("It does not reconcile", func() {
+					mockKubeClient.EXPECT().Status().Return(updaterNoErr{})
+					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					Expect(err).NotTo(HaveOccurred())
+				})
 			})
 		})
 

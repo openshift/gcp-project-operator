@@ -1,6 +1,7 @@
 
    * [Info](#info)
-      * [Workflow](#workflow)
+      * [Workflow ProjectClaim](#workflow---pjrojectclaim)
+      * [Workflow ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
       * [Requirements](#requirements)
    * [Deployment](#deployment)
       * [Building](#building)
@@ -14,13 +15,41 @@
       * [Configuration](#configuration)
          * [Auth Secret](#auth-secret)
          * [Configmap](#configmap)
-   * [TODO](#todo)
 
 # Info
 
 The gcp project operator is reponsible for creating projects and service accounts in GCP and storing the credentials in a secret.
 
-## Workflow
+## Workflow - ProjectClaim
+
+1. The operator watches all namespaces for `ProjectClaim` resources
+2. When a `ProjectClaim` is found (see example below) the operator triggers the creation of a project in GCP
+3. After successful project creation
+    * the field `State` will be set to Ready
+    * A secret is created in the cluster namespace, as defined in the `ProjectClaim`
+    * The field `spec.gcpProjectID` will be filled with the ID of the GCP project
+4. When a `ProjectClaim` is removed, the GCP project and service accounts are deleted (WIP)
+5. The operator removes the finalizer from the `ProjectClaim` (WIP)
+
+### Example
+
+```yaml
+apiVersion: gcp.managed.openshift.io/v1alpha1
+kind: ProjectClaim
+metadata:
+  name: example-projectclaim
+  namespace: example-clusternamespace
+spec:
+  region: us-east1
+  gcpCredentialSecret:
+    name: gcp-secret
+    namespace: example-clusternamespace
+  legalEntity:
+    name: example-legal-entity
+    id: example-legal-entity-id
+```
+
+## Workflow - ClusterDeployment (deprecated)
 
 - The operator would watch clusterdeployments in all namespaces.
 - Operator would check that the clusterdeployment’s labels “api.openshift.com/managed = true” and “hive.openshift.io/cluster-platform = gcp"
@@ -135,24 +164,3 @@ export BILLINGACCOUNT="" # obtain billing ID from https://console.cloud.google.c
 kubectl create configmap gcp-project-operator --from-literal orgParentFolderID=$ORGPARENTFOLDERID --from-literal billingaccount=$BILLINGACCOUNT -n gcp-project-operator
 
 ```
-
-# TODO
--  Creation of project for the cluster
-  - Some of this code is mocked out but not tested since we do not have a test org yet.
-- Enabling the required APIs.
-    - Compute Engine API (`compute.googleapis.com`)
-    - Google Cloud APIs (`cloudapis.googleapis.com`)
-    - Cloud Resource Manager API (`cloudresourcemanager.googleapis.com`)
-    - Google DNS API (`dns.googleapis.com`)
-    - Identity and Access Management (IAM) API (`iam.googleapis.com`)
-    - IAM Service Account Credentials API (`iamcredentials.googleapis.com`)
-    - Service Management API (`servicemanagement.googleapis.com`)
-    - Service Usage API (`serviceusage.googleapis.com`)
-    - Google Cloud Storage JSON API (`storage-api.googleapis.com`)
-    - Cloud Storage (`storage-component.googleapis.com`)
-- Setting required quotas
-- Enabling Billing
-- Adding finalizer to the clusterdeployment
-- Cleaning up when clusterdeployment is removed
-- Credential Rotation
-
