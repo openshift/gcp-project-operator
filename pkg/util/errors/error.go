@@ -23,3 +23,9 @@ var ErrMissingProjectID = errors.New("MissingProjectID")
 
 // ErrMissingRegion indicates that the cluster deployment is missing the field Region
 var ErrMissingRegion = errors.New("MissingRegion")
+
+// ErrInactiveProject indicates that the project lifecycleState is not active
+var ErrInactiveProject = errors.New("InactiveProject")
+
+// ErrUnexpectedLifecycleState indicates that the project is in an unexpacted LifecycleState
+var ErrUnexpectedLifecycleState = errors.New("UnexpectedLifecycleState")
