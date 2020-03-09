@@ -1,6 +1,7 @@
 
-   * [Info](#info)
-      * [Workflow](#workflow)
+   * [Info](#info
+      * [Workflow ProjectClaim](#workflow---pjrojectclaim)
+      * [Workflow ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
       * [Requirements](#requirements)
    * [Deployment](#deployment)
       * [Building](#building)
@@ -31,7 +32,6 @@ The gcp project operator is reponsible for creating projects and service account
 5. The operator removes the finalizer from the `ProjectClaim` (WIP)
 
 ### Example
-
 
 ```yaml
 apiVersion: gcp.managed.openshift.io/v1alpha1
