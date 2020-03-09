@@ -25,7 +25,7 @@ The gcp project operator is reponsible for creating projects and service account
 2. When a `ProjectClaim` is found (see example below) the operator triggers the creation of a project in GCP
 3. After successful project creation
   * the field `State` will be set to Ready
-  * A secret is created in the cluster namespace called `gcp`
+  * A secret is created in the cluster namespace, as defined in the `ProjectClaim`
   * The field `spec.gcpProjectID` will be filled with the ID of the GCP project (WIP)
 4. When a `ProjectClaim` is removed, the GCP project and service accounts are deleted (WIP)
 5. The operator removes the finalizer from the `ProjectClaim` (WIP)
@@ -41,6 +41,9 @@ metadata:
   namespace: example-clusternamespace
 spec:
   region: us-east1
+  gcpCredentialSecret:
+    name: gcp-secret
+    namespace: example-clusternamespace
   legalEntity:
     name: example-legal-entity
     id: example-legal-entity-id
