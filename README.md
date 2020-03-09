@@ -15,7 +15,6 @@
       * [Configuration](#configuration)
          * [Auth Secret](#auth-secret)
          * [Configmap](#configmap)
-   * [TODO](#todo)
 
 # Info
 
