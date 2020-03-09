@@ -164,6 +164,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			})
 
 			It("It does not reconcile", func() {
+				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 				mockKubeClient.EXPECT().Status().Return(updaterNoErr{})
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).NotTo(HaveOccurred())
@@ -176,6 +177,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			})
 
 			It("It reconciles with error", func() {
+				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 				mockKubeClient.EXPECT().Status().Return(updaterWithErr{})
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())

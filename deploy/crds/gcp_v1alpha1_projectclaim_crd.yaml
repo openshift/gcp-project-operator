@@ -8,6 +8,10 @@ spec:
     description: Status of the project claim
     name: State
     type: string
+  - JSONPath: .spec.gcpProjectID
+    description: ID of the GCP Project that has been created
+    name: GCPProjectID
+    type: string
   - JSONPath: .metadata.creationTimestamp
     description: Age since the project claim was created
     name: Age
