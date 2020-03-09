@@ -165,24 +165,3 @@ export BILLINGACCOUNT="" # obtain billing ID from https://console.cloud.google.c
 kubectl create configmap gcp-project-operator --from-literal orgParentFolderID=$ORGPARENTFOLDERID --from-literal billingaccount=$BILLINGACCOUNT -n gcp-project-operator
 
 ```
-
-# TODO
--  Creation of project for the cluster
-  - Some of this code is mocked out but not tested since we do not have a test org yet.
-- Enabling the required APIs.
-    - Compute Engine API (`compute.googleapis.com`)
-    - Google Cloud APIs (`cloudapis.googleapis.com`)
-    - Cloud Resource Manager API (`cloudresourcemanager.googleapis.com`)
-    - Google DNS API (`dns.googleapis.com`)
-    - Identity and Access Management (IAM) API (`iam.googleapis.com`)
-    - IAM Service Account Credentials API (`iamcredentials.googleapis.com`)
-    - Service Management API (`servicemanagement.googleapis.com`)
-    - Service Usage API (`serviceusage.googleapis.com`)
-    - Google Cloud Storage JSON API (`storage-api.googleapis.com`)
-    - Cloud Storage (`storage-component.googleapis.com`)
-- Setting required quotas
-- Enabling Billing
-- Adding finalizer to the clusterdeployment
-- Cleaning up when clusterdeployment is removed
-- Credential Rotation
-
