@@ -78,6 +78,7 @@ const (
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state",description="Status of the project claim"
+// +kubebuilder:printcolumn:name="GCPProjectID",type="string",JSONPath=".spec.gcpProjectID",description="ID of the GCP Project that has been created"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Age since the project claim was created"
 type ProjectClaim struct {
 	metav1.TypeMeta   `json:",inline"`
