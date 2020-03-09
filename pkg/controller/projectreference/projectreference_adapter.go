@@ -115,16 +115,24 @@ func getMatchingClaimLink(projectReference *gcpv1alpha1.ProjectReference, client
 
 // updateProjectID updates the ProjectReference with a unique ID for the ProjectID
 func (r *ReferenceAdapter) updateProjectID() error {
+	projectId, err := GenerateProjectID()
+	if err != nil {
+		return err
+	}
+	r.projectReference.Spec.GCPProjectID = projectId
+	return r.kubeClient.Update(context.TODO(), r.projectReference)
+}
+
+func GenerateProjectID() (string, error) {
 	guid := uuid.New().String()
 	hashing := sha1.New()
 	_, err := hashing.Write([]byte(guid))
 	if err != nil {
-		return err
+		return "", err
 	}
 	uuidsum := fmt.Sprintf("%x", hashing.Sum(nil))
 	shortuuid := uuidsum[0:26]
-	r.projectReference.Spec.GCPProjectID = "osd-" + shortuuid
-	return r.kubeClient.Update(context.TODO(), r.projectReference)
+	return "osd-" + shortuuid, nil
 }
 
 // updateProjectID updates the ProjectReference with a unique ID for the ProjectID
