@@ -1,7 +1,8 @@
 
    * [Info](#info)
-      * [Workflow ProjectClaim](#workflow---pjrojectclaim)
-      * [Workflow ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
+      * [Workflow - ProjectClaim](#workflow---projectclaim)
+         * [Example CR](#example-cr)
+      * [Workflow - ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
       * [Requirements](#requirements)
    * [Deployment](#deployment)
       * [Building](#building)
@@ -31,7 +32,7 @@ The gcp project operator is reponsible for creating projects and service account
 4. When a `ProjectClaim` is removed, the GCP project and service accounts are deleted (WIP)
 5. The operator removes the finalizer from the `ProjectClaim` (WIP)
 
-### Example
+### Example CR
 
 ```yaml
 apiVersion: gcp.managed.openshift.io/v1alpha1
