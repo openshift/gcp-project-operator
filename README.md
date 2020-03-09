@@ -19,7 +19,34 @@
 
 The gcp project operator is reponsible for creating projects and service accounts in GCP and storing the credentials in a secret.
 
-## Workflow
+## Workflow - ProjectClaim
+
+1. The operator watches all namespaces for `ProjectClaim` resources
+2. When a `ProjectClaim` is found (see example below) the operator triggers the creation of a project in GCP
+3. After successful project creation
+  * the field `State` will be set to Ready
+  * A secret is created in the cluster namespace called `gcp`
+  * The field `spec.gcpProjectID` will be filled with the ID of the GCP project (WIP)
+4. When a `ProjectClaim` is removed, the GCP project and service accounts are deleted (WIP)
+5. The operator removes the finalizer from the `ProjectClaim` (WIP)
+
+### Example
+
+
+```yaml
+apiVersion: gcp.managed.openshift.io/v1alpha1
+kind: ProjectClaim
+metadata:
+  name: example-projectclaim
+  namespace: example-clusternamespace
+spec:
+  region: us-east1
+  legalEntity:
+    name: example-legal-entity
+    id: example-legal-entity-id
+```
+
+## Workflow - ClusterDeployment (deprecated)
 
 - The operator would watch clusterdeployments in all namespaces.
 - Operator would check that the clusterdeployment’s labels “api.openshift.com/managed = true” and “hive.openshift.io/cluster-platform = gcp"
