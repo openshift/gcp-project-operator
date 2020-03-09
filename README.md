@@ -1,5 +1,5 @@
 
-   * [Info](#info
+   * [Info](#info)
       * [Workflow ProjectClaim](#workflow---pjrojectclaim)
       * [Workflow ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
       * [Requirements](#requirements)
