@@ -28,7 +28,7 @@ OPERATOR_DOCKERFILE ?=build/ci-operator/Dockerfile
 BINFILE=build/_output/bin/$(OPERATOR_NAME)
 MAINPACKAGE=./cmd/manager
 GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
-GOFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}"
+GOFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}" -mod=vendor
 export GO111MODULE=on
 
 TESTTARGETS := $(shell go list -e ./... | egrep -v "/(vendor)/")
