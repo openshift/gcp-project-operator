@@ -24,6 +24,7 @@ var _ = Describe("ProjectclaimController", func() {
 		projectReferenceName    types.NamespacedName
 		reconciler              *ReconcileProjectClaim
 		mockClient              *mocks.MockClient
+		mockStatusWriter        *mocks.MockStatusWriter
 		projectClaim            *api.ProjectClaim
 		projectReferenceMatcher testStructs.ProjectReferenceMatcher
 		projectClaimMatcher     testStructs.ProjectClaimMatcher
@@ -41,6 +42,7 @@ var _ = Describe("ProjectclaimController", func() {
 		projectClaim = testStructs.NewProjectClaimBuilder().GetProjectClaim()
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = mocks.NewMockClient(mockCtrl)
+		mockStatusWriter = mocks.NewMockStatusWriter(mockCtrl)
 
 		reconciler = &ReconcileProjectClaim{
 			mockClient,
@@ -69,6 +71,8 @@ var _ = Describe("ProjectclaimController", func() {
 				mockClient.EXPECT().Get(gomock.Any(), projectClaimName, gomock.Any()).SetArg(2, *projectClaim)
 				mockClient.EXPECT().Update(gomock.Any(), &projectClaimMatcher)
 				mockClient.EXPECT().Create(gomock.Any(), &projectReferenceMatcher).Times(1)
+				mockClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), &projectClaimMatcher)
 			})
 
 			It("Creates a ProjectReference with the correct name", func() {
@@ -95,6 +99,31 @@ var _ = Describe("ProjectclaimController", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(projectClaimMatcher.ActualProjectClaim.Spec.ProjectReferenceCRLink.Name).To(Equal(projectReferenceMatcher.ActualProjectReference.GetName()))
 				Expect(projectClaimMatcher.ActualProjectClaim.Spec.ProjectReferenceCRLink.Namespace).To(Equal(projectReferenceMatcher.ActualProjectReference.GetNamespace()))
+			})
+			It("Updates the ProjectClaim status to Pending", func() {
+				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectClaimName})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(projectClaimMatcher.ActualProjectClaim.Status.State).To(Equal(api.ClaimStatusPending))
+			})
+		})
+		
+		Context("When the ProjectReference exists", func() {
+			JustBeforeEach(func() {
+				projectReference := testStructs.NewProjectReferenceBuilder().WithNamespacedName(projectReferenceName).GetProjectReference()
+				projectClaim.Spec.ProjectReferenceCRLink.Name = projectReferenceName.Name
+				projectClaim.Spec.ProjectReferenceCRLink.Namespace = projectReferenceName.Namespace
+				projectClaim.Status.State = api.ClaimStatusPending
+				projectClaim.SetFinalizers([]string{ProjectClaimFinalizer})
+				mockClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference)
+				mockClient.EXPECT().Get(gomock.Any(), projectClaimName, gomock.Any()).SetArg(2, *projectClaim)
+				mockClient.EXPECT().Status().Return(mockStatusWriter)
+			})
+
+			It("Updates the ProjectClaim status to PendingProject", func(){
+				mockStatusWriter.EXPECT().Update(gomock.Any(), &projectClaimMatcher)
+				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectClaimName})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(projectClaimMatcher.ActualProjectClaim.Status.State).To(Equal(api.ClaimStatusPendingProject))
 			})
 		})
 
