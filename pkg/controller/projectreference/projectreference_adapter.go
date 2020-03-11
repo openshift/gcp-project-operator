@@ -103,6 +103,38 @@ func newReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger 
 	}, nil
 }
 
+func (r *ReferenceAdapter) EnsureProjectClaimUpdated() (gcpv1alpha1.ClaimStatus, error) {
+	switch {
+	// If we are in a creating state break from the loop and conitnue to process CR
+	case r.projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusCreating:
+		break
+	// If projectReference and projectClaim are both ready there is nothing to do
+	case r.projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && r.projectClaim.Status.State == gcpv1alpha1.ClaimStatusReady:
+		r.logger.Info("ProjectReference and ProjectClaim CR are in READY state nothing to process.")
+	case r.projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady:
+
+		if r.projectClaim.Spec.GCPProjectID == "" {
+			r.projectClaim.Spec.GCPProjectID = r.projectReference.Spec.GCPProjectID
+			err := r.kubeClient.Update(context.TODO(), r.projectClaim)
+			if err != nil {
+				r.logger.Error(err, "Error updating ProjectClaim GCPProjectID")
+				return r.projectClaim.Status.State, err
+			}
+		}
+		//Project Ready update matchingClaim to ready
+		r.projectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
+		// Since conditions as of now are not inititated we need to set an empty one here
+		// This will need to removed and checked when we actually start to use conditions
+		r.projectClaim.Status.Conditions = []gcpv1alpha1.ProjectClaimCondition{}
+		err := r.kubeClient.Status().Update(context.TODO(), r.projectClaim)
+		if err != nil {
+			r.logger.Error(err, "Error updating ProjectClaim Status")
+			return r.projectClaim.Status.State, err
+		}
+	}
+	return r.projectClaim.Status.State, nil
+}
+
 func getMatchingClaimLink(projectReference *gcpv1alpha1.ProjectReference, client client.Client) (*gcpv1alpha1.ProjectClaim, error) {
 	projectClaim := &gcpv1alpha1.ProjectClaim{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: projectReference.Spec.ProjectClaimCRLink.Name, Namespace: projectReference.Spec.ProjectClaimCRLink.Namespace}, projectClaim)
