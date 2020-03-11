@@ -12,8 +12,7 @@ require (
 	github.com/go-logr/zapr v0.1.0 // indirect
 	github.com/go-openapi/spec v0.19.2
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
-	github.com/golang/mock v1.4.0
-	github.com/google/go-cmp v0.4.0
+	github.com/golang/mock v1.4.1
 	github.com/google/uuid v1.0.0
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190318015731-ff9851476e98 // indirect
@@ -40,7 +39,7 @@ require (
 	go.uber.org/zap v1.9.1 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/time v0.0.0-20191023065245-6d3f0bb11be5 // indirect
-	golang.org/x/tools v0.0.0-20200131161117-97da75b46c2a // indirect
+	golang.org/x/tools v0.0.0-20200305140159-d7d444866696 // indirect
 	google.golang.org/api v0.11.0
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/grpc v1.24.0 // indirect

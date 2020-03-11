@@ -36,6 +36,7 @@ func NewProjectClaimBuilder() *testProjectClaimBuilder {
 					Name: "fakeLegalEntityName",
 					ID:   "fakeLegalEntityID",
 				},
+				Region: "us-east1",
 			},
 		},
 	}

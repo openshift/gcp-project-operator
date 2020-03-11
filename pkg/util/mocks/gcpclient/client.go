@@ -138,6 +138,21 @@ func (mr *MockClientMockRecorder) SetIamPolicy(setIamPolicyRequest interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetIamPolicy", reflect.TypeOf((*MockClient)(nil).SetIamPolicy), setIamPolicyRequest)
 }
 
+// ListProjects mocks base method
+func (m *MockClient) ListProjects() ([]*cloudresourcemanager.Project, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListProjects")
+	ret0, _ := ret[0].([]*cloudresourcemanager.Project)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListProjects indicates an expected call of ListProjects
+func (mr *MockClientMockRecorder) ListProjects() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProjects", reflect.TypeOf((*MockClient)(nil).ListProjects))
+}
+
 // CreateProject mocks base method
 func (m *MockClient) CreateProject(parentFolder string) (*cloudresourcemanager.Operation, error) {
 	m.ctrl.T.Helper()

@@ -1,6 +1,8 @@
 
    * [Info](#info)
-      * [Workflow](#workflow)
+      * [Workflow - ProjectClaim](#workflow---projectclaim)
+         * [Example CR](#example-cr)
+      * [Workflow - ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
       * [Requirements](#requirements)
    * [Deployment](#deployment)
       * [Building](#building)
@@ -11,15 +13,44 @@
       * [Remote](#remote)
          * [Pushing Image To quay](#pushing-image-to-quay)
          * [Deploying code](#deploying-code)
-      * [GCP secret creation](#gcp-secret-creation)
-      * [GCP configmap creation](#gcp-operator-configmap-creation)
-   * [TODO](#todo)
+      * [Configuration](#configuration)
+         * [Auth Secret](#auth-secret)
+         * [Configmap](#configmap)
 
 # Info
 
 The gcp project operator is reponsible for creating projects and service accounts in GCP and storing the credentials in a secret.
 
-## Workflow
+## Workflow - ProjectClaim
+
+1. The operator watches all namespaces for `ProjectClaim` resources
+2. When a `ProjectClaim` is found (see example below) the operator triggers the creation of a project in GCP
+3. After successful project creation
+    * the field `State` will be set to Ready
+    * A secret is created in the cluster namespace, as defined in the `ProjectClaim`
+    * The field `spec.gcpProjectID` will be filled with the ID of the GCP project
+4. When a `ProjectClaim` is removed, the GCP project and service accounts are deleted (WIP)
+5. The operator removes the finalizer from the `ProjectClaim` (WIP)
+
+### Example CR
+
+```yaml
+apiVersion: gcp.managed.openshift.io/v1alpha1
+kind: ProjectClaim
+metadata:
+  name: example-projectclaim
+  namespace: example-clusternamespace
+spec:
+  region: us-east1
+  gcpCredentialSecret:
+    name: gcp-secret
+    namespace: example-clusternamespace
+  legalEntity:
+    name: example-legal-entity
+    id: example-legal-entity-id
+```
+
+## Workflow - ClusterDeployment (deprecated)
 
 - The operator would watch clusterdeployments in all namespaces.
 - Operator would check that the clusterdeployment’s labels “api.openshift.com/managed = true” and “hive.openshift.io/cluster-platform = gcp"
@@ -114,33 +145,18 @@ oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=0
 oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=1
 ```
 
-## GCP secret creation
+## Configuration
 
-```bash
-export GCPSA_NAME=gcp-account-operator
-export GCP_ORG_NAME=osd-management
-# ServiceDelivery org ID
-export GCP_ROOT_ORG_NAME=240634451310
+For the operator to interact with GCP properly, it needs a bit of configuration first.
 
-gcloud beta iam service-accounts create $GCPSA_NAME \
-    --description "$GCPSA_NAME" \
-    --display-name "$GCPSA_NAME"
+Note: unless you're running this against your very own GCP org, **someone likely already has this stuff prepared for you.**
+**Ask around.**
 
-# TODO: this does not work due perm error
-gcloud projects add-iam-policy-binding $GCP_ROOT_ORG_NAME \
-  --member serviceAccount:$GCPSA_NAME@$GCP_ORG_NAME.iam.gserviceaccount.com \
-  --role roles/owner --role roles/resourcemanager.projectCreator \
-  --role roles/resourcemanager.folderAdmin
+### Auth Secret
 
-gcloud iam service-accounts keys create key.json \
-  --iam-account $GCPSA_NAME@$GCP_ORG_NAME.iam.gserviceaccount.com
+TODO: short info on how to set up a service account with the right perms.
 
-
-kubectl create secret generic gcp-project-operator --from-file=key.json=secrets/key.json -n gcp-project-operator
-
-```
-
-## GCP Operator configmap creation
+### Configmap
 
 ```bash
 export ORGPARENTFOLDERID="12345678" # Google Cloud organization Parent Folder ID
@@ -149,23 +165,3 @@ export BILLINGACCOUNT="" # obtain billing ID from https://console.cloud.google.c
 kubectl create configmap gcp-project-operator --from-literal orgParentFolderID=$ORGPARENTFOLDERID --from-literal billingaccount=$BILLINGACCOUNT -n gcp-project-operator
 
 ```
-
-# TODO
--  Creation of project for the cluster
-  - Some of this code is mocked out but not tested since we do not have a test org yet.
-- Enabling the required APIs.
-    - Compute Engine API (`compute.googleapis.com`)
-    - Google Cloud APIs (`cloudapis.googleapis.com`)
-    - Cloud Resource Manager API (`cloudresourcemanager.googleapis.com`)
-    - Google DNS API (`dns.googleapis.com`)
-    - Identity and Access Management (IAM) API (`iam.googleapis.com`)
-    - IAM Service Account Credentials API (`iamcredentials.googleapis.com`)
-    - Service Management API (`servicemanagement.googleapis.com`)
-    - Service Usage API (`serviceusage.googleapis.com`)
-    - Google Cloud Storage JSON API (`storage-api.googleapis.com`)
-    - Cloud Storage (`storage-component.googleapis.com`)
-- Setting required quotas
-- Enabling Billing
-- Adding finalizer to the clusterdeployment
-- Cleaning up when clusterdeployment is removed
-- Credential Rotation

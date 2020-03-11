@@ -40,6 +40,7 @@ type Client interface {
 	// Cloudresourcemanager
 	GetIamPolicy(projectName string) (*cloudresourcemanager.Policy, error)
 	SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIamPolicyRequest) (*cloudresourcemanager.Policy, error)
+	ListProjects() ([]*cloudresourcemanager.Project, error)
 	CreateProject(parentFolder string) (*cloudresourcemanager.Operation, error)
 	DeleteProject(parentFolder string) (*cloudresourcemanager.Empty, error)
 
@@ -104,6 +105,15 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 		cloudBillingClient:         cloudBillingClient,
 		credentials:                creds,
 	}, nil
+}
+
+// ListProjects returns a list of all projects
+func (c *gcpClient) ListProjects() ([]*cloudresourcemanager.Project, error) {
+	resp, err := c.cloudResourceManagerClient.Projects.List().Do()
+	if err != nil {
+		return []*cloudresourcemanager.Project{}, err
+	}
+	return resp.Projects, nil
 }
 
 // CreateProject creates a project in a given folder.
