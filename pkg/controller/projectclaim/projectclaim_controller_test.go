@@ -106,7 +106,7 @@ var _ = Describe("ProjectclaimController", func() {
 				Expect(projectClaimMatcher.ActualProjectClaim.Status.State).To(Equal(api.ClaimStatusPending))
 			})
 		})
-		
+
 		Context("When the ProjectReference exists", func() {
 			JustBeforeEach(func() {
 				projectReference := testStructs.NewProjectReferenceBuilder().WithNamespacedName(projectReferenceName).GetProjectReference()
@@ -119,7 +119,7 @@ var _ = Describe("ProjectclaimController", func() {
 				mockClient.EXPECT().Status().Return(mockStatusWriter)
 			})
 
-			It("Updates the ProjectClaim status to PendingProject", func(){
+			It("Updates the ProjectClaim status to PendingProject", func() {
 				mockStatusWriter.EXPECT().Update(gomock.Any(), &projectClaimMatcher)
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectClaimName})
 				Expect(err).ToNot(HaveOccurred())

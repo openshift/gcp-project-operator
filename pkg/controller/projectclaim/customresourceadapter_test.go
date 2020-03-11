@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"k8s.io/apimachinery/pkg/runtime"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
@@ -210,13 +210,13 @@ var _ = Describe("Customresourceadapter", func() {
 			})
 		})
 	})
-	
+
 	Context("EnsureProjectClaimState()", func() {
 		var (
 			requestedState gcpv1alpha1.ClaimStatus
-			currentState gcpv1alpha1.ClaimStatus
+			currentState   gcpv1alpha1.ClaimStatus
 		)
-		JustBeforeEach(func(){
+		JustBeforeEach(func() {
 			projectClaim.Status.State = currentState
 		})
 
@@ -276,8 +276,8 @@ var _ = Describe("Customresourceadapter", func() {
 	})
 })
 
-type stubStatus struct {}
+type stubStatus struct{}
 
-func (stubStatus)Update(ctx context.Context, obj runtime.Object) error {
+func (stubStatus) Update(ctx context.Context, obj runtime.Object) error {
 	return nil
 }

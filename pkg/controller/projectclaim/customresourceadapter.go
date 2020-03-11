@@ -139,7 +139,7 @@ func (c *CustomResourceAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimS
 		if c.projectClaim.Status.State != "" {
 			return nil
 		}
-	} 
+	}
 
 	if state == gcpv1alpha1.ClaimStatusPendingProject {
 		if c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPending {
