@@ -127,36 +127,9 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	}
 
 	// Make projectReference  be processed based on state of ProjectClaim and Project Reference
-	switch {
-	// If we are in a creating state break from the loop and conitnue to process CR
-	case projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusCreating:
-		break
-	// If projectReference and projectClaim are both ready there is nothing to do
-	case projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && adapter.projectClaim.Status.State == gcpv1alpha1.ClaimStatusReady:
-		reqLogger.Info("ProjectReference and ProjectClaim CR are in READY state nothing to process.")
-		return r.doNotRequeue()
-	case projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady:
-
-		if adapter.projectClaim.Spec.GCPProjectID == "" {
-			adapter.projectClaim.Spec.GCPProjectID = projectReference.Spec.GCPProjectID
-			err = r.client.Update(context.TODO(), adapter.projectClaim)
-			if err != nil {
-				reqLogger.Error(err, "Error updating ProjectClaim GCPProjectID")
-				return r.requeueOnErr(err)
-			}
-		}
-
-		//Project Ready update matchingClaim to ready
-		adapter.projectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
-		// Since conditions as of now are not inititated we need to set an empty one here
-		// This will need to removed and checked when we actually start to use conditions
-		adapter.projectClaim.Status.Conditions = []gcpv1alpha1.ProjectClaimCondition{}
-		err := r.client.Status().Update(context.TODO(), adapter.projectClaim)
-		if err != nil {
-			reqLogger.Error(err, "Error updating ProjectClaim Status")
-			return r.requeueOnErr(err)
-		}
-		return r.doNotRequeue()
+	claimStatus, err := adapter.EnsureProjectClaimUpdated()
+	if claimStatus == gcpv1alpha1.ClaimStatusReady || err != nil {
+		return r.requeueOnErr(err)
 	}
 
 	// only make changes to ProjectReference if ProjelctClaim is pending
