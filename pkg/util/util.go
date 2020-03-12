@@ -15,8 +15,7 @@ import (
 
 const (
 	// secret information
-	gcpSecretName    = "gcp"
-	orgGcpSecretName = "gcp-project-operator"
+	gcpSecretName = "gcp"
 )
 
 // SecretExists returns a boolean to the caller based on the secretName and namespace args.

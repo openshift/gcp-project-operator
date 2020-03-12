@@ -27,8 +27,7 @@ const (
 	operatorNamespace = "gcp-project-operator"
 
 	// secret information
-	gcpSecretName    = "gcp"
-	orgGcpSecretName = "gcp-project-operator"
+	orgGcpSecretName = "gcp-project-operator-credentials"
 
 	// Configmap related configs
 	orgGcpConfigMap = "gcp-project-operator"

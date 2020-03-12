@@ -142,7 +142,7 @@ func TestNewGCPSecretCR(t *testing.T) {
 	}
 }
 
-func TestGetOrgGCPCreds(t *testing.T) {
+func TestGetGCPCredentialsFromSecret(t *testing.T) {
 	tests := []struct {
 		name            string
 		localObjects    []runtime.Object
@@ -184,7 +184,7 @@ func TestGetOrgGCPCreds(t *testing.T) {
 						APIVersion: "v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      orgGcpSecretName,
+						Name:      "badName",
 						Namespace: "testNamespace",
 					},
 				}
