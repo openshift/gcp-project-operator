@@ -1,6 +1,7 @@
 package projectclaim_test
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
@@ -208,4 +210,74 @@ var _ = Describe("Customresourceadapter", func() {
 			})
 		})
 	})
+
+	Context("EnsureProjectClaimState()", func() {
+		var (
+			requestedState gcpv1alpha1.ClaimStatus
+			currentState   gcpv1alpha1.ClaimStatus
+		)
+		JustBeforeEach(func() {
+			projectClaim.Status.State = currentState
+		})
+
+		Context("when requested state is Pending", func() {
+			BeforeEach(func() {
+				requestedState = gcpv1alpha1.ClaimStatusPending
+			})
+
+			Context("when ProjectClaim state is not empty", func() {
+				BeforeEach(func() {
+					currentState = gcpv1alpha1.ClaimStatusReady
+				})
+				It("doesn't change the ProjectClaim state", func() {
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(currentState))
+				})
+			})
+
+			Context("when ProjectClaim state is empty", func() {
+				BeforeEach(func() {
+					currentState = ""
+				})
+				It("updates the state to Pending", func() {
+					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(requestedState))
+				})
+			})
+		})
+
+		Context("when requested state is PendingProject", func() {
+			BeforeEach(func() {
+				requestedState = gcpv1alpha1.ClaimStatusPendingProject
+			})
+
+			Context("when ProjectClaim state is not Pending", func() {
+				BeforeEach(func() {
+					currentState = gcpv1alpha1.ClaimStatusReady
+				})
+				It("doesn't change the ProjectClaim state", func() {
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(currentState))
+				})
+			})
+
+			Context("when ProjectClaim state is Pending", func() {
+				BeforeEach(func() {
+					currentState = gcpv1alpha1.ClaimStatusPending
+				})
+				It("updates the state to PendingProject", func() {
+					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(requestedState))
+				})
+			})
+		})
+	})
 })
+
+type stubStatus struct{}
+
+func (stubStatus) Update(ctx context.Context, obj runtime.Object) error {
+	return nil
+}
