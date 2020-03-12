@@ -230,8 +230,8 @@ var _ = Describe("Customresourceadapter", func() {
 					currentState = gcpv1alpha1.ClaimStatusReady
 				})
 				It("doesn't change the ProjectClaim state", func() {
-					err := adapter.EnsureProjectClaimState(requestedState)
-					Expect(err).To(HaveOccurred())
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(currentState))
 				})
 			})
 
@@ -257,8 +257,8 @@ var _ = Describe("Customresourceadapter", func() {
 					currentState = gcpv1alpha1.ClaimStatusReady
 				})
 				It("doesn't change the ProjectClaim state", func() {
-					err := adapter.EnsureProjectClaimState(requestedState)
-					Expect(err).To(HaveOccurred())
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(currentState))
 				})
 			})
 
