@@ -2,6 +2,7 @@ package projectclaim
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/openshift/cluster-api/pkg/util"
@@ -137,13 +138,13 @@ func (c *CustomResourceAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimS
 
 	if state == gcpv1alpha1.ClaimStatusPending {
 		if c.projectClaim.Status.State != "" {
-			return nil
+			return fmt.Errorf("Unexpected ProjectClaim state transition: %s -> %s", c.projectClaim.Status.State, state)
 		}
 	}
 
 	if state == gcpv1alpha1.ClaimStatusPendingProject {
 		if c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPending {
-			return nil
+			return fmt.Errorf("Unexpected ProjectClaim state transition: %s -> %s", c.projectClaim.Status.State, state)
 		}
 	}
 
