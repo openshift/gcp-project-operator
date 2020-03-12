@@ -320,7 +320,7 @@ func (r *ReferenceAdapter) createCredentials() error {
 	r.logger.Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.projectClaim.Spec.GCPCredentialSecret.Name, r.projectClaim.Spec.GCPCredentialSecret.Namespace))
 	createErr := r.kubeClient.Create(context.TODO(), secret)
 	if createErr != nil {
-		r.logger.Error(createErr, "could not create service account cred secret ", "Service Account Secret Name", gcpSecretName)
+		r.logger.Error(createErr, "could not create service account cred secret ", "Service Account Secret Name", r.projectClaim.Spec.GCPCredentialSecret.Name)
 		return createErr
 	}
 
