@@ -158,10 +158,17 @@ TODO: short info on how to set up a service account with the right perms.
 
 ### Configmap
 
+The controller expects to find a `ConfigMap` with the name `gcp-project-operator` inside the `gcp-project-operator` namespace.
+It will parse it and verify its contents, expecting to extract the values of two specific fields that should be already populated by you:
+
+* `billingAccount`
+* `parentFolderID`
+
+To fulfil this prerequisite, please type:
+
 ```bash
-export ORGPARENTFOLDERID="12345678" # Google Cloud organization Parent Folder ID
-export BILLINGACCOUNT="" # obtain billing ID from https://console.cloud.google.com/billing
+export PARENTFOLDERID="123456789123"         # Google Cloud organization Parent Folder ID
+export BILLINGACCOUNT="123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
 
-kubectl create configmap gcp-project-operator --from-literal orgParentFolderID=$ORGPARENTFOLDERID --from-literal billingaccount=$BILLINGACCOUNT -n gcp-project-operator
-
+kubectl create -n gcp-project-operator configmap gcp-project-operator --from-literal parentFolderID=$PARENTFOLDERID --from-literal billingAccount=$BILLINGACCOUNT
 ```
