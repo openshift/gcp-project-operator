@@ -87,6 +87,19 @@ func (c *CustomResourceAdapter) FinalizeProjectClaim() error {
 	return nil
 }
 
+func (c *CustomResourceAdapter) EnsureProjectClaimInitialized() (ObjectState, error) {
+	if c.projectClaim.Status.Conditions == nil {
+		c.projectClaim.Status.Conditions = []gcpv1alpha1.ProjectClaimCondition{}
+		err := c.client.Status().Update(context.TODO(), c.projectClaim)
+		if err != nil {
+			c.logger.Error(err, "Failed to initalize ProjectClaim")
+			return ObjectUnchanged, err
+		}
+		return ObjectModified, nil
+	}
+	return ObjectUnchanged, nil
+}
+
 func (c *CustomResourceAdapter) EnsureProjectReferenceLink() (ObjectState, error) {
 	expectedLink := gcpv1alpha1.NamespacedName{
 		Name:      c.projectReference.GetName(),

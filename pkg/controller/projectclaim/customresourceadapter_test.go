@@ -21,16 +21,18 @@ import (
 
 var _ = Describe("Customresourceadapter", func() {
 	var (
-		adapter      *CustomResourceAdapter
-		mockCtrl     *gomock.Controller
-		mockClient   *mocks.MockClient
-		projectClaim *gcpv1alpha1.ProjectClaim
+		adapter          *CustomResourceAdapter
+		mockCtrl         *gomock.Controller
+		mockClient       *mocks.MockClient
+		mockStatusWriter *mocks.MockStatusWriter
+		projectClaim     *gcpv1alpha1.ProjectClaim
 	)
 
 	BeforeEach(func() {
-		projectClaim = testStructs.NewProjectClaimBuilder().GetProjectClaim()
+		projectClaim = testStructs.NewProjectClaimBuilder().Initialized().GetProjectClaim()
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = mocks.NewMockClient(mockCtrl)
+		mockStatusWriter = mocks.NewMockStatusWriter(mockCtrl)
 	})
 	JustBeforeEach(func() {
 		adapter = NewCustomResourceAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient)
@@ -79,7 +81,7 @@ var _ = Describe("Customresourceadapter", func() {
 			matcher *testStructs.ProjectClaimMatcher
 		)
 		BeforeEach(func() {
-			projectClaim = testStructs.NewProjectClaimBuilder().WithFinalizer([]string{ProjectClaimFinalizer}).GetProjectClaim()
+			projectClaim = testStructs.NewProjectClaimBuilder().WithFinalizer([]string{ProjectClaimFinalizer}).Initialized().GetProjectClaim()
 			matcher = testStructs.NewProjectClaimMatcher()
 		})
 
@@ -125,6 +127,34 @@ var _ = Describe("Customresourceadapter", func() {
 		})
 	})
 
+	Context("EnsureProjectClaimInitialized", func() {
+		Context("When conditions are already existing", func() {
+			BeforeEach(func() {
+				projectClaim = testStructs.NewProjectClaimBuilder().Initialized().GetProjectClaim()
+			})
+
+			It("doesn't update ProjectClaim status", func() {
+				crState, err := adapter.EnsureProjectClaimInitialized()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(crState).To(Equal(projectclaim.ObjectUnchanged))
+			})
+		})
+		Context("When conditions are not set", func() {
+			BeforeEach(func() {
+				projectClaim.Status.Conditions = nil
+			})
+			It("Initializes them with an empty array", func() {
+				matcher := testStructs.NewProjectClaimMatcher()
+				mockClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
+				crState, err := adapter.EnsureProjectClaimInitialized()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(crState).To(Equal(projectclaim.ObjectModified))
+				Expect(matcher.ActualProjectClaim.Status.Conditions).NotTo(Equal(nil))
+				Expect(len(matcher.ActualProjectClaim.Status.Conditions)).To(Equal(0))
+			})
+		})
+	})
 	Context("EnsureProjectReferenceLink", func() {
 		Context("when ProjectReferenceCRLink is not set", func() {
 			It("sets the ProjectReferenceCRLink and returns ObjectModified", func() {

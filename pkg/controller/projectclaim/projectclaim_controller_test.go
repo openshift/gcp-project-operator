@@ -38,7 +38,7 @@ var _ = Describe("ProjectclaimController", func() {
 			Name:      projectClaimName.Namespace + "-" + projectClaimName.Name,
 			Namespace: "gcp-project-operator",
 		}
-		projectClaim = testStructs.NewProjectClaimBuilder().GetProjectClaim()
+		projectClaim = testStructs.NewProjectClaimBuilder().Initialized().GetProjectClaim()
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = mocks.NewMockClient(mockCtrl)
 

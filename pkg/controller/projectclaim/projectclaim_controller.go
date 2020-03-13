@@ -92,12 +92,17 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 		return r.doNotRequeue()
 	}
 
+	crState, err := adapter.EnsureProjectClaimInitialized()
+	if crState == ObjectModified || err != nil {
+		return r.requeueOnErr(err)
+	}
+
 	err = adapter.EnsureProjectReferenceExists()
 	if err != nil {
 		return r.requeueOnErr(err)
 	}
 
-	crState, err := adapter.EnsureProjectReferenceLink()
+	crState, err = adapter.EnsureProjectReferenceLink()
 	if crState == ObjectModified || err != nil {
 		return r.requeueOnErr(err)
 	}
