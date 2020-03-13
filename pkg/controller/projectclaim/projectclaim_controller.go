@@ -97,6 +97,11 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 		return r.requeueOnErr(err)
 	}
 
+	err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPending)
+	if err != nil {
+		return r.requeueOnErr(err)
+	}
+
 	err = adapter.EnsureProjectReferenceExists()
 	if err != nil {
 		return r.requeueOnErr(err)
@@ -109,6 +114,11 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 
 	crState, err = adapter.EnsureFinalizer()
 	if crState == ObjectModified || err != nil {
+		return r.requeueOnErr(err)
+	}
+
+	err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPendingProject)
+	if err != nil {
 		return r.requeueOnErr(err)
 	}
 
