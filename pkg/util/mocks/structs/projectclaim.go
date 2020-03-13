@@ -42,6 +42,13 @@ func NewProjectClaimBuilder() *testProjectClaimBuilder {
 	}
 }
 
+func (t *testProjectClaimBuilder) Initialized() *testProjectClaimBuilder {
+	t.p.Status = api.ProjectClaimStatus{
+		Conditions: []api.ProjectClaimCondition{},
+	}
+	return t
+}
+
 func (t *testProjectClaimBuilder) WithFinalizer(finalizers []string) *testProjectClaimBuilder {
 	t.p.Finalizers = finalizers
 	return t

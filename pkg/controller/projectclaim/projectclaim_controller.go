@@ -92,18 +92,33 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 		return r.doNotRequeue()
 	}
 
+	crState, err := adapter.EnsureProjectClaimInitialized()
+	if crState == ObjectModified || err != nil {
+		return r.requeueOnErr(err)
+	}
+
+	err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPending)
+	if err != nil {
+		return r.requeueOnErr(err)
+	}
+
 	err = adapter.EnsureProjectReferenceExists()
 	if err != nil {
 		return r.requeueOnErr(err)
 	}
 
-	crState, err := adapter.EnsureProjectReferenceLink()
+	crState, err = adapter.EnsureProjectReferenceLink()
 	if crState == ObjectModified || err != nil {
 		return r.requeueOnErr(err)
 	}
 
 	crState, err = adapter.EnsureFinalizer()
 	if crState == ObjectModified || err != nil {
+		return r.requeueOnErr(err)
+	}
+
+	err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPendingProject)
+	if err != nil {
 		return r.requeueOnErr(err)
 	}
 

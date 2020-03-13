@@ -1,6 +1,7 @@
 package projectclaim_test
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
@@ -21,16 +23,18 @@ import (
 
 var _ = Describe("Customresourceadapter", func() {
 	var (
-		adapter      *CustomResourceAdapter
-		mockCtrl     *gomock.Controller
-		mockClient   *mocks.MockClient
-		projectClaim *gcpv1alpha1.ProjectClaim
+		adapter          *CustomResourceAdapter
+		mockCtrl         *gomock.Controller
+		mockClient       *mocks.MockClient
+		mockStatusWriter *mocks.MockStatusWriter
+		projectClaim     *gcpv1alpha1.ProjectClaim
 	)
 
 	BeforeEach(func() {
-		projectClaim = testStructs.NewProjectClaimBuilder().GetProjectClaim()
+		projectClaim = testStructs.NewProjectClaimBuilder().Initialized().GetProjectClaim()
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = mocks.NewMockClient(mockCtrl)
+		mockStatusWriter = mocks.NewMockStatusWriter(mockCtrl)
 	})
 	JustBeforeEach(func() {
 		adapter = NewCustomResourceAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient)
@@ -79,7 +83,7 @@ var _ = Describe("Customresourceadapter", func() {
 			matcher *testStructs.ProjectClaimMatcher
 		)
 		BeforeEach(func() {
-			projectClaim = testStructs.NewProjectClaimBuilder().WithFinalizer([]string{ProjectClaimFinalizer}).GetProjectClaim()
+			projectClaim = testStructs.NewProjectClaimBuilder().WithFinalizer([]string{ProjectClaimFinalizer}).Initialized().GetProjectClaim()
 			matcher = testStructs.NewProjectClaimMatcher()
 		})
 
@@ -125,6 +129,34 @@ var _ = Describe("Customresourceadapter", func() {
 		})
 	})
 
+	Context("EnsureProjectClaimInitialized", func() {
+		Context("When conditions are already existing", func() {
+			BeforeEach(func() {
+				projectClaim = testStructs.NewProjectClaimBuilder().Initialized().GetProjectClaim()
+			})
+
+			It("doesn't update ProjectClaim status", func() {
+				crState, err := adapter.EnsureProjectClaimInitialized()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(crState).To(Equal(projectclaim.ObjectUnchanged))
+			})
+		})
+		Context("When conditions are not set", func() {
+			BeforeEach(func() {
+				projectClaim.Status.Conditions = nil
+			})
+			It("Initializes them with an empty array", func() {
+				matcher := testStructs.NewProjectClaimMatcher()
+				mockClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
+				crState, err := adapter.EnsureProjectClaimInitialized()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(crState).To(Equal(projectclaim.ObjectModified))
+				Expect(matcher.ActualProjectClaim.Status.Conditions).NotTo(Equal(nil))
+				Expect(len(matcher.ActualProjectClaim.Status.Conditions)).To(Equal(0))
+			})
+		})
+	})
 	Context("EnsureProjectReferenceLink", func() {
 		Context("when ProjectReferenceCRLink is not set", func() {
 			It("sets the ProjectReferenceCRLink and returns ObjectModified", func() {
@@ -208,4 +240,74 @@ var _ = Describe("Customresourceadapter", func() {
 			})
 		})
 	})
+
+	Context("EnsureProjectClaimState()", func() {
+		var (
+			requestedState gcpv1alpha1.ClaimStatus
+			currentState   gcpv1alpha1.ClaimStatus
+		)
+		JustBeforeEach(func() {
+			projectClaim.Status.State = currentState
+		})
+
+		Context("when requested state is Pending", func() {
+			BeforeEach(func() {
+				requestedState = gcpv1alpha1.ClaimStatusPending
+			})
+
+			Context("when ProjectClaim state is not empty", func() {
+				BeforeEach(func() {
+					currentState = gcpv1alpha1.ClaimStatusReady
+				})
+				It("doesn't change the ProjectClaim state", func() {
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(currentState))
+				})
+			})
+
+			Context("when ProjectClaim state is empty", func() {
+				BeforeEach(func() {
+					currentState = ""
+				})
+				It("updates the state to Pending", func() {
+					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(requestedState))
+				})
+			})
+		})
+
+		Context("when requested state is PendingProject", func() {
+			BeforeEach(func() {
+				requestedState = gcpv1alpha1.ClaimStatusPendingProject
+			})
+
+			Context("when ProjectClaim state is not Pending", func() {
+				BeforeEach(func() {
+					currentState = gcpv1alpha1.ClaimStatusReady
+				})
+				It("doesn't change the ProjectClaim state", func() {
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(currentState))
+				})
+			})
+
+			Context("when ProjectClaim state is Pending", func() {
+				BeforeEach(func() {
+					currentState = gcpv1alpha1.ClaimStatusPending
+				})
+				It("updates the state to PendingProject", func() {
+					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
+					adapter.EnsureProjectClaimState(requestedState)
+					Expect(projectClaim.Status.State).To(Equal(requestedState))
+				})
+			})
+		})
+	})
 })
+
+type stubStatus struct{}
+
+func (stubStatus) Update(ctx context.Context, obj runtime.Object) error {
+	return nil
+}

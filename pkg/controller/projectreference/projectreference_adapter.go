@@ -124,9 +124,6 @@ func (r *ReferenceAdapter) EnsureProjectClaimUpdated() (gcpv1alpha1.ClaimStatus,
 
 	//Project Ready update matchingClaim to ready
 	r.projectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
-	// Since conditions as of now are not inititated we need to set an empty one here
-	// This will need to removed and checked when we actually start to use conditions
-	r.projectClaim.Status.Conditions = []gcpv1alpha1.ProjectClaimCondition{}
 	err := r.kubeClient.Status().Update(context.TODO(), r.projectClaim)
 	if err != nil {
 		r.logger.Error(err, "Error updating ProjectClaim Status")
