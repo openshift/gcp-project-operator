@@ -142,9 +142,19 @@ func (r *ReconcileClusterDeployment) Reconcile(request reconcile.Request) (recon
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling ClusterDeployment")
 
+	config, err := configmap.GetOperatorConfigMap(r.client)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if config.ClusterDeploymentController == "disabled" {
+		reqLogger.Info("ClusterDeployment controller disabled. Not reconciling.")
+		return reconcile.Result{}, nil
+	}
+
 	// Fetch the ClusterDeployment instance
 	cd := &hivev1alpha1.ClusterDeployment{}
-	err := r.client.Get(context.Background(), request.NamespacedName, cd)
+	err = r.client.Get(context.Background(), request.NamespacedName, cd)
 	if err != nil {
 		if kerrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
