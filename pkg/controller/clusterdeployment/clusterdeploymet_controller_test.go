@@ -34,12 +34,16 @@ func TestReconcile(t *testing.T) {
 			name:         "cluster deployment not found",
 			expectedErr:  nil,
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
+			localObjects: []runtime.Object{
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").GetConfigMap(),
+			},
 		},
 		{
 			name:        "CD check fail ErrMissingRegion",
 			expectedErr: fmt.Errorf("MissingRegion"),
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().WithOutRegion().GetClusterDeployment(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").GetConfigMap(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
@@ -48,6 +52,7 @@ func TestReconcile(t *testing.T) {
 			expectedErr: nil,
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().Installed().GetClusterDeployment(),
+				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").GetConfigMap(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
