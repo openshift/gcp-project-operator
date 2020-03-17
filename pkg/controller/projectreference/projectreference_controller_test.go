@@ -30,6 +30,8 @@ const (
 	testNamespace            = "namespace"
 )
 
+const ProjectReferenceFinalizer string = "finalizer.gcp.managed.openshift.io"
+
 var _ = Describe("ProjectReference controller reconcilation", func() {
 	var (
 		projectReference     *api.ProjectReference
@@ -340,8 +342,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-				mockKubeClient.EXPECT().Status().Return(mockUpdater)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error"))
+				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error"))
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
@@ -360,6 +361,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 				mockKubeClient.EXPECT().Status().Return(mockUpdater)
 				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
+				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).ToNot(HaveOccurred())
 			})

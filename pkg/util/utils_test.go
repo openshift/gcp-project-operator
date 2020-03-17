@@ -93,7 +93,7 @@ func TestGetSecret(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mocks := builders.SetupDefaultMocks(t, test.localObjects)
 
-			result, err := getSecret(mocks.FakeKubeClient, test.secretName, test.secretNamespace)
+			result, err := GetSecret(mocks.FakeKubeClient, test.secretName, test.secretNamespace)
 
 			if test.expectedErr {
 				assert.Error(t, err)
