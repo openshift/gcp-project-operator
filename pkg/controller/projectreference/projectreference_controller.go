@@ -8,7 +8,6 @@ import (
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
-	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -172,59 +171,14 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeue()
 	}
 
-	configMap, err := adapter.getConfigMap()
-	if err != nil {
-		reqLogger.Error(err, "could not get ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
-		return r.requeueOnErr(err)
-	}
-
 	reqLogger.Info("Configuring Project")
-	err = adapter.createProject(configMap.ParentFolderID)
+	err = adapter.EnsureProjectConfigured()
 	if err != nil {
-		if err == operrors.ErrInactiveProject {
-			log.Error(err, "Unrecoverable Error")
-			projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.client.Status().Update(context.TODO(), projectReference)
-			if err != nil {
-				reqLogger.Error(err, "Error updating ProjectReference Status")
-				return r.requeueOnErr(err)
-			}
-		}
-		reqLogger.Error(err, "Could not create ProjectID")
-		return r.requeueOnErr(err)
-	}
-
-	reqLogger.Info("Configuring APIS")
-	// TODO() Set condition billing has been created and skip that this step if condition is true
-	err = adapter.configureAPIS()
-	if err != nil {
-		reqLogger.Error(err, "Error configuring APIS")
 		return r.requeueAfter(5*time.Second, err)
 	}
 
-	reqLogger.Info("Configuring Service Account")
-	err = adapter.configureSeriveAccount()
-	if err != nil {
-		reqLogger.Error(err, "Error configuring service account")
-		return r.requeueAfter(5*time.Second, err)
-	}
-
-	reqLogger.Info("Creating Credentials")
-	err = adapter.createCredentials()
-	if err != nil {
-		reqLogger.Error(err, "Error creating credentials")
-		return r.requeueAfter(5*time.Second, err)
-	}
-
-	log.Info("Setting Status on projectReference")
-	projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
-	err = r.client.Status().Update(context.TODO(), projectReference)
-	if err != nil {
-		reqLogger.Error(err, "Error updating ProjectReference Status")
-		return r.requeueOnErr(err)
-	}
-
-	return r.doNotRequeue()
+	err = adapter.EnsureStateReady()
+	return r.requeueOnErr(err)
 }
 
 func (r *ReconcileProjectReference) doNotRequeue() (reconcile.Result, error) {
