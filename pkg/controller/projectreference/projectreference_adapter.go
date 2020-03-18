@@ -132,6 +132,59 @@ func (r *ReferenceAdapter) EnsureProjectClaimUpdated() (gcpv1alpha1.ClaimStatus,
 	return r.projectClaim.Status.State, nil
 }
 
+func (r *ReferenceAdapter) EnsureProjectConfigured() error {
+	configMap, err := r.getConfigMap()
+	if err != nil {
+		r.logger.Error(err, "could not get ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
+		return err
+	}
+
+	err = r.createProject(configMap.ParentFolderID)
+	if err != nil {
+		if err == operrors.ErrInactiveProject {
+			log.Error(err, "Unrecoverable Error")
+			r.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
+			err := r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+			if err != nil {
+				r.logger.Error(err, "Error updating ProjectReference Status")
+				return err
+			}
+		}
+		r.logger.Error(err, "Could not create project")
+		return err
+	}
+
+	r.logger.Info("Configuring APIS")
+	err = r.configureAPIS(configMap)
+	if err != nil {
+		r.logger.Error(err, "Error configuring APIS")
+		return err
+	}
+
+	r.logger.Info("Configuring Service Account")
+	err = r.configureServiceAccount()
+	if err != nil {
+		r.logger.Error(err, "Error configuring service account")
+		return err
+	}
+
+	r.logger.Info("Creating Credentials")
+	err = r.createCredentials()
+	if err != nil {
+		r.logger.Error(err, "Error creating credentials")
+	}
+	return err
+}
+
+func (r *ReferenceAdapter) EnsureStateReady() error {
+	if r.projectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
+		r.logger.Info("Setting Status on projectReference")
+		r.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
+		return r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+	}
+	return nil
+}
+
 func getMatchingClaimLink(projectReference *gcpv1alpha1.ProjectReference, client client.Client) (*gcpv1alpha1.ProjectClaim, error) {
 	projectClaim := &gcpv1alpha1.ProjectClaim{}
 	err := client.Get(context.TODO(), types.NamespacedName{Name: projectReference.Spec.ProjectClaimCRLink.Name, Namespace: projectReference.Spec.ProjectClaimCRLink.Namespace}, projectClaim)
@@ -217,15 +270,9 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 	return nil
 }
 
-func (r *ReferenceAdapter) configureAPIS() error {
-	config, err := r.getConfigMap()
-	if err != nil {
-		r.logger.Error(err, "Could not get ConfigMap", "Operator Namespace", operatorNamespace)
-		return err
-	}
-
+func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) error {
 	r.logger.Info("Enabling Billing API")
-	err = r.gcpClient.EnableAPI(r.projectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
+	err := r.gcpClient.EnableAPI(r.projectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
 	if err != nil {
 		r.logger.Error(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.projectReference.Spec.GCPProjectID))
 		return err
@@ -263,7 +310,7 @@ func (r *ReferenceAdapter) getConfigMap() (configmap.OperatorConfigMap, error) {
 	return operatorConfigMap, err
 }
 
-func (r *ReferenceAdapter) configureSeriveAccount() error {
+func (r *ReferenceAdapter) configureServiceAccount() error {
 	// See if GCP service account exists if not create it
 	var serviceAccount *iam.ServiceAccount
 	serviceAccount, err := r.gcpClient.GetServiceAccount(osdServiceAccountName)
