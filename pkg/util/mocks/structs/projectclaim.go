@@ -38,6 +38,9 @@ func NewProjectClaimBuilder() *testProjectClaimBuilder {
 				},
 				Region: "us-east1",
 			},
+			Status: api.ProjectClaimStatus{
+				State: api.ClaimStatusPendingProject,
+			},
 		},
 	}
 }
