@@ -43,7 +43,7 @@ const (
 
 	// secret information
 	gcpSecretName         = "gcp"
-	orgGcpSecretName      = "gcp-project-operator"
+	orgGcpSecretName      = "gcp-project-operator-credentials"
 	osdServiceAccountName = "osd-managed-admin"
 )
 
