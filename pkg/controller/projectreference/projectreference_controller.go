@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-logr/logr"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
@@ -104,17 +105,8 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.doNotRequeue()
 	}
 
-	// Get org creds from secret
-	creds, err := util.GetGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
+	gcpClient, err := r.getGcpClient(projectReference.Spec.GCPProjectID, reqLogger)
 	if err != nil {
-		reqLogger.Error(err, "could not get org Creds from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
-		return r.requeueOnErr(err)
-	}
-
-	// Get gcpclient with creds
-	gcpClient, err := r.gcpClientBuilder(projectReference.Spec.GCPProjectID, creds)
-	if err != nil {
-		reqLogger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return r.requeueOnErr(err)
 	}
 
@@ -130,10 +122,10 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
-	// only make changes to ProjectReference if ProjelctClaim is pending
-	// if adapter.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPending {
-	// 	return r.requeueAfter(5 * time.Second)
-	// }
+	//only make changes to ProjectReference if ProjelctClaim is pending
+	if adapter.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
+		return r.requeueAfter(5*time.Second, nil)
+	}
 
 	// make sure we meet mimimum requirements to process request and set its state to creating or error if its not supported
 	if projectReference.Status.State == "" {
@@ -179,6 +171,22 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 
 	err = adapter.EnsureStateReady()
 	return r.requeueOnErr(err)
+}
+
+func (r *ReconcileProjectReference) getGcpClient(projectId string, logger logr.Logger) (gcpclient.Client, error) {
+	// Get org creds from secret
+	creds, err := util.GetGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
+	if err != nil {
+		logger.Error(err, "could not get org Creds from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
+		return nil, err
+	}
+
+	// Get gcpclient with creds
+	gcpClient, err := r.gcpClientBuilder(projectId, creds)
+	if err != nil {
+		logger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
+	}
+	return gcpClient, err
 }
 
 func (r *ReconcileProjectReference) doNotRequeue() (reconcile.Result, error) {
