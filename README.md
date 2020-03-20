@@ -154,7 +154,9 @@ Note: unless you're running this against your very own GCP org, **someone likely
 
 ### Auth Secret
 
-TODO: short info on how to set up a service account with the right perms.
+1. Create a gcp service account with appropriate permissions to an empty folder ("(Project) Owner" and "Project Creator" should suffice).
+2. Generate keys for the service account and download them.
+3. Run `oc create -n gcp-project-operator secret generic gcp-project-operator-credentials --from-file=key.json=YOUR-KEYS-FILE-NAME.json`
 
 ### Configmap
 
