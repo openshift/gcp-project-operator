@@ -2,20 +2,23 @@ package projectreference
 
 import (
 	"errors"
+	"time"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"google.golang.org/api/cloudresourcemanager/v1"
-	"google.golang.org/api/iam/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
+	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
+	"google.golang.org/api/cloudresourcemanager/v1"
+	"google.golang.org/api/iam/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var _ = Describe("ProjectreferenceAdapter", func() {
@@ -264,6 +267,108 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				})
 			})
 
+		})
+
+		Context("IsDeletionRequested", func() {
+			Context("If there is a deletionTimestamp", func() {
+				It("returns true", func() {
+					deletionTime := metav1.NewTime(time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC))
+					projectReference.SetDeletionTimestamp(&deletionTime)
+					Expect(adapter.IsDeletionRequested()).To(BeTrue())
+				})
+			})
+			Context("If there is no deletionTimestamp", func() {
+				It("returns false", func() {
+					projectReference.SetDeletionTimestamp(nil)
+					Expect(adapter.IsDeletionRequested()).NotTo(BeTrue())
+				})
+			})
+		})
+
+		Context("EnsureFinalizerDeleted", func() {
+			Context("When the finalizer exists", func() {
+				It("removes the finalizer and updates the instance", func() {
+					adapter.projectReference.SetFinalizers([]string{finalizerName})
+					mockKubeClient.EXPECT().Update(gomock.Any(), projectReference)
+					err := adapter.EnsureFinalizerDeleted()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(projectReference.Finalizers).ToNot(ContainElement(finalizerName))
+				})
+			})
+			Context("When the finalizer does not exist", func() {
+				It("does nothing", func() {
+					projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), finalizerName))
+					err := adapter.EnsureFinalizerDeleted()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(projectReference.Finalizers).ToNot(ContainElement(finalizerName))
+				})
+			})
+		})
+
+		Context("EnsureFinalizerAdded", func() {
+			Context("When the finalizer does not exist", func() {
+				It("adds the finalizer and updates the instance", func() {
+					projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), finalizerName))
+					mockKubeClient.EXPECT().Update(gomock.Any(), projectReference)
+					err := adapter.EnsureFinalizerAdded()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(projectReference.Finalizers).To(ContainElement(finalizerName))
+				})
+			})
+			Context("When the finalizer exists", func() {
+				It("does nothing", func() {
+					adapter.projectReference.SetFinalizers([]string{finalizerName})
+					err := adapter.EnsureFinalizerAdded()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(projectReference.Finalizers).To(ContainElement(finalizerName))
+				})
+			})
+		})
+
+		Context("EnsureProjectCleanedUp", func() {
+			Context("When the lifecycleStatus is unknown", func() {
+				It("returns an error", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "fake", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+			Context("When the lifecycleStatus is LIFECYCLE_STATE_UNSPECIFIED", func() {
+				It("returns an error", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "LIFECYCLE_STATE_UNSPECIFIED", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+			Context("When the lifecycleStatus is DELETE_REQUESTED", func() {
+				It("deletes the project", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "DELETE_REQUESTED", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("When the lifecycleStatus is ACTIVE", func() {
+				It("deletes the project", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("When it cannot delete the project", func() {
+				It("returns an error", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).To(HaveOccurred())
+				})
+			})
 		})
 
 	})
