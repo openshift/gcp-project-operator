@@ -1,7 +1,7 @@
 apiVersion: gcp.managed.openshift.io/v1alpha1
 kind: ProjectReference
 metadata:
-  name: example-projectreference
+  name: example-clusternamespace-example-projectclaim
   namespace: gcp-project-operator
 spec:
   # Add fields here
