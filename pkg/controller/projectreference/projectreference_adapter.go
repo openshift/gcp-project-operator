@@ -10,10 +10,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
-	"github.com/openshift/gcp-project-operator/pkg/util"
+	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/googleapi"
@@ -24,6 +25,7 @@ import (
 
 const (
 	osdServiceAccountName = "osd-managed-admin"
+	finalizerName         = "finalizer.gcp.managed.openshift.io"
 )
 
 // OSDRequiredAPIS is list of API's, required to setup
@@ -205,6 +207,52 @@ func (r *ReferenceAdapter) updateProjectID() error {
 	return r.kubeClient.Update(context.TODO(), r.projectReference)
 }
 
+// IsDeletionRequested checks the metadata.deletionTimestamp of ProjectReference instance, and returns if delete requested.
+// The controllers watching the ProjectReference use this as a signal to know when to execute the finalizer.
+func (r *ReferenceAdapter) IsDeletionRequested() bool {
+	return r.projectReference.DeletionTimestamp != nil
+}
+
+// EnsureFinalizerAdded parses the meta.Finalizers of ProjectReference instance and adds finalizerName if not found.
+func (r *ReferenceAdapter) EnsureFinalizerAdded() error {
+	if !clusterapi.Contains(r.projectReference.GetFinalizers(), finalizerName) {
+		r.projectReference.SetFinalizers(append(r.projectReference.GetFinalizers(), finalizerName))
+		return r.kubeClient.Update(context.TODO(), r.projectReference)
+	}
+	return nil
+}
+
+// EnsureFinalizerDeleted parses the meta.Finalizers of ProjectReference instance and removes finalizerName if found;
+func (r *ReferenceAdapter) EnsureFinalizerDeleted() error {
+	r.logger.Info("Deleting Finalizer")
+	finalizers := r.projectReference.GetFinalizers()
+	if clusterapi.Contains(finalizers, finalizerName) {
+		r.projectReference.SetFinalizers(clusterapi.Filter(finalizers, finalizerName))
+		return r.kubeClient.Update(context.TODO(), r.projectReference)
+	}
+	return nil
+}
+
+// EnsureProjectCleanedUp deletes the project, the secret and the finalizer if they still exist
+func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
+	err := r.deleteProject()
+	if err != nil {
+		return err
+	}
+
+	err = r.deleteCredentials()
+	if err != nil {
+		return err
+	}
+
+	err = r.EnsureFinalizerDeleted()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func GenerateProjectID() (string, error) {
 	guid := uuid.New().String()
 	hashing := sha1.New()
@@ -231,6 +279,30 @@ func (r *ReferenceAdapter) checkRequirements() error {
 	return nil
 }
 
+// deleteProject checks the Project's lifecycle state of the projectReference.Spec.GCPProjectID instance in Google GCP
+// and deletes it if not active
+func (r *ReferenceAdapter) deleteProject() error {
+	project, err := r.gcpClient.GetProject(r.projectReference.Spec.GCPProjectID)
+	if err != nil {
+		return err
+	}
+
+	switch project.LifecycleState {
+	case "DELETE_REQUESTED":
+		r.logger.Info("Project lifecycleState == DELETE_REQUESTED")
+		return nil
+	case "LIFECYCLE_STATE_UNSPECIFIED":
+		r.logger.Error(operrors.ErrUnexpectedLifecycleState, "Unexpected LifecycleState", project.LifecycleState)
+		return operrors.ErrUnexpectedLifecycleState
+	case "ACTIVE":
+		r.logger.Info("Deleting Project")
+		_, err := r.gcpClient.DeleteProject(project.ProjectId)
+		return err
+	default:
+		return fmt.Errorf("ProjectReference Controller is unable to understand the project.LifecycleState %s", project.LifecycleState)
+	}
+}
+
 func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 	// Get existing projects
 	projects, err := r.gcpClient.ListProjects()
@@ -250,7 +322,6 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 		default:
 			r.logger.Error(operrors.ErrUnexpectedLifecycleState, "Unexpected LifecycleState", project.LifecycleState)
 			return operrors.ErrUnexpectedLifecycleState
-
 		}
 	}
 
@@ -356,7 +427,7 @@ func (r *ReferenceAdapter) createCredentials() error {
 		return err
 	}
 
-	secret := util.NewGCPSecretCRV2(string(privateKeyString), types.NamespacedName{
+	secret := gcputil.NewGCPSecretCRV2(string(privateKeyString), types.NamespacedName{
 		Namespace: r.projectClaim.Spec.GCPCredentialSecret.Namespace,
 		Name:      r.projectClaim.Spec.GCPCredentialSecret.Name,
 	})
@@ -364,8 +435,35 @@ func (r *ReferenceAdapter) createCredentials() error {
 	r.logger.Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.projectClaim.Spec.GCPCredentialSecret.Name, r.projectClaim.Spec.GCPCredentialSecret.Namespace))
 	createErr := r.kubeClient.Create(context.TODO(), secret)
 	if createErr != nil {
-		r.logger.Error(createErr, "could not create service account cred secret ", "Service Account Secret Name", r.projectClaim.Spec.GCPCredentialSecret.Name)
+		r.logger.Error(createErr, "could not create service account secret ", "Service Account Secret Name", r.projectClaim.Spec.GCPCredentialSecret.Name)
 		return createErr
+	}
+
+	return nil
+}
+
+func (r *ReferenceAdapter) deleteCredentials() error {
+	r.logger.Info("Deleting Credentials")
+	secret := types.NamespacedName{
+		Namespace: r.projectClaim.Spec.GCPCredentialSecret.Namespace,
+		Name:      r.projectClaim.Spec.GCPCredentialSecret.Name,
+	}
+
+	// Check if the Secret exists
+	if gcputil.SecretExists(r.kubeClient, secret.Name, secret.Namespace) {
+		// Get the secret key
+		key, err := gcputil.GetSecret(r.kubeClient, secret.Name, secret.Namespace)
+		if err != nil {
+			r.logger.Error(err, "could not get the service account secret ", "Service Account Secret Name", secret.Name)
+			return err
+		}
+
+		// Delete the secret
+		err = r.kubeClient.Delete(context.TODO(), key)
+		if err != nil {
+			r.logger.Error(err, "could not delete service account secret ", "Service Account Secret Name", secret.Name)
+			return err
+		}
 	}
 
 	return nil
@@ -385,7 +483,7 @@ func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string) (Addo
 	}
 
 	//Checking if policy is modified
-	newBindings, modified := util.AddOrUpdateBinding(policy.Bindings, OSDRequiredRoles, serviceAccountEmail)
+	newBindings, modified := gcputil.AddOrUpdateBinding(policy.Bindings, OSDRequiredRoles, serviceAccountEmail)
 
 	// add new bindings to policy
 	policy.Bindings = newBindings

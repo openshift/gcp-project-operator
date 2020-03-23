@@ -183,6 +183,21 @@ func (mr *MockClientMockRecorder) DeleteProject(parentFolder interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteProject", reflect.TypeOf((*MockClient)(nil).DeleteProject), parentFolder)
 }
 
+// GetProject mocks base method
+func (m *MockClient) GetProject(projectID string) (*cloudresourcemanager.Project, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetProject", projectID)
+	ret0, _ := ret[0].(*cloudresourcemanager.Project)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetProject indicates an expected call of GetProject
+func (mr *MockClientMockRecorder) GetProject(projectID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProject", reflect.TypeOf((*MockClient)(nil).GetProject), projectID)
+}
+
 // EnableAPI mocks base method
 func (m *MockClient) EnableAPI(projectID, api string) error {
 	m.ctrl.T.Helper()

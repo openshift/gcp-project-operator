@@ -15,7 +15,9 @@ import (
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iam/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8serrs "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -29,6 +31,8 @@ const (
 	testProjectReferenceName = "testProjectReference"
 	testNamespace            = "namespace"
 )
+
+const ProjectReferenceFinalizer string = "finalizer.gcp.managed.openshift.io"
 
 var _ = Describe("ProjectReference controller reconcilation", func() {
 	var (
@@ -340,8 +344,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-				mockKubeClient.EXPECT().Status().Return(mockUpdater)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error"))
+				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error"))
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
@@ -360,11 +363,45 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 				mockKubeClient.EXPECT().Status().Return(mockUpdater)
 				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
+				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
+	})
+	Context("Given there is a ProjectReference deletion request", func() {
+		BeforeEach(func() {
+			deletionTime := metav1.NewTime(time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC))
+			projectReference.SetDeletionTimestamp(&deletionTime)
+			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1)
+			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{
+				Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
+			}).Times(1)
+			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+		})
+		Context("When cleanup succeeds", func() {
+			It("does not requeue", func() {
+				mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+				mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
+
+				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+		Context("When cleanup fails", func() {
+			It("Gets requeued after 5 seconds", func() {
+				mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+				mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
+				result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				Expect(err).To(HaveOccurred())
+				Expect(result.RequeueAfter).To(Equal(5 * time.Second))
+			})
+		})
 	})
 
 })
