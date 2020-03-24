@@ -261,8 +261,8 @@ func GenerateProjectID() (string, error) {
 		return "", err
 	}
 	uuidsum := fmt.Sprintf("%x", hashing.Sum(nil))
-	shortuuid := uuidsum[0:26]
-	return "osd-" + shortuuid, nil
+	shortuuid := uuidsum[0:8]
+	return "o-" + shortuuid, nil
 }
 
 // updateProjectID updates the ProjectReference with a unique ID for the ProjectID
