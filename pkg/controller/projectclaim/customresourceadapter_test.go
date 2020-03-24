@@ -2,7 +2,6 @@ package projectclaim_test
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/golang/mock/gomock"
@@ -96,36 +95,22 @@ var _ = Describe("Customresourceadapter", func() {
 			})
 
 			It("removes the finalizer", func() {
-				err := adapter.FinalizeProjectClaim()
+				crStatus, err := adapter.FinalizeProjectClaim()
 				Expect(err).ToNot(HaveOccurred())
+				Expect(crStatus).To(Equal(ObjectModified))
 				Expect(matcher.ActualProjectClaim.Finalizers).ToNot(ContainElement(ProjectClaimFinalizer))
 			})
 		})
 
 		Context("when the project reference exists", func() {
-			BeforeEach(func() {
-				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectReferenceBuilder().GetProjectReference())
-			})
-
-			It("deletes the ProjectReference and removes the finalizer", func() {
+			It("there is no error and claim object is not deleted", func() {
+				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectReferenceBuilder().GetProjectReference()).Times(2)
 				mockClient.EXPECT().Delete(gomock.Any(), &testStructs.ProjectReferenceMatcher{}).Times(1)
-				mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
-				err := adapter.FinalizeProjectClaim()
+				err := adapter.EnsureProjectReferenceExists()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(matcher.ActualProjectClaim.Finalizers).ToNot(ContainElement(ProjectClaimFinalizer))
-			})
-
-			Context("when deleting the project reference fails", func() {
-				BeforeEach(func() {
-					mockClient.EXPECT().Delete(gomock.Any(), &testStructs.ProjectReferenceMatcher{}).Return(fmt.Errorf("Fake Error"))
-				})
-
-				It("does not remove the finalizer", func() {
-					mockClient.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
-					err := adapter.FinalizeProjectClaim()
-					Expect(err).To(HaveOccurred())
-					Expect(projectClaim.Finalizers).To(ContainElement(ProjectClaimFinalizer))
-				})
+				crStatus, err := adapter.FinalizeProjectClaim()
+				Expect(err).ToNot(HaveOccurred())
+				Expect(crStatus).To(Equal(ObjectUnchanged))
 			})
 		})
 	})

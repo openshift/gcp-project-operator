@@ -172,17 +172,17 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeue()
 	}
 
-	reqLogger.Info("Configuring Project")
-	err = adapter.EnsureProjectConfigured()
-	if err != nil {
-		return r.requeueAfter(5*time.Second, err)
-	}
-
 	reqLogger.Info("Adding a Finalizer")
 	err = adapter.EnsureFinalizerAdded()
 	if err != nil {
 		reqLogger.Error(err, "Error adding the finalizer")
 		return r.requeueOnErr(err)
+	}
+
+	reqLogger.Info("Configuring Project")
+	err = adapter.EnsureProjectConfigured()
+	if err != nil {
+		return r.requeueAfter(5*time.Second, err)
 	}
 
 	err = adapter.EnsureStateReady()

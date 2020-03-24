@@ -314,6 +314,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		JustBeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "Some fake id"
 			projectReference.Status.State = api.ProjectReferenceStatusCreating
+			projectReference.SetFinalizers([]string{finalizerName})
 			gomock.InOrder(
 				mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
@@ -344,7 +345,8 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error"))
+				mockKubeClient.EXPECT().Status().Return(mockUpdater)
+				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error"))
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
@@ -362,8 +364,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 				mockKubeClient.EXPECT().Status().Return(mockUpdater)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
-				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).ToNot(HaveOccurred())
 			})

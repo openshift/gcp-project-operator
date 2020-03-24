@@ -2,6 +2,7 @@ package projectclaim
 
 import (
 	"context"
+	"time"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -99,9 +100,9 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileProjectClaim) ReconcileHandler(adapter *CustomResourceAdapter) (reconcile.Result, error) {
 	if adapter.IsProjectClaimDeletion() {
-		err := adapter.FinalizeProjectClaim()
-		if err != nil {
-			return r.requeueOnErr(err)
+		crState, err := adapter.FinalizeProjectClaim()
+		if crState == ObjectUnchanged || err != nil {
+			return r.requeueAfter(5*time.Second, err)
 		}
 		return r.doNotRequeue()
 	}
@@ -145,4 +146,8 @@ func (r *ReconcileProjectClaim) doNotRequeue() (reconcile.Result, error) {
 
 func (r *ReconcileProjectClaim) requeueOnErr(err error) (reconcile.Result, error) {
 	return reconcile.Result{}, err
+}
+
+func (r *ReconcileProjectClaim) requeueAfter(duration time.Duration, err error) (reconcile.Result, error) {
+	return reconcile.Result{RequeueAfter: duration}, err
 }
