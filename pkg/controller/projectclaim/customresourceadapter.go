@@ -2,10 +2,12 @@ package projectclaim
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/openshift/cluster-api/pkg/util"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -161,10 +163,65 @@ func (c *CustomResourceAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimS
 	}
 
 	c.projectClaim.Status.State = state
+	return c.StatusUpdate()
+}
+
+// StatusUpdate updates the project claim status
+func (c *CustomResourceAdapter) StatusUpdate() error {
 	err := c.client.Status().Update(context.TODO(), c.projectClaim)
 	if err != nil {
-		c.logger.Error(err, "Failed to update ProjectClaim state")
+		c.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim state for %s", c.projectClaim.Name))
 		return err
 	}
+
+	return nil
+}
+
+// SetProjectClaimCondition sets a condition on a ProjectClaim resource's status
+func (c *CustomResourceAdapter) SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error {
+	conditions := &c.projectClaim.Status.Conditions
+	conditionType := gcpv1alpha1.ClaimConditionError
+	now := metav1.Now()
+	existingCondition := c.FindProjectClaimCondition()
+	if existingCondition == nil {
+		if status == corev1.ConditionTrue {
+			*conditions = append(
+				*conditions,
+				gcpv1alpha1.ProjectClaimCondition{
+					Type:               conditionType,
+					Status:             status,
+					Reason:             reason,
+					Message:            message,
+					LastTransitionTime: now,
+					LastProbeTime:      now,
+				},
+			)
+		}
+	} else {
+		// If it does not exist, assign it as now. Otherwise, do not touch
+		if existingCondition.Status != status {
+			existingCondition.LastTransitionTime = now
+		}
+		existingCondition.Status = status
+		existingCondition.Reason = reason
+		existingCondition.Message = message
+		existingCondition.LastProbeTime = now
+	}
+
+	return c.StatusUpdate()
+}
+
+// FindProjectClaimCondition finds the suitable ProjectClaimCondition object
+// by looking for adapter's condition list.
+// If none exists, then returns nil.
+func (c *CustomResourceAdapter) FindProjectClaimCondition() *gcpv1alpha1.ProjectClaimCondition {
+	conditions := c.projectClaim.Status.Conditions
+	conditionType := gcpv1alpha1.ClaimConditionError
+	for i, condition := range conditions {
+		if condition.Type == conditionType {
+			return &conditions[i]
+		}
+	}
+
 	return nil
 }
