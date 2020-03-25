@@ -8,6 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -157,6 +158,7 @@ var _ = Describe("Customresourceadapter", func() {
 			})
 		})
 	})
+
 	Context("EnsureProjectReferenceLink", func() {
 		Context("when ProjectReferenceCRLink is not set", func() {
 			It("sets the ProjectReferenceCRLink and returns ObjectModified", func() {
@@ -300,6 +302,46 @@ var _ = Describe("Customresourceadapter", func() {
 					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
 					adapter.EnsureProjectClaimState(requestedState)
 					Expect(projectClaim.Status.State).To(Equal(requestedState))
+				})
+			})
+		})
+
+		Context("SetProjectClaimCondition()", func() {
+			Context("when the err comes from reconcileHandler", func() {
+				var (
+					firstLastTransitionTime metav1.Time
+					firstLastProbeTime      metav1.Time
+					message                 = "ReconcileFailed"
+					reason                  = "ReconcileFailed"
+				)
+
+				It("should update the CRD", func() {
+					matcher := testStructs.NewProjectClaimMatcher()
+					mockClient.EXPECT().Status().Return(mockStatusWriter)
+					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
+					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
+					adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
+
+					var found *gcpv1alpha1.ProjectClaimCondition
+					for i, condition := range projectClaim.Status.Conditions {
+						if condition.Type == gcpv1alpha1.ClaimConditionError {
+							found = &projectClaim.Status.Conditions[i]
+						}
+					}
+
+					Expect(message).To(Equal(found.Message))
+					Expect(reason).To(Equal(found.Reason))
+
+					//Hold the last state
+					firstLastProbeTime = found.LastProbeTime
+					firstLastTransitionTime = found.LastTransitionTime
+
+					adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
+
+					Expect(message).To(Equal(found.Message))
+					Expect(reason).To(Equal(found.Reason))
+					Expect(firstLastTransitionTime).To(Equal(found.LastTransitionTime))
+					Expect(firstLastProbeTime).NotTo(Equal(found.LastProbeTime))
 				})
 			})
 		})
