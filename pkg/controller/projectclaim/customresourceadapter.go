@@ -69,24 +69,44 @@ func (c *CustomResourceAdapter) IsProjectClaimDeletion() bool {
 	return c.projectClaim.DeletionTimestamp != nil
 }
 
-func (c *CustomResourceAdapter) FinalizeProjectClaim() error {
-	projectReferenceExists, err := c.ProjectReferenceExists()
-	if err != nil {
-		return err
-	}
+func (c *CustomResourceAdapter) IsProjectReferenceDeletion() bool {
+	return c.projectReference.DeletionTimestamp != nil
+}
 
-	if projectReferenceExists {
-		err := c.client.Delete(context.TODO(), c.projectReference)
-		if err != nil {
-			return err
-		}
-	}
+func (c *CustomResourceAdapter) EnsureFinalizerDeleted() error {
+	c.logger.Info("Deleting Finalizer")
 	finalizers := c.projectClaim.GetFinalizers()
 	if util.Contains(finalizers, ProjectClaimFinalizer) {
 		c.projectClaim.SetFinalizers(util.Filter(finalizers, ProjectClaimFinalizer))
 		return c.client.Update(context.TODO(), c.projectClaim)
 	}
 	return nil
+}
+
+func (c *CustomResourceAdapter) FinalizeProjectClaim() (ObjectState, error) {
+	projectReferenceExists, err := c.ProjectReferenceExists()
+	if err != nil {
+		return ObjectUnchanged, err
+	}
+
+	projectReferenceDeletionRequested := c.IsProjectReferenceDeletion()
+	if projectReferenceExists && !projectReferenceDeletionRequested {
+		err := c.client.Delete(context.TODO(), c.projectReference)
+		if err != nil {
+			return ObjectUnchanged, err
+		}
+	}
+
+	// Assure the finalizer is not deleted as long as ProjectReference exists
+	if !projectReferenceExists {
+		err := c.EnsureFinalizerDeleted()
+		if err != nil {
+			return ObjectUnchanged, err
+		}
+		return ObjectModified, nil
+	}
+
+	return ObjectUnchanged, nil
 }
 
 func (c *CustomResourceAdapter) EnsureProjectClaimInitialized() (ObjectState, error) {
