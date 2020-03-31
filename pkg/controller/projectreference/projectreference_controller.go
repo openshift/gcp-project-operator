@@ -99,12 +99,6 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
-	// If ProjectReference is in error state exit and do nothing
-	if projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusError {
-		reqLogger.Info("ProjectReference CR is in an Error state")
-		return r.doNotRequeue()
-	}
-
 	gcpClient, err := r.getGcpClient(projectReference.Spec.GCPProjectID, reqLogger)
 	if err != nil {
 		return r.requeueOnErr(err)
@@ -122,6 +116,12 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		if err != nil {
 			return r.requeueAfter(5*time.Second, err)
 		}
+		return r.doNotRequeue()
+	}
+
+	// If ProjectReference is in error state exit and do nothing
+	if projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusError {
+		reqLogger.Info("ProjectReference CR is in an Error state")
 		return r.doNotRequeue()
 	}
 

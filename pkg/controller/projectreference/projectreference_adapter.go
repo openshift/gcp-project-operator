@@ -282,9 +282,13 @@ func (r *ReferenceAdapter) checkRequirements() error {
 // deleteProject checks the Project's lifecycle state of the projectReference.Spec.GCPProjectID instance in Google GCP
 // and deletes it if not active
 func (r *ReferenceAdapter) deleteProject() error {
-	project, err := r.gcpClient.GetProject(r.projectReference.Spec.GCPProjectID)
+	project, projectExists, err := r.getProject(r.projectReference.Spec.GCPProjectID)
 	if err != nil {
 		return err
+	}
+
+	if !projectExists {
+		return nil
 	}
 
 	switch project.LifecycleState {
@@ -304,15 +308,12 @@ func (r *ReferenceAdapter) deleteProject() error {
 }
 
 func (r *ReferenceAdapter) createProject(parentFolderID string) error {
-	// Get existing projects
-	projects, err := r.gcpClient.ListProjects()
+	project, projectExists, err := r.getProject(r.projectReference.Spec.GCPProjectID)
 	if err != nil {
 		return err
 	}
 
-	projectMap := convertProjectsToMap(projects)
-
-	if project, ok := projectMap[r.projectReference.Spec.GCPProjectID]; ok {
+	if projectExists {
 		switch project.LifecycleState {
 		case "ACTIVE":
 			r.logger.Info("Project lifecycleState == ACTIVE")
@@ -339,6 +340,19 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 	}
 
 	return nil
+}
+
+func (r *ReferenceAdapter) getProject(projectId string) (*cloudresourcemanager.Project, bool, error) {
+	// Get existing projects
+	projects, err := r.gcpClient.ListProjects()
+	if err != nil {
+		return nil, false, err
+	}
+
+	projectMap := convertProjectsToMap(projects)
+	project, exists := projectMap[projectId]
+
+	return project, exists, err
 }
 
 func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) error {
