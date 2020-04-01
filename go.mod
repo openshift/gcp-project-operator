@@ -13,6 +13,7 @@ require (
 	github.com/go-openapi/spec v0.19.2
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
 	github.com/golang/mock v1.4.3
+	github.com/google/btree v1.0.0 // indirect
 	github.com/google/uuid v1.0.0
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190318015731-ff9851476e98 // indirect
