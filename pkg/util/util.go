@@ -15,8 +15,7 @@ import (
 
 const (
 	// secret information
-	gcpSecretName    = "gcp"
-	orgGcpSecretName = "gcp-project-operator"
+	gcpSecretName = "gcp"
 )
 
 // SecretExists returns a boolean to the caller based on the secretName and namespace args.
@@ -27,8 +26,8 @@ func SecretExists(kubeClient client.Client, secretName, namespace string) bool {
 	return err == nil
 }
 
-// getSecret returns a secret based on a secretName and namespace.
-func getSecret(kubeClient client.Client, secretName, namespace string) (*corev1.Secret, error) {
+// GetSecret returns a secret based on a secretName and namespace.
+func GetSecret(kubeClient client.Client, secretName, namespace string) (*corev1.Secret, error) {
 	s := &corev1.Secret{}
 
 	err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: secretName, Namespace: namespace}, s)

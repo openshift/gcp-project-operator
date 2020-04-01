@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-logr/logr"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
-	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,8 +27,7 @@ const (
 	operatorNamespace = "gcp-project-operator"
 
 	// secret information
-	gcpSecretName    = "gcp"
-	orgGcpSecretName = "gcp-project-operator"
+	orgGcpSecretName = "gcp-project-operator-credentials"
 
 	// Configmap related configs
 	orgGcpConfigMap = "gcp-project-operator"
@@ -106,17 +105,8 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.doNotRequeue()
 	}
 
-	// Get org creds from secret
-	creds, err := util.GetGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
+	gcpClient, err := r.getGcpClient(projectReference.Spec.GCPProjectID, reqLogger)
 	if err != nil {
-		reqLogger.Error(err, "could not get org Creds from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
-		return r.requeueOnErr(err)
-	}
-
-	// Get gcpclient with creds
-	gcpClient, err := r.gcpClientBuilder(projectReference.Spec.GCPProjectID, creds)
-	if err != nil {
-		reqLogger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 		return r.requeueOnErr(err)
 	}
 
@@ -126,16 +116,25 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
+	// Cleanup
+	if adapter.IsDeletionRequested() {
+		err := adapter.EnsureProjectCleanedUp()
+		if err != nil {
+			return r.requeueAfter(5*time.Second, err)
+		}
+		return r.doNotRequeue()
+	}
+
 	// Make projectReference  be processed based on state of ProjectClaim and Project Reference
 	claimStatus, err := adapter.EnsureProjectClaimUpdated()
 	if claimStatus == gcpv1alpha1.ClaimStatusReady || err != nil {
 		return r.requeueOnErr(err)
 	}
 
-	// only make changes to ProjectReference if ProjelctClaim is pending
-	// if adapter.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPending {
-	// 	return r.requeueAfter(5 * time.Second)
-	// }
+	//only make changes to ProjectReference if ProjelctClaim is pending
+	if adapter.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
+		return r.requeueAfter(5*time.Second, nil)
+	}
 
 	// make sure we meet mimimum requirements to process request and set its state to creating or error if its not supported
 	if projectReference.Status.State == "" {
@@ -173,59 +172,38 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeue()
 	}
 
-	configMap, err := adapter.getConfigMap()
+	reqLogger.Info("Adding a Finalizer")
+	err = adapter.EnsureFinalizerAdded()
 	if err != nil {
-		reqLogger.Error(err, "could not get ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
+		reqLogger.Error(err, "Error adding the finalizer")
 		return r.requeueOnErr(err)
 	}
 
 	reqLogger.Info("Configuring Project")
-	err = adapter.createProject(configMap.ParentFolderID)
+	err = adapter.EnsureProjectConfigured()
 	if err != nil {
-		if err == operrors.ErrInactiveProject {
-			log.Error(err, "Unrecoverable Error")
-			projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.client.Status().Update(context.TODO(), projectReference)
-			if err != nil {
-				reqLogger.Error(err, "Error updating ProjectReference Status")
-				return r.requeueOnErr(err)
-			}
-		}
-		reqLogger.Error(err, "Could not create ProjectID")
-		return r.requeueOnErr(err)
-	}
-
-	reqLogger.Info("Configuring APIS")
-	// TODO() Set condition billing has been created and skip that this step if condition is true
-	err = adapter.configureAPIS()
-	if err != nil {
-		reqLogger.Error(err, "Error configuring APIS")
 		return r.requeueAfter(5*time.Second, err)
 	}
 
-	reqLogger.Info("Configuring Service Account")
-	err = adapter.configureSeriveAccount()
+	err = adapter.EnsureStateReady()
+	return r.requeueOnErr(err)
+}
+
+func (r *ReconcileProjectReference) getGcpClient(projectId string, logger logr.Logger) (gcpclient.Client, error) {
+	// Get org creds from secret
+	creds, err := util.GetGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
-		reqLogger.Error(err, "Error configuring service account")
-		return r.requeueAfter(5*time.Second, err)
+		logger.Error(err, "could not get org Creds from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
+		return nil, err
 	}
 
-	reqLogger.Info("Creating Credentials")
-	err = adapter.createCredentials()
-	if err != nil {
-		reqLogger.Error(err, "Error creating credentials")
-		return r.requeueAfter(5*time.Second, err)
-	}
+	// Get gcpclient with creds
+	gcpClient, err := r.gcpClientBuilder(projectId, creds)
 
-	log.Info("Setting Status on projectReference")
-	projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
-	err = r.client.Status().Update(context.TODO(), projectReference)
 	if err != nil {
-		reqLogger.Error(err, "Error updating ProjectReference Status")
-		return r.requeueOnErr(err)
+		logger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
 	}
-
-	return r.doNotRequeue()
+	return gcpClient, err
 }
 
 func (r *ReconcileProjectReference) doNotRequeue() (reconcile.Result, error) {

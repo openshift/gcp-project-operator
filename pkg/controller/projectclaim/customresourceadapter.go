@@ -2,10 +2,12 @@ package projectclaim
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"github.com/openshift/cluster-api/pkg/util"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -67,24 +69,57 @@ func (c *CustomResourceAdapter) IsProjectClaimDeletion() bool {
 	return c.projectClaim.DeletionTimestamp != nil
 }
 
-func (c *CustomResourceAdapter) FinalizeProjectClaim() error {
-	projectReferenceExists, err := c.ProjectReferenceExists()
-	if err != nil {
-		return err
-	}
+func (c *CustomResourceAdapter) IsProjectReferenceDeletion() bool {
+	return c.projectReference.DeletionTimestamp != nil
+}
 
-	if projectReferenceExists {
-		err := c.client.Delete(context.TODO(), c.projectReference)
-		if err != nil {
-			return err
-		}
-	}
+func (c *CustomResourceAdapter) EnsureFinalizerDeleted() error {
+	c.logger.Info("Deleting Finalizer")
 	finalizers := c.projectClaim.GetFinalizers()
 	if util.Contains(finalizers, ProjectClaimFinalizer) {
 		c.projectClaim.SetFinalizers(util.Filter(finalizers, ProjectClaimFinalizer))
 		return c.client.Update(context.TODO(), c.projectClaim)
 	}
 	return nil
+}
+
+func (c *CustomResourceAdapter) FinalizeProjectClaim() (ObjectState, error) {
+	projectReferenceExists, err := c.ProjectReferenceExists()
+	if err != nil {
+		return ObjectUnchanged, err
+	}
+
+	projectReferenceDeletionRequested := c.IsProjectReferenceDeletion()
+	if projectReferenceExists && !projectReferenceDeletionRequested {
+		err := c.client.Delete(context.TODO(), c.projectReference)
+		if err != nil {
+			return ObjectUnchanged, err
+		}
+	}
+
+	// Assure the finalizer is not deleted as long as ProjectReference exists
+	if !projectReferenceExists {
+		err := c.EnsureFinalizerDeleted()
+		if err != nil {
+			return ObjectUnchanged, err
+		}
+		return ObjectModified, nil
+	}
+
+	return ObjectUnchanged, nil
+}
+
+func (c *CustomResourceAdapter) EnsureProjectClaimInitialized() (ObjectState, error) {
+	if c.projectClaim.Status.Conditions == nil {
+		c.projectClaim.Status.Conditions = []gcpv1alpha1.ProjectClaimCondition{}
+		err := c.client.Status().Update(context.TODO(), c.projectClaim)
+		if err != nil {
+			c.logger.Error(err, "Failed to initalize ProjectClaim")
+			return ObjectUnchanged, err
+		}
+		return ObjectModified, nil
+	}
+	return ObjectUnchanged, nil
 }
 
 func (c *CustomResourceAdapter) EnsureProjectReferenceLink() (ObjectState, error) {
@@ -127,5 +162,86 @@ func (c *CustomResourceAdapter) EnsureProjectReferenceExists() error {
 	if !projectReferenceExists {
 		return c.client.Create(context.TODO(), c.projectReference)
 	}
+	return nil
+}
+
+func (c *CustomResourceAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimStatus) error {
+	if c.projectClaim.Status.State == state {
+		return nil
+	}
+
+	if state == gcpv1alpha1.ClaimStatusPending {
+		if c.projectClaim.Status.State != "" {
+			return nil
+		}
+	}
+
+	if state == gcpv1alpha1.ClaimStatusPendingProject {
+		if c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPending {
+			return nil
+		}
+	}
+
+	c.projectClaim.Status.State = state
+	return c.StatusUpdate()
+}
+
+// StatusUpdate updates the project claim status
+func (c *CustomResourceAdapter) StatusUpdate() error {
+	err := c.client.Status().Update(context.TODO(), c.projectClaim)
+	if err != nil {
+		c.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim state for %s", c.projectClaim.Name))
+		return err
+	}
+
+	return nil
+}
+
+// SetProjectClaimCondition sets a condition on a ProjectClaim resource's status
+func (c *CustomResourceAdapter) SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error {
+	conditions := &c.projectClaim.Status.Conditions
+	conditionType := gcpv1alpha1.ClaimConditionError
+	now := metav1.Now()
+	existingCondition := c.FindProjectClaimCondition()
+	if existingCondition == nil {
+		if status == corev1.ConditionTrue {
+			*conditions = append(
+				*conditions,
+				gcpv1alpha1.ProjectClaimCondition{
+					Type:               conditionType,
+					Status:             status,
+					Reason:             reason,
+					Message:            message,
+					LastTransitionTime: now,
+					LastProbeTime:      now,
+				},
+			)
+		}
+	} else {
+		// If it does not exist, assign it as now. Otherwise, do not touch
+		if existingCondition.Status != status {
+			existingCondition.LastTransitionTime = now
+		}
+		existingCondition.Status = status
+		existingCondition.Reason = reason
+		existingCondition.Message = message
+		existingCondition.LastProbeTime = now
+	}
+
+	return c.StatusUpdate()
+}
+
+// FindProjectClaimCondition finds the suitable ProjectClaimCondition object
+// by looking for adapter's condition list.
+// If none exists, then returns nil.
+func (c *CustomResourceAdapter) FindProjectClaimCondition() *gcpv1alpha1.ProjectClaimCondition {
+	conditions := c.projectClaim.Status.Conditions
+	conditionType := gcpv1alpha1.ClaimConditionError
+	for i, condition := range conditions {
+		if condition.Type == conditionType {
+			return &conditions[i]
+		}
+	}
+
 	return nil
 }

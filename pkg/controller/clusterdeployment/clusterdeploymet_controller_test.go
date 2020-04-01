@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	testClusterName = "clusterName"
-	testNamespace   = "namespace"
+	testClusterName   = "clusterName"
+	testNamespace     = "namespace"
+	testConfigMapName = "gcp-project-operator"
 )
 
 func TestReconcile(t *testing.T) {
@@ -34,12 +35,16 @@ func TestReconcile(t *testing.T) {
 			name:         "cluster deployment not found",
 			expectedErr:  nil,
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
+			localObjects: []runtime.Object{
+				builders.NewTestConfigMapBuilder(testConfigMapName, operatorNamespace, "foo", "111111").GetConfigMap(),
+			},
 		},
 		{
 			name:        "CD check fail ErrMissingRegion",
 			expectedErr: fmt.Errorf("MissingRegion"),
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().WithOutRegion().GetClusterDeployment(),
+				builders.NewTestConfigMapBuilder(testConfigMapName, operatorNamespace, "foo", "111111").GetConfigMap(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
@@ -48,14 +53,15 @@ func TestReconcile(t *testing.T) {
 			expectedErr: nil,
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().Installed().GetClusterDeployment(),
+				builders.NewTestConfigMapBuilder(testConfigMapName, operatorNamespace, "foo", "111111").GetConfigMap(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
 		{
 			name:        "failed to get ORG creds",
-			expectedErr: fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get secrets \"gcp-project-operator\" not found"),
+			expectedErr: fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get secrets \"gcp-project-operator-credentials\" not found"),
 			localObjects: []runtime.Object{
-				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").GetConfigMap(),
+				builders.NewTestConfigMapBuilder(testConfigMapName, operatorNamespace, "foo", "111111").GetConfigMap(),
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
@@ -65,7 +71,7 @@ func TestReconcile(t *testing.T) {
 			expectedErr: nil,
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
-				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").GetConfigMap(),
+				builders.NewTestConfigMapBuilder(testConfigMapName, operatorNamespace, "foo", "111111").GetConfigMap(),
 				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
 				builders.NewTestSecretBuilder(gcpSecretName, testNamespace, "testCreds").GetTestSecret(),
 			},
@@ -77,7 +83,7 @@ func TestReconcile(t *testing.T) {
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
 				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
-				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").WithoutKey("parentFolderID").GetConfigMap(),
+				builders.NewTestConfigMapBuilder(testConfigMapName, operatorNamespace, "foo", "111111").WithoutKey("parentFolderID").GetConfigMap(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},
@@ -87,7 +93,7 @@ func TestReconcile(t *testing.T) {
 			localObjects: []runtime.Object{
 				builders.NewTestClusterDeploymentBuilder().GetClusterDeployment(),
 				builders.NewTestSecretBuilder(orgGcpSecretName, operatorNamespace, "testCreds").GetTestSecret(),
-				builders.NewTestConfigMapBuilder(orgGcpSecretName, operatorNamespace, "foo", "111111").WithoutKey("billingAccount").GetConfigMap(),
+				builders.NewTestConfigMapBuilder(testConfigMapName, operatorNamespace, "foo", "111111").WithoutKey("billingAccount").GetConfigMap(),
 			},
 			setupGCPMock: func(r *mockGCP.MockClientMockRecorder) { gomock.Any() },
 		},

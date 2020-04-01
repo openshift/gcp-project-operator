@@ -13,3 +13,12 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  attributeRestrictions: null
+  resources:
+  - configmaps
+  verbs:
+  - create
+  - get
+  - update

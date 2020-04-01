@@ -38,8 +38,18 @@ func NewProjectClaimBuilder() *testProjectClaimBuilder {
 				},
 				Region: "us-east1",
 			},
+			Status: api.ProjectClaimStatus{
+				State: api.ClaimStatusPendingProject,
+			},
 		},
 	}
+}
+
+func (t *testProjectClaimBuilder) Initialized() *testProjectClaimBuilder {
+	t.p.Status = api.ProjectClaimStatus{
+		Conditions: []api.ProjectClaimCondition{},
+	}
+	return t
 }
 
 func (t *testProjectClaimBuilder) WithFinalizer(finalizers []string) *testProjectClaimBuilder {

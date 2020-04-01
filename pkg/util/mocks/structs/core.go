@@ -68,3 +68,8 @@ func (c *testConfigMapBuilder) WithoutKey(key string) *testConfigMapBuilder {
 	delete(c.cfg.Data, key)
 	return c
 }
+
+func (c *testConfigMapBuilder) WithClusterDeploymentControllerDisabled() *testConfigMapBuilder {
+	c.cfg.Data["clusterDeploymentController"] = "disabled"
+	return c
+}

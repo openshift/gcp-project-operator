@@ -43,6 +43,7 @@ type Client interface {
 	ListProjects() ([]*cloudresourcemanager.Project, error)
 	CreateProject(parentFolder string) (*cloudresourcemanager.Operation, error)
 	DeleteProject(parentFolder string) (*cloudresourcemanager.Empty, error)
+	GetProject(projectID string) (*cloudresourcemanager.Project, error)
 
 	// ServiceManagement
 	EnableAPI(projectID, api string) error
@@ -114,6 +115,15 @@ func (c *gcpClient) ListProjects() ([]*cloudresourcemanager.Project, error) {
 		return []*cloudresourcemanager.Project{}, err
 	}
 	return resp.Projects, nil
+}
+
+// GetProject returns a project
+func (c *gcpClient) GetProject(projectID string) (*cloudresourcemanager.Project, error) {
+	project, err := c.cloudResourceManagerClient.Projects.Get(projectID).Do()
+	if err != nil {
+		return nil, err
+	}
+	return project, nil
 }
 
 // CreateProject creates a project in a given folder.

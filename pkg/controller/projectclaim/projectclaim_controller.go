@@ -2,8 +2,10 @@ package projectclaim
 
 import (
 	"context"
+	"time"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -61,11 +63,7 @@ type ReconcileProjectClaim struct {
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a ProjectClaim object and makes changes based on the state read
-// and what is in the ProjectClaim.Spec
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+// Reconcile calls ReconcileHandler and updates the CRD if any err occurs
 func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling ProjectClaim")
@@ -83,13 +81,40 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 	}
 
 	adapter := NewCustomResourceAdapter(instance, reqLogger, r.client)
+	result, err := r.ReconcileHandler(adapter)
+	if err != nil {
+		message := err.Error()
+		reason := "ReconcileFailed"
+		// Update the ProjectClaimConditionCRD, ignore the error
+		_ = adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
+		return result, err
+	}
 
+	return result, nil
+}
+
+// ReconcileHandler reads that state of the cluster for a ProjectClaim object and makes changes based on the state read
+// and what is in the ProjectClaim.Spec
+// Note:
+// The Controller will requeue the Request to be processed again if the returned error is non-nil or
+// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+func (r *ReconcileProjectClaim) ReconcileHandler(adapter *CustomResourceAdapter) (reconcile.Result, error) {
 	if adapter.IsProjectClaimDeletion() {
-		err = adapter.FinalizeProjectClaim()
-		if err != nil {
-			return r.requeueOnErr(err)
+		crState, err := adapter.FinalizeProjectClaim()
+		if crState == ObjectUnchanged || err != nil {
+			return r.requeueAfter(5*time.Second, err)
 		}
 		return r.doNotRequeue()
+	}
+
+	crState, err := adapter.EnsureProjectClaimInitialized()
+	if crState == ObjectModified || err != nil {
+		return r.requeueOnErr(err)
+	}
+
+	err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPending)
+	if err != nil {
+		return r.requeueOnErr(err)
 	}
 
 	err = adapter.EnsureProjectReferenceExists()
@@ -97,13 +122,18 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 		return r.requeueOnErr(err)
 	}
 
-	crState, err := adapter.EnsureProjectReferenceLink()
+	crState, err = adapter.EnsureProjectReferenceLink()
 	if crState == ObjectModified || err != nil {
 		return r.requeueOnErr(err)
 	}
 
 	crState, err = adapter.EnsureFinalizer()
 	if crState == ObjectModified || err != nil {
+		return r.requeueOnErr(err)
+	}
+
+	err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPendingProject)
+	if err != nil {
 		return r.requeueOnErr(err)
 	}
 
@@ -116,4 +146,8 @@ func (r *ReconcileProjectClaim) doNotRequeue() (reconcile.Result, error) {
 
 func (r *ReconcileProjectClaim) requeueOnErr(err error) (reconcile.Result, error) {
 	return reconcile.Result{}, err
+}
+
+func (r *ReconcileProjectClaim) requeueAfter(duration time.Duration, err error) (reconcile.Result, error) {
+	return reconcile.Result{RequeueAfter: duration}, err
 }
