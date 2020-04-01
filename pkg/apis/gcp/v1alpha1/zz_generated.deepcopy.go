@@ -45,7 +45,7 @@ func (in *ProjectClaim) DeepCopyInto(out *ProjectClaim) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
-	out.Spec = in.Spec
+	in.Spec.DeepCopyInto(&out.Spec)
 	in.Status.DeepCopyInto(&out.Status)
 	return
 }
@@ -125,6 +125,11 @@ func (in *ProjectClaimSpec) DeepCopyInto(out *ProjectClaimSpec) {
 	out.LegalEntity = in.LegalEntity
 	out.GCPCredentialSecret = in.GCPCredentialSecret
 	out.ProjectReferenceCRLink = in.ProjectReferenceCRLink
+	if in.AvailibilityZones != nil {
+		in, out := &in.AvailibilityZones, &out.AvailibilityZones
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
