@@ -105,7 +105,7 @@ func newReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger 
 	}, nil
 }
 
-func (r *ReferenceAdapter) EnsureProjectClaimUpdated() (gcpv1alpha1.ClaimStatus, error) {
+func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, error) {
 	if r.projectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
 		return r.projectClaim.Status.State, nil
 	}
@@ -115,18 +115,25 @@ func (r *ReferenceAdapter) EnsureProjectClaimUpdated() (gcpv1alpha1.ClaimStatus,
 		return r.projectClaim.Status.State, nil
 	}
 
-	if r.projectClaim.Spec.GCPProjectID == "" {
-		r.projectClaim.Spec.GCPProjectID = r.projectReference.Spec.GCPProjectID
+	azModified, err := r.ensureClaimAvailibilityZonesSet()
+	if err != nil {
+		r.logger.Error(err, "Error ensuring availibility zones")
+		return r.projectClaim.Status.State, err
+	}
+
+	idModified := r.ensureClaimProjectIDSet()
+
+	if azModified || idModified {
 		err := r.kubeClient.Update(context.TODO(), r.projectClaim)
 		if err != nil {
-			r.logger.Error(err, "Error updating ProjectClaim GCPProjectID")
+			r.logger.Error(err, "Error updating ProjectClaim Spec")
 			return r.projectClaim.Status.State, err
 		}
 	}
 
 	//Project Ready update matchingClaim to ready
 	r.projectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
-	err := r.kubeClient.Status().Update(context.TODO(), r.projectClaim)
+	err = r.kubeClient.Status().Update(context.TODO(), r.projectClaim)
 	if err != nil {
 		r.logger.Error(err, "Error updating ProjectClaim Status")
 		return r.projectClaim.Status.State, err
@@ -199,11 +206,11 @@ func getMatchingClaimLink(projectReference *gcpv1alpha1.ProjectReference, client
 
 // updateProjectID updates the ProjectReference with a unique ID for the ProjectID
 func (r *ReferenceAdapter) updateProjectID() error {
-	projectId, err := GenerateProjectID()
+	projectID, err := GenerateProjectID()
 	if err != nil {
 		return err
 	}
-	r.projectReference.Spec.GCPProjectID = projectId
+	r.projectReference.Spec.GCPProjectID = projectID
 	return r.kubeClient.Update(context.TODO(), r.projectReference)
 }
 
@@ -332,6 +339,7 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 	if err != nil {
 		r.logger.Error(err, "could not create project", "Parent Folder ID", parentFolderID, "Requested Project ID", r.projectReference.Spec.GCPProjectID)
 		r.logger.Info("Clearing gcpProjectID from ProjectReferenceSpec")
+		//Todo() We need to requeue here ot it will continue to the next step.
 		err = r.clearProjectID()
 		if err != nil {
 			return err
@@ -481,6 +489,31 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 	}
 
 	return nil
+}
+
+// ensureAvailibilityZonesSet sets the az in the projectclaim spec if necessary
+// returns true if the project claim has been modified
+func (r *ReferenceAdapter) ensureClaimAvailibilityZonesSet() (bool, error) {
+	if len(r.projectClaim.Spec.AvailibilityZones) > 0 {
+		return false, nil
+	}
+
+	zones, err := r.gcpClient.ListAvilibilityZones(r.projectReference.Spec.GCPProjectID, r.projectClaim.Spec.Region)
+	if err != nil {
+		return false, err
+	}
+
+	r.projectClaim.Spec.AvailibilityZones = zones
+
+	return true, nil
+}
+
+func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
+	if r.projectClaim.Spec.GCPProjectID == "" {
+		r.projectClaim.Spec.GCPProjectID = r.projectReference.Spec.GCPProjectID
+		return true
+	}
+	return false
 }
 
 // AddorUpdateBindingResponse contines the data that is returned by the AddOrUpdarteBindings function

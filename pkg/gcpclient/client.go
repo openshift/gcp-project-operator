@@ -15,6 +15,7 @@ import (
 	"golang.org/x/oauth2/google"
 	cloudbilling "google.golang.org/api/cloudbilling/v1"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
+	compute "google.golang.org/api/compute/v1"
 	dns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/googleapi"
 	iam "google.golang.org/api/iam/v1"
@@ -48,6 +49,9 @@ type Client interface {
 
 	// CloudBilling
 	CreateCloudBillingAccount(projectID, billingAccount string) error
+
+	//Compute
+	ListAvilibilityZones(projectID, region string) ([]string, error)
 }
 
 type gcpClient struct {
@@ -58,7 +62,7 @@ type gcpClient struct {
 	dnsClient                  *dns.Service
 	serviceManagmentClient     *serviceManagment.APIService
 	cloudBillingClient         *cloudbilling.APIService
-
+	computeClient              *compute.Service
 	// Some actions requires new individual client to be
 	// initiated. we try to re-use clients, but we store
 	// credentials for these methods
@@ -70,7 +74,7 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 	ctx := context.TODO()
 
 	// since we're using a single creds var, we should specify all the required scopes when initializing
-	creds, err := google.CredentialsFromJSON(context.TODO(), authJSON, "https://www.googleapis.com/auth/cloud-platform")
+	creds, err := google.CredentialsFromJSON(ctx, authJSON, "https://www.googleapis.com/auth/cloud-platform")
 	if err != nil {
 		return nil, fmt.Errorf("gcpclient.NewClient.google.CredentialsFromJSON %v", err)
 	}
@@ -95,6 +99,11 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 		return nil, fmt.Errorf("gcpclient.cloudBillingClient.NewService %v", err)
 	}
 
+	computeService, err := compute.NewService(ctx, option.WithCredentials(creds))
+	if err != nil {
+		return nil, fmt.Errorf("gcpclient.compute.NewService %v", err)
+	}
+
 	return &gcpClient{
 		projectName:                projectName,
 		creds:                      creds,
@@ -102,8 +111,30 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 		iamClient:                  iamClient,
 		serviceManagmentClient:     serviceManagmentClient,
 		cloudBillingClient:         cloudBillingClient,
+		computeClient:              computeService,
 		credentials:                creds,
 	}, nil
+}
+
+// ListAvilibilityZones returns a map of all avilibility zones a project has access to
+// where the key is the region and the values is a list of zones
+func (c *gcpClient) ListAvilibilityZones(projectID, region string) ([]string, error) {
+
+	zones := []string{}
+	req := c.computeClient.Zones.List(projectID)
+	err := req.Pages(context.Background(), func(page *compute.ZoneList) error {
+		for _, zone := range page.Items {
+			if strings.Contains(zone.Region, region) {
+				zones = append(zones, zone.Name)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return []string{}, err
+	}
+
+	return zones, nil
 }
 
 // ListProjects returns a list of all projects

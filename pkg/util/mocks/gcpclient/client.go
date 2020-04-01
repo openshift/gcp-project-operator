@@ -227,10 +227,10 @@ func (mr *MockClientMockRecorder) CreateCloudBillingAccount(projectID, billingAc
 }
 
 // ListAvilibilityZones mocks base method
-func (m *MockClient) ListAvilibilityZones(projectID, region string) (map[string][]string, error) {
+func (m *MockClient) ListAvilibilityZones(projectID, region string) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAvilibilityZones", projectID, region)
-	ret0, _ := ret[0].(map[string][]string)
+	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

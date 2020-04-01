@@ -166,6 +166,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		Context("When Reference State is Ready", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = api.ProjectReferenceStatusReady
+				mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 			})
 
 			Context("When ProjectClaim GCPProjectID is empty", func() {
@@ -193,7 +194,8 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 					projectClaim.Spec.GCPProjectID = "Not Empty"
 				})
 
-				It("It does not reconcile", func() {
+				It("It updates az and does not reconcile", func() {
+					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 					mockKubeClient.EXPECT().Status().Return(mockUpdater)
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
@@ -205,6 +207,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		Context("When Reference State is Ready and it fails to update", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = api.ProjectReferenceStatusReady
+				mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 			})
 
 			It("It reconciles with error", func() {
