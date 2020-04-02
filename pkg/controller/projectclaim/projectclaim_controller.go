@@ -19,10 +19,18 @@ import (
 
 var log = logf.Log.WithName("controller_projectclaim")
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
+//go:generate mockgen -destination=../../util/mocks/$GOPACKAGE/customeresourceadapter.go -package=$GOPACKAGE github.com/openshift/gcp-project-operator/pkg/controller/projectclaim CustomResourceAdapter
+type CustomResourceAdapter interface {
+	IsProjectClaimDeletion() bool
+	ProjectReferenceExists() (bool, error)
+	EnsureProjectClaimInitialized() (ObjectState, error)
+	EnsureProjectClaimState(gcpv1alpha1.ClaimStatus) error
+	EnsureProjectReferenceExists() error
+	EnsureProjectReferenceLink() (ObjectState, error)
+	EnsureFinalizer() (ObjectState, error)
+	FinalizeProjectClaim() (ObjectState, error)
+	SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error
+}
 
 // Add creates a new ProjectClaim Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -63,6 +71,10 @@ type ReconcileProjectClaim struct {
 	scheme *runtime.Scheme
 }
 
+func NewReconcileProjectClaim(client client.Client, scheme *runtime.Scheme) *ReconcileProjectClaim {
+	return &ReconcileProjectClaim{client, scheme}
+}
+
 // Reconcile calls ReconcileHandler and updates the CRD if any err occurs
 func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
@@ -80,7 +92,7 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 		return r.requeueOnErr(err)
 	}
 
-	adapter := NewCustomResourceAdapter(instance, reqLogger, r.client)
+	adapter := NewProjectClaimAdapter(instance, reqLogger, r.client)
 	result, err := r.ReconcileHandler(adapter)
 	if err != nil {
 		message := err.Error()
@@ -98,7 +110,7 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileProjectClaim) ReconcileHandler(adapter *CustomResourceAdapter) (reconcile.Result, error) {
+func (r *ReconcileProjectClaim) ReconcileHandler(adapter CustomResourceAdapter) (reconcile.Result, error) {
 	if adapter.IsProjectClaimDeletion() {
 		crState, err := adapter.FinalizeProjectClaim()
 		if crState == ObjectUnchanged || err != nil {

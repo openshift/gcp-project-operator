@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type CustomResourceAdapter struct {
+type ProjectClaimAdapter struct {
 	projectClaim     *gcpv1alpha1.ProjectClaim
 	logger           logr.Logger
 	client           client.Client
@@ -30,9 +30,9 @@ const (
 
 const ProjectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
 
-func NewCustomResourceAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client) *CustomResourceAdapter {
+func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client) *ProjectClaimAdapter {
 	projectReference := newMatchingProjectReference(projectClaim)
-	return &CustomResourceAdapter{projectClaim, logger, client, projectReference}
+	return &ProjectClaimAdapter{projectClaim, logger, client, projectReference}
 }
 
 func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1alpha1.ProjectReference {
@@ -53,7 +53,7 @@ func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1a
 	}
 }
 
-func (c *CustomResourceAdapter) ProjectReferenceExists() (bool, error) {
+func (c *ProjectClaimAdapter) ProjectReferenceExists() (bool, error) {
 	found := &gcpv1alpha1.ProjectReference{}
 	err := c.client.Get(context.TODO(), types.NamespacedName{Name: c.projectReference.Name, Namespace: c.projectReference.Namespace}, found)
 	if err != nil {
@@ -65,15 +65,15 @@ func (c *CustomResourceAdapter) ProjectReferenceExists() (bool, error) {
 	return true, nil
 }
 
-func (c *CustomResourceAdapter) IsProjectClaimDeletion() bool {
+func (c *ProjectClaimAdapter) IsProjectClaimDeletion() bool {
 	return c.projectClaim.DeletionTimestamp != nil
 }
 
-func (c *CustomResourceAdapter) IsProjectReferenceDeletion() bool {
+func (c *ProjectClaimAdapter) IsProjectReferenceDeletion() bool {
 	return c.projectReference.DeletionTimestamp != nil
 }
 
-func (c *CustomResourceAdapter) EnsureFinalizerDeleted() error {
+func (c *ProjectClaimAdapter) EnsureFinalizerDeleted() error {
 	c.logger.Info("Deleting Finalizer")
 	finalizers := c.projectClaim.GetFinalizers()
 	if util.Contains(finalizers, ProjectClaimFinalizer) {
@@ -83,7 +83,7 @@ func (c *CustomResourceAdapter) EnsureFinalizerDeleted() error {
 	return nil
 }
 
-func (c *CustomResourceAdapter) FinalizeProjectClaim() (ObjectState, error) {
+func (c *ProjectClaimAdapter) FinalizeProjectClaim() (ObjectState, error) {
 	projectReferenceExists, err := c.ProjectReferenceExists()
 	if err != nil {
 		return ObjectUnchanged, err
@@ -109,7 +109,7 @@ func (c *CustomResourceAdapter) FinalizeProjectClaim() (ObjectState, error) {
 	return ObjectUnchanged, nil
 }
 
-func (c *CustomResourceAdapter) EnsureProjectClaimInitialized() (ObjectState, error) {
+func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (ObjectState, error) {
 	if c.projectClaim.Status.Conditions == nil {
 		c.projectClaim.Status.Conditions = []gcpv1alpha1.ProjectClaimCondition{}
 		err := c.client.Status().Update(context.TODO(), c.projectClaim)
@@ -122,7 +122,7 @@ func (c *CustomResourceAdapter) EnsureProjectClaimInitialized() (ObjectState, er
 	return ObjectUnchanged, nil
 }
 
-func (c *CustomResourceAdapter) EnsureProjectReferenceLink() (ObjectState, error) {
+func (c *ProjectClaimAdapter) EnsureProjectReferenceLink() (ObjectState, error) {
 	expectedLink := gcpv1alpha1.NamespacedName{
 		Name:      c.projectReference.GetName(),
 		Namespace: c.projectReference.GetNamespace(),
@@ -138,7 +138,7 @@ func (c *CustomResourceAdapter) EnsureProjectReferenceLink() (ObjectState, error
 	return ObjectModified, nil
 }
 
-func (c *CustomResourceAdapter) EnsureFinalizer() (ObjectState, error) {
+func (c *ProjectClaimAdapter) EnsureFinalizer() (ObjectState, error) {
 	if !util.Contains(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer) {
 		c.logger.Info("Adding Finalizer to the ProjectClaim")
 		c.projectClaim.SetFinalizers(append(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer))
@@ -153,7 +153,7 @@ func (c *CustomResourceAdapter) EnsureFinalizer() (ObjectState, error) {
 	return ObjectUnchanged, nil
 }
 
-func (c *CustomResourceAdapter) EnsureProjectReferenceExists() error {
+func (c *ProjectClaimAdapter) EnsureProjectReferenceExists() error {
 	projectReferenceExists, err := c.ProjectReferenceExists()
 	if err != nil {
 		return err
@@ -165,7 +165,7 @@ func (c *CustomResourceAdapter) EnsureProjectReferenceExists() error {
 	return nil
 }
 
-func (c *CustomResourceAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimStatus) error {
+func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimStatus) error {
 	if c.projectClaim.Status.State == state {
 		return nil
 	}
@@ -187,7 +187,7 @@ func (c *CustomResourceAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimS
 }
 
 // StatusUpdate updates the project claim status
-func (c *CustomResourceAdapter) StatusUpdate() error {
+func (c *ProjectClaimAdapter) StatusUpdate() error {
 	err := c.client.Status().Update(context.TODO(), c.projectClaim)
 	if err != nil {
 		c.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim state for %s", c.projectClaim.Name))
@@ -198,7 +198,7 @@ func (c *CustomResourceAdapter) StatusUpdate() error {
 }
 
 // SetProjectClaimCondition sets a condition on a ProjectClaim resource's status
-func (c *CustomResourceAdapter) SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error {
+func (c *ProjectClaimAdapter) SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error {
 	conditions := &c.projectClaim.Status.Conditions
 	conditionType := gcpv1alpha1.ClaimConditionError
 	now := metav1.Now()
@@ -234,7 +234,7 @@ func (c *CustomResourceAdapter) SetProjectClaimCondition(status corev1.Condition
 // FindProjectClaimCondition finds the suitable ProjectClaimCondition object
 // by looking for adapter's condition list.
 // If none exists, then returns nil.
-func (c *CustomResourceAdapter) FindProjectClaimCondition() *gcpv1alpha1.ProjectClaimCondition {
+func (c *ProjectClaimAdapter) FindProjectClaimCondition() *gcpv1alpha1.ProjectClaimCondition {
 	conditions := c.projectClaim.Status.Conditions
 	conditionType := gcpv1alpha1.ClaimConditionError
 	for i, condition := range conditions {
