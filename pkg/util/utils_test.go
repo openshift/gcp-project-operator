@@ -109,39 +109,6 @@ func TestGetSecret(t *testing.T) {
 
 }
 
-func TestNewGCPSecretCR(t *testing.T) {
-	tests := []struct {
-		name            string
-		secretName      string
-		secretNamespace string
-		secretCreds     string
-		expectedSecret  *corev1.Secret
-		validateResult  func(*testing.T, *corev1.Secret, *corev1.Secret)
-	}{
-		{
-			name:            "Correct GCP Secert",
-			secretName:      gcpSecretName,
-			secretNamespace: "testNamespace",
-			secretCreds:     "testCreds",
-			expectedSecret:  builders.NewTestSecretBuilder(gcpSecretName, "testNamespace", "testCreds").GetTestSecret(),
-			validateResult: func(t *testing.T, expected, result *corev1.Secret) {
-				assert.Equal(t, expected, result)
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-
-			result := NewGCPSecretCR(test.secretNamespace, test.secretCreds)
-
-			if test.validateResult != nil {
-				test.validateResult(t, test.expectedSecret, result)
-			}
-		})
-	}
-}
-
 func TestGetGCPCredentialsFromSecret(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -192,7 +159,7 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 			}(),
 			secretNamespace: "testNamespace",
 			expectedCreds:   []byte{},
-			expectedErr:     fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get secrets \"%v\" not found", "testCreds"),
+			expectedErr:     fmt.Errorf("GetGCPCredentialsFromSecret.Get secrets \"%v\" not found", "testCreds"),
 			validateResult: func(t *testing.T, expected, result []byte) {
 				assert.Equal(t, expected, result)
 			},

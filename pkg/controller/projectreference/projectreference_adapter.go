@@ -441,7 +441,7 @@ func (r *ReferenceAdapter) createCredentials() error {
 		return err
 	}
 
-	secret := gcputil.NewGCPSecretCRV2(string(privateKeyString), types.NamespacedName{
+	secret := gcputil.NewGCPSecretCR(string(privateKeyString), types.NamespacedName{
 		Namespace: r.projectClaim.Spec.GCPCredentialSecret.Namespace,
 		Name:      r.projectClaim.Spec.GCPCredentialSecret.Name,
 	})

@@ -38,27 +38,8 @@ func GetSecret(kubeClient client.Client, secretName, namespace string) (*corev1.
 	return s, nil
 }
 
-// NewGCPSecretCR returns a Secret CR formatted for GCP
-// To be removed along with ClusterDeployment controller
-func NewGCPSecretCR(namespace, creds string) *corev1.Secret {
-	return &corev1.Secret{
-		Type: "Opaque",
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      gcpSecretName,
-			Namespace: namespace,
-		},
-		Data: map[string][]byte{
-			"osServiceAccount.json": []byte(creds),
-		},
-	}
-}
-
-// NewGCPSecretCRV2 returns a Secret CR formatted for GCP for use in projectreference controller.
-func NewGCPSecretCRV2(creds string, namespacedNamed kubetypes.NamespacedName) *corev1.Secret {
+// NewGCPSecretCR returns a Secret CR formatted for GCP for use in projectreference controller.
+func NewGCPSecretCR(creds string, namespacedNamed kubetypes.NamespacedName) *corev1.Secret {
 	return &corev1.Secret{
 		Type: "Opaque",
 		TypeMeta: metav1.TypeMeta{
@@ -84,7 +65,7 @@ func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 		},
 		secret)
 	if err != nil {
-		return []byte{}, fmt.Errorf("clusterdeployment.getGCPCredentialsFromSecret.Get %v", err)
+		return []byte{}, fmt.Errorf("GetGCPCredentialsFromSecret.Get %v", err)
 	}
 	var osServiceAccountJson []byte
 	var ok bool

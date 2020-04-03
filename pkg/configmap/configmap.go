@@ -19,9 +19,8 @@ const (
 
 // OperatorConfigMap store data for the specified configmap
 type OperatorConfigMap struct {
-	BillingAccount              string `mapstructure:"billingAccount"`
-	ParentFolderID              string `mapstructure:"parentFolderID"`
-	ClusterDeploymentController string `mapstructure:"clusterDeploymentController" optional:"true"`
+	BillingAccount string `mapstructure:"billingAccount"`
+	ParentFolderID string `mapstructure:"parentFolderID"`
 }
 
 // ValidateOperatorConfigMap checks if OperatorConfigMap filled properly
