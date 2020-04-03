@@ -23,7 +23,7 @@ import (
 
 var _ = Describe("Customresourceadapter", func() {
 	var (
-		adapter          *CustomResourceAdapter
+		adapter          CustomResourceAdapter
 		mockCtrl         *gomock.Controller
 		mockClient       *mocks.MockClient
 		mockStatusWriter *mocks.MockStatusWriter
@@ -37,7 +37,7 @@ var _ = Describe("Customresourceadapter", func() {
 		mockStatusWriter = mocks.NewMockStatusWriter(mockCtrl)
 	})
 	JustBeforeEach(func() {
-		adapter = NewCustomResourceAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient)
+		adapter = NewProjectClaimAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient)
 	})
 
 	AfterEach(func() {

@@ -1,9 +1,7 @@
 package gcpclient
 
-//go:generate go get github.com/golang/mock/mockgen
 //go:generate mockgen -destination=../util/mocks/$GOPACKAGE/client.go -package=$GOPACKAGE -source client.go
 //go:generate gofmt -s -l -w ../util/mocks/$GOPACKAGE/client.go
-//go:generate go get golang.org/x/tools/cmd/goimports
 //go:generate goimports -local=github.com/openshift/gcp-account-operator -e -w ../util/mocks/$GOPACKAGE/client.go
 
 import (
