@@ -126,12 +126,7 @@ func (r *ReferenceAdapter) EnsureProjectClaimUpdated() (gcpv1alpha1.ClaimStatus,
 
 	//Project Ready update matchingClaim to ready
 	r.projectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
-	err := r.kubeClient.Status().Update(context.TODO(), r.projectClaim)
-	if err != nil {
-		r.logger.Error(err, "Error updating ProjectClaim Status")
-		return r.projectClaim.Status.State, err
-	}
-	return r.projectClaim.Status.State, nil
+	return r.projectClaim.Status.State, r.UpdateProjectClaimStatus()
 }
 
 func (r *ReferenceAdapter) EnsureProjectConfigured() error {
@@ -146,11 +141,9 @@ func (r *ReferenceAdapter) EnsureProjectConfigured() error {
 		if err == operrors.ErrInactiveProject {
 			log.Error(err, "Unrecoverable Error")
 			r.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.kubeClient.Status().Update(context.TODO(), r.projectReference)
-			if err != nil {
-				r.logger.Error(err, "Error updating ProjectReference Status")
-				return err
-			}
+			_ = r.UpdateStatus()
+			// Reason for ignoring error return: UpdateStatus() error gets logged anyway and it's the
+			// createProject() error that should go into the object.status error msg
 		}
 		r.logger.Error(err, "Could not create project")
 		return err
@@ -182,7 +175,7 @@ func (r *ReferenceAdapter) EnsureStateReady() error {
 	if r.projectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
 		r.logger.Info("Setting Status on projectReference")
 		r.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
-		return r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+		return r.UpdateStatus()
 	}
 	return nil
 }
@@ -195,6 +188,26 @@ func getMatchingClaimLink(projectReference *gcpv1alpha1.ProjectReference, client
 
 	}
 	return projectClaim, nil
+}
+
+// UpdateStatus updates the project reference status
+func (r *ReferenceAdapter) UpdateStatus() error {
+	err := r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+	if err != nil {
+		r.logger.Error(err, fmt.Sprintf("failed to update ProjectReference status for %s", r.projectReference.Name))
+		return err
+	}
+	return nil
+}
+
+// UpdateProjectClaimStatus updates the project claim status
+func (r *ReferenceAdapter) UpdateProjectClaimStatus() error {
+	err := r.kubeClient.Status().Update(context.TODO(), r.projectClaim)
+	if err != nil {
+		r.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim status for %s", r.projectClaim.Name))
+		return err
+	}
+	return nil
 }
 
 // updateProjectID updates the ProjectReference with a unique ID for the ProjectID

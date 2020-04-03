@@ -144,9 +144,8 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 			// TODO: add condition here SupportedRegion = false to give more information on the error state
 			reqLogger.Error(err, "Region not supported")
 			projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.client.Status().Update(context.TODO(), projectReference)
+			err := adapter.UpdateStatus()
 			if err != nil {
-				reqLogger.Error(err, "Error updating ProjectReference Status")
 				return r.requeueOnErr(err)
 			}
 			return r.doNotRequeue()
@@ -155,9 +154,8 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		reqLogger.Info(fmt.Sprintf("Setting ProjectReferenceStatus %s", gcpv1alpha1.ProjectReferenceStatusCreating))
 		// passed requirementes check set to creating
 		projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
-		err = r.client.Status().Update(context.TODO(), projectReference)
+		err = adapter.UpdateStatus()
 		if err != nil {
-			reqLogger.Error(err, "Error updating ProjectReference Status")
 			return r.requeueOnErr(err)
 		}
 	}
