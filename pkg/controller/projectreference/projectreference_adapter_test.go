@@ -81,7 +81,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 			It("returns without altering ProjectClaim", func() {
 				oldClaim := projectClaim.DeepCopy()
-				state, err := adapter.EnsureProjectClaimUpdated()
+				state, err := adapter.EnsureProjectClaimReady()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(state).To(Equal(projectClaim.Status.State))
 				Expect(adapter.projectClaim).To(Equal(oldClaim))
@@ -99,7 +99,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 				It("returns without altering ProjectClaim", func() {
 					oldClaim := projectClaim.DeepCopy()
-					state, err := adapter.EnsureProjectClaimUpdated()
+					state, err := adapter.EnsureProjectClaimReady()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state).To(Equal(projectClaim.Status.State))
 					Expect(adapter.projectClaim).To(Equal(oldClaim))
@@ -115,10 +115,11 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
 					mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
+					mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 				})
 
 				It("updates the ProjectClaim, sets GCPProjectID and the state to Ready", func() {
-					state, err := adapter.EnsureProjectClaimUpdated()
+					state, err := adapter.EnsureProjectClaimReady()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state).To(Equal(api.ClaimStatusReady))
 					Expect(adapter.projectClaim.Spec.GCPProjectID).To(Equal(adapter.projectReference.Spec.GCPProjectID))

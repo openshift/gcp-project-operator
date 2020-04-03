@@ -126,7 +126,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	}
 
 	// Make projectReference  be processed based on state of ProjectClaim and Project Reference
-	claimStatus, err := adapter.EnsureProjectClaimUpdated()
+	claimStatus, err := adapter.EnsureProjectClaimReady()
 	if claimStatus == gcpv1alpha1.ClaimStatusReady || err != nil {
 		return r.requeueOnErr(err)
 	}
@@ -189,7 +189,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	return r.requeueOnErr(err)
 }
 
-func (r *ReconcileProjectReference) getGcpClient(projectId string, logger logr.Logger) (gcpclient.Client, error) {
+func (r *ReconcileProjectReference) getGcpClient(projectID string, logger logr.Logger) (gcpclient.Client, error) {
 	// Get org creds from secret
 	creds, err := util.GetGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
@@ -198,7 +198,7 @@ func (r *ReconcileProjectReference) getGcpClient(projectId string, logger logr.L
 	}
 
 	// Get gcpclient with creds
-	gcpClient, err := r.gcpClientBuilder(projectId, creds)
+	gcpClient, err := r.gcpClientBuilder(projectID, creds)
 
 	if err != nil {
 		logger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)

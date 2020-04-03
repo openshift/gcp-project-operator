@@ -42,6 +42,10 @@ spec:
           type: object
         spec:
           properties:
+            availibilityZones:
+              items:
+                type: string
+              type: array
             gcpCredentialSecret:
               properties:
                 name:
