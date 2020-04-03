@@ -142,6 +142,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		err := adapter.checkRequirements()
 		if err != nil {
 			// TODO: add condition here SupportedRegion = false to give more information on the error state
+			// TODO: mark
 			reqLogger.Error(err, "Region not supported")
 			projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
 			err := adapter.UpdateStatus()

@@ -138,6 +138,7 @@ func (r *ReferenceAdapter) EnsureProjectConfigured() error {
 
 	err = r.createProject(configMap.ParentFolderID)
 	if err != nil {
+		// TODO: mark
 		if err == operrors.ErrInactiveProject {
 			log.Error(err, "Unrecoverable Error")
 			r.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
