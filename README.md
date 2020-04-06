@@ -92,11 +92,9 @@ Just run `make`.
 
 For gcp-project-operator to work, the cluster needs to have CRDs from [Hive](https://github.com/openshift/hive) present in the system.
 
-Note: the `git clone` below *isn't* using the `master` branch.
-
 ```
-git clone --branch v1alpha1 https://github.com/openshift/hive
-for crd in hive/config/crds/hive_v1alpha1_*.yaml; do (set -x; oc apply -f $crd); done
+git clone https://github.com/openshift/hive
+for crd in hive/config/crds/hive_v1_*.yaml; do (set -x; oc apply -f $crd); done
 ```
 
 ### Start operator locally

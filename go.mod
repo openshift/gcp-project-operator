@@ -13,7 +13,6 @@ require (
 	github.com/go-openapi/spec v0.19.2
 	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
 	github.com/golang/mock v1.4.3
-	github.com/google/btree v1.0.0 // indirect
 	github.com/google/uuid v1.0.0
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gophercloud/gophercloud v0.0.0-20190318015731-ff9851476e98 // indirect
@@ -26,8 +25,7 @@ require (
 	github.com/onsi/gomega v1.9.0
 	github.com/openshift/api v0.0.0-20200217161739-c99157bc6492 // indirect
 	github.com/openshift/cluster-api v0.0.0-20191129101638-b09907ac6668
-	github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e // indirect
-	github.com/openshift/hive v0.0.0-20191114203647-105cae8c337d
+	github.com/openshift/hive v1.0.0
 	github.com/operator-framework/operator-sdk v0.8.3-0.20190722210327-daf62d44e47e
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/prometheus/client_golang v1.4.0 // indirect
@@ -73,8 +71,5 @@ replace github.com/operator-framework/operator-sdk => github.com/operator-framew
 
 // Pin google api to v0.11.0
 replace google.golang.org/api => google.golang.org/api v0.11.0
-
-// Pin hive dep
-replace github.com/openshift/cluster-network-operator => github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e
 
 go 1.13
