@@ -26,22 +26,17 @@ func TestValidateOperatorConfigMap(t *testing.T) {
 		t.Errorf("no err expected since OperatorConfigMap filled properly")
 	}
 
-	sut.ClusterDeploymentController = "disabled"
-	if err = ValidateOperatorConfigMap(sut); err != nil {
-		t.Errorf("no err expected since OperatorConfigMap filled properly")
-	}
 }
 
 func TestGetOperatorConfigMap(t *testing.T) {
 	tests := []struct {
-		name                                string
-		localObjects                        []runtime.Object
-		expectedParentFolderID              string
-		expectedBillingAccount              string
-		expectedClusterDeploymentController string
-		expectedErr                         error
-		validateResult                      func(*testing.T, string, string)
-		validateErr                         func(*testing.T, error, error)
+		name                   string
+		localObjects           []runtime.Object
+		expectedParentFolderID string
+		expectedBillingAccount string
+		expectedErr            error
+		validateResult         func(*testing.T, string, string)
+		validateErr            func(*testing.T, error, error)
 	}{
 		{
 			name: "Correct parentFolderID and billingAccount exist in configmap",
@@ -87,18 +82,6 @@ func TestGetOperatorConfigMap(t *testing.T) {
 				assert.Equal(t, expected, result)
 			},
 		},
-		{
-			name: "Optional parameter clusterDeploymentController set",
-			localObjects: []runtime.Object{
-				builders.NewTestConfigMapBuilder("gcp-project-operator", "gcp-project-operator", "billing123", "1234567").WithClusterDeploymentControllerDisabled().GetConfigMap(),
-			},
-			expectedParentFolderID:              "1234567",
-			expectedBillingAccount:              "billing123",
-			expectedClusterDeploymentController: "disabled",
-			validateResult: func(t *testing.T, expected, result string) {
-				assert.Equal(t, expected, result)
-			},
-		},
 	}
 
 	for _, test := range tests {
@@ -116,7 +99,6 @@ func TestGetOperatorConfigMap(t *testing.T) {
 			if test.validateResult != nil {
 				test.validateResult(t, test.expectedParentFolderID, operatorConfigMap.ParentFolderID)
 				test.validateResult(t, test.expectedBillingAccount, operatorConfigMap.BillingAccount)
-				test.validateResult(t, test.expectedClusterDeploymentController, operatorConfigMap.ClusterDeploymentController)
 			}
 
 			if test.validateErr != nil {

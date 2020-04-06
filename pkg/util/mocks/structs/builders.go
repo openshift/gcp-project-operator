@@ -21,10 +21,6 @@ const (
 	//testGCPCredentialsSecret = "GCPCredentialsSecret"
 	testProject = "project"
 	testRegion  = "us-east1"
-
-	clusterPlatformLabel          = "hive.openshift.io/cluster-platform"
-	clusterPlatformGCP            = "gcp"
-	clusterDeploymentManagedLabel = "api.openshift.com/managed"
 )
 
 type mocks struct {
