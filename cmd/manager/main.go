@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"runtime"
 
-	// Hive provides cluster deployment status
-	hivev1alpha1 "github.com/openshift/hive/pkg/apis/hive/v1alpha1"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -103,12 +100,6 @@ func run() error {
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
-		return err
-	}
-
-	// Assemble hivev1alpha1 runtime scheme.
-	if err := hivev1alpha1.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Error(err, "error registering hive objects")
 		return err
 	}
 
