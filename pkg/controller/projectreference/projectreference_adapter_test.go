@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
@@ -123,6 +124,49 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state).To(Equal(api.ClaimStatusReady))
 					Expect(adapter.projectClaim.Spec.GCPProjectID).To(Equal(adapter.projectReference.Spec.GCPProjectID))
+				})
+			})
+
+			Context("SetProjectReferenceCondition()", func() {
+				Context("when the err comes from reconcileHandler", func() {
+					var (
+						firstLastTransitionTime metav1.Time
+						firstLastProbeTime      metav1.Time
+						message                 = "foo"
+						reason                  = "ProjectReferenceReconcileHandlerFailed"
+					)
+
+					It("should update the CRD", func() {
+						mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+						mockKubeClient.EXPECT().Status().Return(mockStatusWriter).Times(2)
+						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error")).Times(2)
+
+						_ = adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, message)
+						conditions := projectReference.Status.Conditions
+						var found *gcpv1alpha1.ProjectReferenceCondition
+						for i, condition := range projectReference.Status.Conditions {
+							if condition.Type == gcpv1alpha1.ProjectReferenceConditionError {
+								found = &conditions[i]
+							}
+						}
+
+						Expect(message).To(Equal(found.Message))
+						Expect(reason).To(Equal(found.Reason))
+
+						//Hold the last state
+						firstLastProbeTime = found.LastProbeTime
+						firstLastTransitionTime = found.LastTransitionTime
+
+						err = adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, message)
+
+						// Return the actual error
+						Expect(err.Error()).Should(Equal("Fake update Error"))
+
+						Expect(message).To(Equal(found.Message))
+						Expect(reason).To(Equal(found.Reason))
+						Expect(firstLastTransitionTime).To(Equal(found.LastTransitionTime))
+						Expect(firstLastProbeTime).NotTo(Equal(found.LastProbeTime))
+					})
 				})
 			})
 		})

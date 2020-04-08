@@ -19,6 +19,8 @@ import (
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -572,6 +574,63 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
 		return nil
 	}
 
+}
+
+// SetProjectReferenceCondition sets a condition on a ProjectReference's status
+func (r *ReferenceAdapter) SetProjectReferenceCondition(status corev1.ConditionStatus, reason string, message string) error {
+	conditions := &r.projectReference.Status.Conditions
+	conditionType := gcpv1alpha1.ProjectReferenceConditionError
+	now := metav1.Now()
+	existingConditions := r.findProjectReferenceCondition()
+	if existingConditions == nil {
+		if status == corev1.ConditionTrue {
+			*conditions = append(
+				*conditions,
+				gcpv1alpha1.ProjectReferenceCondition{
+					Type:               conditionType,
+					Status:             status,
+					Reason:             reason,
+					Message:            message,
+					LastTransitionTime: now,
+					LastProbeTime:      now,
+				},
+			)
+		}
+	} else {
+		if existingConditions.Status != status {
+			existingConditions.LastTransitionTime = now
+		}
+		existingConditions.Status = status
+		existingConditions.Reason = reason
+		existingConditions.Message = message
+		existingConditions.LastProbeTime = now
+	}
+
+	return r.statusUpdate()
+}
+
+func (r *ReferenceAdapter) statusUpdate() error {
+	err := r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+	if err != nil {
+		r.logger.Error(err, "error updating projectReference status")
+		return err
+	}
+
+	return nil
+}
+
+// findProjectReferenceCondition finds the suitable ProjectReferenceClaimCondition object
+func (r *ReferenceAdapter) findProjectReferenceCondition() *gcpv1alpha1.ProjectReferenceCondition {
+	conditions := r.projectReference.Status.Conditions
+	conditionType := gcpv1alpha1.ProjectReferenceConditionError
+
+	for i, condition := range conditions {
+		if condition.Type == conditionType {
+			return &conditions[i]
+		}
+	}
+
+	return nil
 }
 
 // convertProjectsToMap converts []*cloudresourcemanager.Project map[string]*cloudresourcemanager.Project with the projectID as the map key

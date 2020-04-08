@@ -9,6 +9,7 @@ import (
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -78,11 +79,7 @@ type ReconcileProjectReference struct {
 	gcpClientBuilder func(projectName string, authJSON []byte) (gcpclient.Client, error)
 }
 
-// Reconcile reads that state of the cluster for a ProjectReference object and makes changes based on the state read
-// and what is in the ProjectReference.Spec
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+// Reconcile wraps ReconcileHandler() and updates the conditions if any error occurs
 func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling ProjectReference")
@@ -110,6 +107,21 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
+	result, err := r.ReconcileHandler(adapter, reqLogger)
+	if err != nil {
+		reason := "ProjectReferenceReconcileHandlerFailed"
+		_ = adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, err.Error())
+	}
+
+	return result, err
+}
+
+// ReconcileHandler reads that state of the cluster for a ProjectReference object and makes changes based on the state read
+// and what is in the ProjectReference.Spec
+// Note:
+// The Controller will requeue the Request to be processed again if the returned error is non-nil or
+// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, reqLogger logr.Logger) (reconcile.Result, error) {
 	// Cleanup
 	if adapter.IsDeletionRequested() {
 		err := adapter.EnsureProjectCleanedUp()
@@ -120,7 +132,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	}
 
 	// If ProjectReference is in error state exit and do nothing
-	if projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusError {
+	if adapter.projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusError {
 		reqLogger.Info("ProjectReference CR is in an Error state")
 		return r.doNotRequeue()
 	}
@@ -137,14 +149,14 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	}
 
 	// make sure we meet mimimum requirements to process request and set its state to creating or error if its not supported
-	if projectReference.Status.State == "" {
+	if adapter.projectReference.Status.State == "" {
 		reqLogger.Info("Checking Requirements")
 		err := adapter.checkRequirements()
 		if err != nil {
 			// TODO: add condition here SupportedRegion = false to give more information on the error state
 			reqLogger.Error(err, "Region not supported")
-			projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.client.Status().Update(context.TODO(), projectReference)
+			adapter.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
+			err := r.client.Status().Update(context.TODO(), adapter.projectReference)
 			if err != nil {
 				reqLogger.Error(err, "Error updating ProjectReference Status")
 				return r.requeueOnErr(err)
@@ -154,15 +166,16 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 
 		reqLogger.Info(fmt.Sprintf("Setting ProjectReferenceStatus %s", gcpv1alpha1.ProjectReferenceStatusCreating))
 		// passed requirementes check set to creating
-		projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
-		err = r.client.Status().Update(context.TODO(), projectReference)
+		adapter.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
+		adapter.projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
+		err = r.client.Status().Update(context.TODO(), adapter.projectReference)
 		if err != nil {
 			reqLogger.Error(err, "Error updating ProjectReference Status")
 			return r.requeueOnErr(err)
 		}
 	}
 
-	if projectReference.Spec.GCPProjectID == "" {
+	if adapter.projectReference.Spec.GCPProjectID == "" {
 		reqLogger.Info("Creating ProjectID in ProjectReference CR")
 		err := adapter.updateProjectID()
 		if err != nil {

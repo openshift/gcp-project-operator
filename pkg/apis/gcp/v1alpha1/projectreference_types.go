@@ -16,7 +16,7 @@ type ProjectReferenceSpec struct {
 // ProjectReferenceStatus defines the observed state of Project
 // +k8s:openapi-gen=true
 type ProjectReferenceStatus struct {
-	Conditions []ProjectReferenceCondition `json:"conditions,omitempty"`
+	Conditions []ProjectReferenceCondition `json:"conditions"`
 	State      ProjectReferenceState       `json:"state,omitempty"`
 }
 
@@ -42,6 +42,11 @@ type ProjectReferenceCondition struct {
 
 // ProjectReferenceConditionType is a valid value for ProjectReferenceCondition.Type
 type ProjectReferenceConditionType string
+
+const (
+	// ProjectReferenceConditionError is set when a project Reference state changes to Error
+	ProjectReferenceConditionError ProjectReferenceConditionType = "Error"
+)
 
 // ProjectReferenceState is a valid value from ProjectReference.Status
 type ProjectReferenceState string
@@ -76,7 +81,7 @@ type ProjectReference struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   ProjectReferenceSpec   `json:"spec,omitempty"`
-	Status ProjectReferenceStatus `json:"status,omitempty"`
+	Status ProjectReferenceStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
