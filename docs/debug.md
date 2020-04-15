@@ -45,7 +45,7 @@ Having found the namespace, you can gather even more information:
 kubectl -n example-clusternamespace get secrets gcp-secret -o yaml
 ```
 
-If the `ProjectClaim` is not in READY state but in **PendingProject** it means the operator is still working on creating the GCP Project at Google.
+If the `ProjectClaim` is not in READY state but in **PendingProject** it means the operator is still working on creating a project in GCP.
 
 ```kube
 kubectl -n example-clusternamespace get projectclaim example-projectclaim
