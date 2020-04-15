@@ -12,7 +12,8 @@ The custom resources that the GCP Project Operator introduces:
 The `ProjectClaim` custom resource definition (CRD) declaratively defines a desired specification for a GCP Project setup to run a Kubernetes cluster.
 It provides options to configure your cluster's [region and zone](https://cloud.google.com/compute/docs/regions-zones), legal entity and credentials such as the gcp secret.
 
-For each `ProjectClaim` resource, the Operator deploys a properly configured `ProjectReference` in the `gcp-project-operator` namespace. It also adds a Finalizer to make sure `ProjectClaim` is not going to get deleted while `ProjectReference` exists.
+For each `ProjectClaim` resource, the Operator deploys a properly configured `ProjectReference` in the `gcp-project-operator` namespace.
+It also adds a Finalizer to make sure `ProjectClaim` is not going to get deleted while `ProjectReference` exists.
 
 ## ProjectReference
 
