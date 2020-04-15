@@ -20,7 +20,6 @@ import (
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -528,7 +527,7 @@ func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
 func (r *ReferenceAdapter) EnsureProjectReferenceInitialized() (ObjectState, error) {
 	if r.projectReference.Status.Conditions == nil {
 		r.projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
-		err := r.statusUpdate()
+		err := r.StatusUpdate()
 		if err != nil {
 			r.logger.Error(err, "Failed to initalize ProjectReference")
 			return ObjectUnchanged, err
@@ -596,58 +595,23 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
 
 }
 
-// SetProjectReferenceCondition sets a condition on a ProjectReference's status
+// SetProjectReferenceCondition calls SetCondition() with project reference conditions
 func (r *ReferenceAdapter) SetProjectReferenceCondition(status corev1.ConditionStatus, reason string, message string) error {
 	conditions := &r.projectReference.Status.Conditions
-	conditionType := gcpv1alpha1.ConditionError
-	now := metav1.Now()
-	existingConditions := r.findProjectReferenceCondition()
-	if existingConditions == nil {
-		if status == corev1.ConditionTrue {
-			*conditions = append(
-				*conditions,
-				gcpv1alpha1.Condition{
-					Type:               conditionType,
-					Status:             status,
-					Reason:             reason,
-					Message:            message,
-					LastTransitionTime: now,
-					LastProbeTime:      now,
-				},
-			)
-		}
-	} else {
-		if existingConditions.Status != status {
-			existingConditions.LastTransitionTime = now
-		}
-		existingConditions.Status = status
-		existingConditions.Reason = reason
-		existingConditions.Message = message
-		existingConditions.LastProbeTime = now
-	}
-
-	return r.statusUpdate()
-}
-
-func (r *ReferenceAdapter) statusUpdate() error {
-	err := r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+	err := gcputil.SetCondition(conditions, status, reason, message)
 	if err != nil {
-		r.logger.Error(err, "error updating projectReference status")
 		return err
 	}
 
-	return nil
+	return r.StatusUpdate()
 }
 
-// findProjectReferenceCondition finds the suitable ProjectReferenceClaimCondition object
-func (r *ReferenceAdapter) findProjectReferenceCondition() *gcpv1alpha1.Condition {
-	conditions := r.projectReference.Status.Conditions
-	conditionType := gcpv1alpha1.ConditionError
-
-	for i, condition := range conditions {
-		if condition.Type == conditionType {
-			return &conditions[i]
-		}
+// StatusUpdate updates the project reference status
+func (r *ReferenceAdapter) StatusUpdate() error {
+	err := r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+	if err != nil {
+		r.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim state for %s", r.projectReference.Name))
+		return err
 	}
 
 	return nil

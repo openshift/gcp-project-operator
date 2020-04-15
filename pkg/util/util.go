@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -153,4 +154,51 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 	}
 
 	return
+}
+
+// SetCondition sets a condition on a custom resource's status
+func SetCondition(conditions *[]gcpv1alpha1.Condition, status corev1.ConditionStatus, reason string, message string) error {
+	conditionType := gcpv1alpha1.ConditionError
+	now := metav1.Now()
+	existingCondition := findProjectClaimCondition(*conditions)
+	if existingCondition == nil {
+		if status == corev1.ConditionTrue {
+			*conditions = append(
+				*conditions,
+				gcpv1alpha1.Condition{
+					Type:               conditionType,
+					Status:             status,
+					Reason:             reason,
+					Message:            message,
+					LastTransitionTime: now,
+					LastProbeTime:      now,
+				},
+			)
+		}
+	} else {
+		// If it does not exist, assign it as now. Otherwise, do not touch
+		if existingCondition.Status != status {
+			existingCondition.LastTransitionTime = now
+		}
+		existingCondition.Status = status
+		existingCondition.Reason = reason
+		existingCondition.Message = message
+		existingCondition.LastProbeTime = now
+	}
+
+	return nil
+}
+
+// findProjectClaimCondition finds the suitable ProjectClaimCondition object
+// by looking for adapter's condition list.
+// If none exists, then returns nil.
+func findProjectClaimCondition(conditions []gcpv1alpha1.Condition) *gcpv1alpha1.Condition {
+	conditionType := gcpv1alpha1.ConditionError
+	for i, condition := range conditions {
+		if condition.Type == conditionType {
+			return &conditions[i]
+		}
+	}
+
+	return nil
 }
