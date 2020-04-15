@@ -1,6 +1,6 @@
 # Documentation
 
-If you like to contribute to GCP Project Operator, please be so kind to read our [Contribution Policy](./CONTRIBUTING.md) first.
+If you like'd to contribute to GCP Project Operator, please be so kind to read our [Contribution Policy](./CONTRIBUTING.md) first.
 
 ## For Users
 
