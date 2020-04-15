@@ -42,7 +42,7 @@ spec:
           type: object
         spec:
           properties:
-            availibilityZones:
+            availabilityZones:
               items:
                 type: string
               type: array
