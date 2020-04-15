@@ -80,7 +80,7 @@ NAME                                            STATE   CLAIMNAME              C
 example-clusternamespace-example-projectclaim   Ready   example-projectclaim   example-clusternamespace   20m
 ```
 
-Here you can find the real name of the GCP Project created at Google side, by adding the `-o yaml` at the end of the command:
+Here you can find the real name of the GCP Project created at Google side by adding `-o yaml` at the end of the command:
 
 ```
 kubectl -n gcp-project-operator get projectreferences example-clusternamespace-example-projectclaim -o yaml
