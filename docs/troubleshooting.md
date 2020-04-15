@@ -23,7 +23,7 @@ main.main()
 
 ### Explanation
 
-This error message means you have started running the the operator locally without having the ProjectClaim custom resource definition applied in the Kubernetes cluster.
+This error message means you have started running the operator locally without having the ProjectClaim custom resource definition applied in the Kubernetes cluster.
 As a result, kubernetes (and GCP Operator in extend) does not know what a ProjectClaim is.
 
 ### Solution
@@ -70,5 +70,4 @@ Please type:
 ```zsh
 $ kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_cr.yaml
 ```
-
 
