@@ -39,7 +39,7 @@ kubectl -n $namespace get projectclaim $name -o yaml
     namespace: example-clusternamespace
 ```
 
-Using this information you can more information about it:
+Having found the namespace, you can gather even more information:
 
 ```
 kubectl -n example-clusternamespace get secrets gcp-secret -o yaml
