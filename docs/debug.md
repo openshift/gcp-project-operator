@@ -21,7 +21,7 @@ If everything worked as expected the **STATE** should be `READY`. Some useful in
 kubectl -n $namespace get projectclaim $name -o yaml
 ```
 
-* The `availibilitiZones`:
+* The `availabilitiZones`:
 
 ```yaml
   availibilityZones:
