@@ -32,7 +32,7 @@ Make sure you have it installed correctly.
 
 The operator can run either:
 
-* locally - without build a container and pushing it to your kubernetes cluster. This is the most convinient way.
+* locally - without building a container and pushing it to your kubernetes cluster. This is the most convenient way.
 * remotely - building a container with podman/docker and pushing to a registry and installing to your k8s cluster along with some RBAC configuration
 
 Now matter of which you will chose, before running the Operator you have to create the following Custom Resource Definitions into the cluster:
