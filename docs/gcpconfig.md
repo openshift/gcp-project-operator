@@ -1,6 +1,6 @@
 # GCP Configuration
 
-The GCP Project Operator expects some pre-existing configuration into your Kubernetes cluster that is related to your account in Google GCP cloud.
+The Operator requires some GCP–related configs to be present on your cluster.
 
 > Note: Unless you're running this against your very own personal GCP org account, someone likely already has this stuff prepared for you in your company/team. Ask around.
 
