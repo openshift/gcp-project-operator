@@ -8,6 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
@@ -102,6 +103,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 	Context("When Project Reference state is Error", func() {
 		BeforeEach(func() {
 			projectReference.Status.State = api.ProjectReferenceStatusError
+			projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
 		})
 		It("Does not requeue", func() {
 			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1)
@@ -142,6 +144,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 	Context("Project Reference State", func() {
 		JustBeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "Project-ID-already-set"
+			projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
 			gomock.InOrder(
 				mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
@@ -266,6 +269,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 
 	Context("Project id generation", func() {
 		BeforeEach(func() {
+			projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
 			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1)
 			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 				Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
@@ -303,6 +307,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 	Context("When project claim CR is not PendingProject", func() {
 		BeforeEach(func() {
 			projectClaim.Status.State = v1alpha1.ClaimStatusPending
+			projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
 			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1)
 			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 				Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
@@ -317,10 +322,10 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 	})
 
 	Context("When processing Project", func() {
-
 		JustBeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "Some fake id"
 			projectReference.Status.State = api.ProjectReferenceStatusCreating
+			projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
 			projectReference.SetFinalizers([]string{finalizerName})
 			gomock.InOrder(
 				mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
@@ -387,6 +392,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 
 		BeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "fake-id"
+			projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
 			projects = []*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}
 			deletionTime := metav1.NewTime(time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC))
 			projectReference.SetDeletionTimestamp(&deletionTime)

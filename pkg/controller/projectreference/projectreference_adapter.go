@@ -25,6 +25,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type ObjectState bool
+
+const (
+	ObjectModified  ObjectState = true
+	ObjectUnchanged ObjectState = false
+)
+
 const (
 	osdServiceAccountName = "osd-managed-admin"
 	finalizerName         = "finalizer.gcp.managed.openshift.io"
@@ -516,6 +523,19 @@ func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
 		return true
 	}
 	return false
+}
+
+func (r *ReferenceAdapter) EnsureProjectReferenceInitialized() (ObjectState, error) {
+	if r.projectReference.Status.Conditions == nil {
+		r.projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
+		err := r.statusUpdate()
+		if err != nil {
+			r.logger.Error(err, "Failed to initalize ProjectReference")
+			return ObjectUnchanged, err
+		}
+		return ObjectModified, nil
+	}
+	return ObjectUnchanged, nil
 }
 
 // AddorUpdateBindingResponse contines the data that is returned by the AddOrUpdarteBindings function

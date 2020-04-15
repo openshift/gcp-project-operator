@@ -122,6 +122,12 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, reqLogger logr.Logger) (reconcile.Result, error) {
+	// Set conditions
+	prState, err := adapter.EnsureProjectReferenceInitialized()
+	if prState == ObjectModified || err != nil {
+		return r.requeueOnErr(err)
+	}
+
 	// Cleanup
 	if adapter.IsDeletionRequested() {
 		err := adapter.EnsureProjectCleanedUp()
@@ -167,7 +173,6 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 		reqLogger.Info(fmt.Sprintf("Setting ProjectReferenceStatus %s", gcpv1alpha1.ProjectReferenceStatusCreating))
 		// passed requirementes check set to creating
 		adapter.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
-		adapter.projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
 		err = r.client.Status().Update(context.TODO(), adapter.projectReference)
 		if err != nil {
 			reqLogger.Error(err, "Error updating ProjectReference Status")
