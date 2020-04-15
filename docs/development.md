@@ -106,7 +106,7 @@ cat image-name.tar | podman load
 
 ## Configure GCP Cloud
 
-The Operator expects some pre-existing configuration into your Kubernetes cluster that is related to your account in Google GCP cloud.
+The Operator requires some GCP–related configs to be present on your cluster.
 
 Follow [these instructions](./gcpconfig.md) to create both the `configmap` and the `secret` required.
 
