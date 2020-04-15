@@ -35,7 +35,7 @@ The operator can run either:
 * locally - without building a container and pushing it to your kubernetes cluster. This is the most convenient way.
 * remotely - building a container with podman/docker and pushing to a registry and installing to your k8s cluster along with some RBAC configuration
 
-Now matter of which you will chose, before running the Operator you have to create the following Custom Resource Definitions into the cluster:
+No matter which option you choose, before running the Operator you have to create the following Custom Resource Definitions on the cluster:
 
 ```zsh
 kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
