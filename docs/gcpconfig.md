@@ -6,7 +6,10 @@ The Operator requires some GCP–related configs to be present on your cluster.
 
 ### Configmap
 
-The Operator needs to be aware of your Google Billing account. If you don't have one, please [create](https://cloud.google.com/billing/docs/how-to/manage-billing-account) one and note its number down. For parent folder you can use any folder you like. If you don't have one, feel free to [create](https://cloud.google.com/resource-manager/docs/creating-managing-folders) one.
+The Operator needs to be aware of your Google Billing account.
+If you don't have one, please [create](https://cloud.google.com/billing/docs/how-to/manage-billing-account) one and note its ID down.
+For parent folder you can use any folder you like.
+If you don't have one, feel free to [create](https://cloud.google.com/resource-manager/docs/creating-managing-folders) one.
 
 Add this information to your Kubernetes cluster by creating a `configmap`:
 
