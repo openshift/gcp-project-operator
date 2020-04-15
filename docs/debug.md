@@ -55,7 +55,8 @@ example-projectclaim   PendingProject   example-GCPprojectID   82s
 
 ### ProjectReference
 
-It gets created automatically by the Operator. You can find it by two ways:
+It gets created automatically by the Operator.
+You can find it in two ways:
 
 1. Looking at the `projectReferenceCRLink` of the `ProjectClaim`. For example if at `ProjectClaim` spec has this spec:
 
