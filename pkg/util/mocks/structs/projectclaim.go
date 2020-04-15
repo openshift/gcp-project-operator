@@ -47,7 +47,7 @@ func NewProjectClaimBuilder() *testProjectClaimBuilder {
 
 func (t *testProjectClaimBuilder) Initialized() *testProjectClaimBuilder {
 	t.p.Status = api.ProjectClaimStatus{
-		Conditions: []api.ProjectClaimCondition{},
+		Conditions: []api.Condition{},
 	}
 	return t
 }

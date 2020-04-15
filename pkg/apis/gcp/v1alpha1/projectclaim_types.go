@@ -1,7 +1,6 @@
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -19,43 +18,9 @@ type ProjectClaimSpec struct {
 // ProjectClaimStatus defines the observed state of ProjectClaim
 // +k8s:openapi-gen=true
 type ProjectClaimStatus struct {
-	Conditions []ProjectClaimCondition `json:"conditions"`
-	State      ClaimStatus             `json:"state"`
+	Conditions []Condition `json:"conditions"`
+	State      ClaimStatus `json:"state"`
 }
-
-// ProjectClaimCondition contains details for the current condition of a gcp Project claim
-type ProjectClaimCondition struct {
-	// Type is the type of the condition.
-	Type ProjectClaimConditionType `json:"type"`
-	// Status is the status of the condition.
-	Status corev1.ConditionStatus `json:"status"`
-	// LastProbeTime is the last time we probed the condition.
-	// +optional
-	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty"`
-	// LastTransitionTime is the last time the condition transitioned from one status to another.
-	// +optional
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-	// Reason is a unique, one-word, CamelCase reason for the condition's last transition.
-	// +optional
-	Reason string `json:"reason,omitempty"`
-	// Message is a human-readable message indicating details about last transition.
-	// +optional
-	Message string `json:"message,omitempty"`
-}
-
-// ProjectClaimConditionType is a valid value for ProjectClaimCondition.Type
-type ProjectClaimConditionType string
-
-const (
-	// ClaimConditionReady is set when a Project claim state changes Ready state
-	ClaimConditionReady ProjectClaimConditionType = "Ready"
-	// ClaimConditionPending is set when a project claim state changes to Pending
-	ClaimConditionPending ProjectClaimConditionType = "Pending"
-	// ClaimConditionVerification is set when a project claim state changes to Verification state
-	ClaimConditionVerification ProjectClaimConditionType = "Verification"
-	// ClaimConditionError is set when a project claim state changes to Error
-	ClaimConditionError ProjectClaimConditionType = "Error"
-)
 
 // ClaimStatus is a valid value from ProjectClaim.Status
 type ClaimStatus string

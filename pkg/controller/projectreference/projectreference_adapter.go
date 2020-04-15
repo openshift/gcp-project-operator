@@ -527,7 +527,7 @@ func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
 
 func (r *ReferenceAdapter) EnsureProjectReferenceInitialized() (ObjectState, error) {
 	if r.projectReference.Status.Conditions == nil {
-		r.projectReference.Status.Conditions = []gcpv1alpha1.ProjectReferenceCondition{}
+		r.projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := r.statusUpdate()
 		if err != nil {
 			r.logger.Error(err, "Failed to initalize ProjectReference")
@@ -599,14 +599,14 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
 // SetProjectReferenceCondition sets a condition on a ProjectReference's status
 func (r *ReferenceAdapter) SetProjectReferenceCondition(status corev1.ConditionStatus, reason string, message string) error {
 	conditions := &r.projectReference.Status.Conditions
-	conditionType := gcpv1alpha1.ProjectReferenceConditionError
+	conditionType := gcpv1alpha1.ConditionError
 	now := metav1.Now()
 	existingConditions := r.findProjectReferenceCondition()
 	if existingConditions == nil {
 		if status == corev1.ConditionTrue {
 			*conditions = append(
 				*conditions,
-				gcpv1alpha1.ProjectReferenceCondition{
+				gcpv1alpha1.Condition{
 					Type:               conditionType,
 					Status:             status,
 					Reason:             reason,
@@ -640,9 +640,9 @@ func (r *ReferenceAdapter) statusUpdate() error {
 }
 
 // findProjectReferenceCondition finds the suitable ProjectReferenceClaimCondition object
-func (r *ReferenceAdapter) findProjectReferenceCondition() *gcpv1alpha1.ProjectReferenceCondition {
+func (r *ReferenceAdapter) findProjectReferenceCondition() *gcpv1alpha1.Condition {
 	conditions := r.projectReference.Status.Conditions
-	conditionType := gcpv1alpha1.ProjectReferenceConditionError
+	conditionType := gcpv1alpha1.ConditionError
 
 	for i, condition := range conditions {
 		if condition.Type == conditionType {

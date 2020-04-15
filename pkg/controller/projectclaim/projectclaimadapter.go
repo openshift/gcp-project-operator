@@ -111,7 +111,7 @@ func (c *ProjectClaimAdapter) FinalizeProjectClaim() (ObjectState, error) {
 
 func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (ObjectState, error) {
 	if c.projectClaim.Status.Conditions == nil {
-		c.projectClaim.Status.Conditions = []gcpv1alpha1.ProjectClaimCondition{}
+		c.projectClaim.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := c.client.Status().Update(context.TODO(), c.projectClaim)
 		if err != nil {
 			c.logger.Error(err, "Failed to initalize ProjectClaim")
@@ -200,14 +200,14 @@ func (c *ProjectClaimAdapter) StatusUpdate() error {
 // SetProjectClaimCondition sets a condition on a ProjectClaim resource's status
 func (c *ProjectClaimAdapter) SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error {
 	conditions := &c.projectClaim.Status.Conditions
-	conditionType := gcpv1alpha1.ClaimConditionError
+	conditionType := gcpv1alpha1.ConditionError
 	now := metav1.Now()
 	existingCondition := c.FindProjectClaimCondition()
 	if existingCondition == nil {
 		if status == corev1.ConditionTrue {
 			*conditions = append(
 				*conditions,
-				gcpv1alpha1.ProjectClaimCondition{
+				gcpv1alpha1.Condition{
 					Type:               conditionType,
 					Status:             status,
 					Reason:             reason,
@@ -234,9 +234,9 @@ func (c *ProjectClaimAdapter) SetProjectClaimCondition(status corev1.ConditionSt
 // FindProjectClaimCondition finds the suitable ProjectClaimCondition object
 // by looking for adapter's condition list.
 // If none exists, then returns nil.
-func (c *ProjectClaimAdapter) FindProjectClaimCondition() *gcpv1alpha1.ProjectClaimCondition {
+func (c *ProjectClaimAdapter) FindProjectClaimCondition() *gcpv1alpha1.Condition {
 	conditions := c.projectClaim.Status.Conditions
-	conditionType := gcpv1alpha1.ClaimConditionError
+	conditionType := gcpv1alpha1.ConditionError
 	for i, condition := range conditions {
 		if condition.Type == conditionType {
 			return &conditions[i]

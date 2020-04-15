@@ -143,9 +143,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 						_ = adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, message)
 						conditions := projectReference.Status.Conditions
-						var found *gcpv1alpha1.ProjectReferenceCondition
+						var found *gcpv1alpha1.Condition
 						for i, condition := range projectReference.Status.Conditions {
-							if condition.Type == gcpv1alpha1.ProjectReferenceConditionError {
+							if condition.Type == gcpv1alpha1.ConditionError {
 								found = &conditions[i]
 							}
 						}

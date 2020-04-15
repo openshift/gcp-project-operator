@@ -307,9 +307,9 @@ var _ = Describe("Customresourceadapter", func() {
 					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
 					adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
 
-					var found *gcpv1alpha1.ProjectClaimCondition
+					var found *gcpv1alpha1.Condition
 					for i, condition := range projectClaim.Status.Conditions {
-						if condition.Type == gcpv1alpha1.ClaimConditionError {
+						if condition.Type == gcpv1alpha1.ConditionError {
 							found = &projectClaim.Status.Conditions[i]
 						}
 					}
