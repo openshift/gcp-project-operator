@@ -11,7 +11,11 @@ export GO111MODULE=on
 
 * Code-Ready Containers
 
-Red Hat CodeReady Containers brings a minimal OpenShift 4 cluster to your local computer. This cluster provides a minimal environment for development and testing purposes. It’s mainly targetted at running on developers' desktops. The installation and the configuration of CRC is beyond the scope of this project. Alternatively you can to use `minikube` instead.
+Red Hat CodeReady Containers brings a minimal OpenShift 4 cluster to your local computer.
+This cluster provides a minimal environment for development and testing purposes.
+It’s mainly targeted at running on developers' desktops.
+Installation and configuration of CRC is beyond the scope of this document.
+Alternatively you can use `minikube` instead.
 
 * kubectl client (>= version with your kubernetes server)
 
