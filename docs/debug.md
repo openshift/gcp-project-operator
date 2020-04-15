@@ -25,7 +25,7 @@ kubectl -n $namespace get projectclaim $name -o yaml
 * The `availabilitiZones`:
 
 ```yaml
-  availibilityZones:
+  availabilityZones:
   - us-east1-b
   - us-east1-c
   - us-east1-d
