@@ -22,4 +22,4 @@ $ cd gcp-project-operator
 $ make
 ```
 
-This will run the tests and build the binaries which they can be found at `gcp-project-operator/build/_output/bin`
+This will build the binaries (which can then be found in `gcp-project-operator/build/_output/bin`) and run tests.
