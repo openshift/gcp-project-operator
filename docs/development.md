@@ -50,7 +50,8 @@ Make sure you have the [operator-sdk](https://github.com/operator-framework/oper
 $ operator-sdk run --local --namespace gcp-project-operator
 ```
 
-You will see the some initialization logs. The Operator will remain _idle_ after that, waiting for `ProjectClaim` resources to be present in the cluster.
+You will see some initialization logs.
+The Operator will remain _idle_ after that, waiting for `ProjectClaim` resources to be present in the cluster.
 
 ### Remotely
 
