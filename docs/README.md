@@ -5,7 +5,7 @@ If you like to contribute to GCP Project Operator, please be so kind to read our
 ## For Users
 
 * [Google GCP configuration](./gcpconfig.md) -- The Operator expects a `configmap` and a `secret` to be already present in the cluster before you use it.
-* [How to use it](./userstory.md) -- Ask the Operator to create a new GCP Project for you or delete
+* [How to use it](./userstory.md) -- Tell the Operator to create or delete a new GCP Project for you
 * [Debugging](./debug.md) -- Useful tips and commands
 * [API](./api.md) -- Options you can fine-tune for `ProjectClaim`
 
