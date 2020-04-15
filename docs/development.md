@@ -23,7 +23,8 @@ Make sure kubectl is pointing to your kubernetes cluster you want to test the Op
 
 * Operators SDK
 
-The Operator is being developed based on the [Operators SDK](https://github.com/code-ready/crc/). Make sure you have it correctly installed.
+The Operator is being developed based on the [Operators SDK](https://github.com/operator-framework/operator-sdk).
+Make sure you have it installed correctly.
 
 * Docker or Podman
 
