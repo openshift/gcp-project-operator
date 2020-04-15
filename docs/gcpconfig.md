@@ -21,7 +21,7 @@ $ kubectl create -n gcp-project-operator configmap gcp-project-operator --from-l
 The Operator needs a ServiceAccount to authenticate its client against Google GCP.
 Find your Google GCP ServiceAccount by going [here](https://console.cloud.google.com/projectselector2/iam-admin/serviceaccounts?supportedpurview=project) or [create](https://cloud.google.com/iam/docs/creating-managing-service-accounts) one. This downloads a json file with your key.
 
-Forward this information into your Kubernetes cluster by creating a `secret`:
+Add this information to your Kubernetes cluster by creating a `secret`:
 
 ```zsh
 $ kubectl create -n gcp-project-operator secret generic gcp-project-operator-credentials --from-file=key.json=your-file.json
