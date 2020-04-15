@@ -15,7 +15,8 @@ NAME                   STATE   GCPPROJECTID           AGE
 example-projectclaim   Ready   example-GCPprojectID   2m33s
 ```
 
-If everything worked as expected the **STATE** should be `READY`. Some useful information you can extract by passing the `-o yaml` is:
+If everything worked as expected the **STATE** should be `READY`.
+Some useful information you can extract by passing the `-o yaml` is:
 
 ```
 kubectl -n $namespace get projectclaim $name -o yaml
