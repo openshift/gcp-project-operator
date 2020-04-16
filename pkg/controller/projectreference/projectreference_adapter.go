@@ -67,19 +67,20 @@ var supportedRegions = map[string]bool{
 	"us-east4":        true,
 	"us-west1":        true,
 
-	// The regions below are all currently
-	// They do not have enough quota configured by default
-	// "asia-east2":              true,
-	// "asia-northeast2":         true,
-	// "asia-south1":             true,
-	// "australia-southeast1":    true,
-	// "europe-north1":           true,
-	// "europe-west2":            true,
+	// Regions below don't have enough quota configured by default, but our org has sufficient quota
+	"asia-east2":              true,
+	"asia-south1":             true,
+	"australia-southeast1":    true,
+	"europe-west2":            true,
+	"northamerica-northeast1": true,
+	"southamerica-east1":      true,
+	"us-west2":                true,
+
+	// Regions below are disabled do not have enough quota configured
 	// "europe-west3":            true,
 	// "europe-west6":            true,
-	// "northamerica-northeast1": true,
-	// "southamerica-east1":      true,
-	// "us-west2":                true,
+	// "europe-north1":           true,
+	// "asia-northeast2":         true,
 }
 
 //ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
