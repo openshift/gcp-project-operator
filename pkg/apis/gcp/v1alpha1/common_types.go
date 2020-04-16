@@ -17,7 +17,7 @@ type NamespacedName struct {
 	Namespace string `json:"namespace"`
 }
 
-// Condition contains details for the current condition of a gcp Project claim
+// Condition contains details for the current condition of a custom resource
 type Condition struct {
 	// Type is the type of the condition.
 	Type ConditionType `json:"type"`

@@ -189,7 +189,7 @@ func SetCondition(conditions *[]gcpv1alpha1.Condition, status corev1.ConditionSt
 	return nil
 }
 
-// findProjectClaimCondition finds the suitable ProjectClaimCondition object
+// findProjectClaimCondition finds the suitable Condition object
 // by looking for adapter's condition list.
 // If none exists, then returns nil.
 func findProjectClaimCondition(conditions []gcpv1alpha1.Condition) *gcpv1alpha1.Condition {
