@@ -1,4 +1,4 @@
-package projectreference
+package projectreference_test
 
 import (
 	"errors"
@@ -9,6 +9,8 @@ import (
 	. "github.com/onsi/gomega"
 	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	. "github.com/openshift/gcp-project-operator/pkg/controller/projectreference"
+	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
@@ -42,7 +44,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 	JustBeforeEach(func() {
 		claimLink := types.NamespacedName{Name: projectReference.Spec.ProjectClaimCRLink.Name, Namespace: projectReference.Spec.ProjectClaimCRLink.Namespace}
 		mockKubeClient.EXPECT().Get(gomock.Any(), claimLink, gomock.Any()).SetArg(2, *projectClaim)
-		adapter, err = newReferenceAdapter(projectReference, logf.Log.WithName("Test Logger"), mockKubeClient, mockGCPClient)
+		adapter, err = NewReferenceAdapter(projectReference, logf.Log.WithName("Test Logger"), mockKubeClient, mockGCPClient)
 		Expect(err).NotTo(HaveOccurred())
 	})
 	Context("generated project names", func() {
@@ -84,7 +86,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				state, err := adapter.EnsureProjectClaimReady()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(state).To(Equal(projectClaim.Status.State))
-				Expect(adapter.projectClaim).To(Equal(oldClaim))
+				Expect(adapter.ProjectClaim).To(Equal(oldClaim))
 			})
 		})
 		Context("When ProjectReference is in Ready state", func() {
@@ -102,7 +104,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					state, err := adapter.EnsureProjectClaimReady()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state).To(Equal(projectClaim.Status.State))
-					Expect(adapter.projectClaim).To(Equal(oldClaim))
+					Expect(adapter.ProjectClaim).To(Equal(oldClaim))
 				})
 			})
 
@@ -122,7 +124,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					state, err := adapter.EnsureProjectClaimReady()
 					Expect(err).NotTo(HaveOccurred())
 					Expect(state).To(Equal(api.ClaimStatusReady))
-					Expect(adapter.projectClaim.Spec.GCPProjectID).To(Equal(adapter.projectReference.Spec.GCPProjectID))
+					Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal(adapter.ProjectReference.Spec.GCPProjectID))
 				})
 			})
 		})
@@ -289,19 +291,19 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		Context("EnsureFinalizerDeleted", func() {
 			Context("When the finalizer exists", func() {
 				It("removes the finalizer and updates the instance", func() {
-					adapter.projectReference.SetFinalizers([]string{finalizerName})
+					adapter.ProjectReference.SetFinalizers([]string{FinalizerName})
 					mockKubeClient.EXPECT().Update(gomock.Any(), projectReference)
 					err := adapter.EnsureFinalizerDeleted()
 					Expect(err).ToNot(HaveOccurred())
-					Expect(projectReference.Finalizers).ToNot(ContainElement(finalizerName))
+					Expect(projectReference.Finalizers).ToNot(ContainElement(FinalizerName))
 				})
 			})
 			Context("When the finalizer does not exist", func() {
 				It("does nothing", func() {
-					projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), finalizerName))
+					projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), FinalizerName))
 					err := adapter.EnsureFinalizerDeleted()
 					Expect(err).ToNot(HaveOccurred())
-					Expect(projectReference.Finalizers).ToNot(ContainElement(finalizerName))
+					Expect(projectReference.Finalizers).ToNot(ContainElement(FinalizerName))
 				})
 			})
 		})
@@ -309,19 +311,19 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		Context("EnsureFinalizerAdded", func() {
 			Context("When the finalizer does not exist", func() {
 				It("adds the finalizer and updates the instance", func() {
-					projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), finalizerName))
+					projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), FinalizerName))
 					mockKubeClient.EXPECT().Update(gomock.Any(), projectReference)
 					err := adapter.EnsureFinalizerAdded()
 					Expect(err).ToNot(HaveOccurred())
-					Expect(projectReference.Finalizers).To(ContainElement(finalizerName))
+					Expect(projectReference.Finalizers).To(ContainElement(FinalizerName))
 				})
 			})
 			Context("When the finalizer exists", func() {
 				It("does nothing", func() {
-					adapter.projectReference.SetFinalizers([]string{finalizerName})
+					adapter.ProjectReference.SetFinalizers([]string{FinalizerName})
 					err := adapter.EnsureFinalizerAdded()
 					Expect(err).ToNot(HaveOccurred())
-					Expect(projectReference.Finalizers).To(ContainElement(finalizerName))
+					Expect(projectReference.Finalizers).To(ContainElement(FinalizerName))
 				})
 			})
 		})
@@ -386,5 +388,39 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			})
 		})
 
+		Context("CheckRequirements", func() {
+			Context("When the region is supported", func() {
+				BeforeEach(func() {
+					projectClaim.Spec.Region = "us-east1"
+				})
+				It("does not return an error", func() {
+					err := adapter.CheckRequirements()
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("When the region is not supported", func() {
+				BeforeEach(func() {
+					projectClaim.Spec.Region = "eu-west6"
+				})
+				It("does not return an error", func() {
+					err := adapter.CheckRequirements()
+					Expect(err).To(HaveOccurred())
+					Expect(err).To(Equal(operrors.ErrRegionNotSupported))
+				})
+			})
+		})
+
+		Context("UpdateProjectID", func() {
+			BeforeEach(func() {
+				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
+			})
+			It("Sets a new projectid", func() {
+				projectIDBefore := projectReference.Spec.GCPProjectID
+				err := adapter.UpdateProjectID()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(projectReference.Spec.GCPProjectID).NotTo(Equal(projectIDBefore))
+			})
+
+		})
 	})
 })
