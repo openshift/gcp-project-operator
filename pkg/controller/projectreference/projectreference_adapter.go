@@ -76,7 +76,7 @@ var supportedRegions = map[string]bool{
 	"southamerica-east1":      true,
 	"us-west2":                true,
 
-	// Regions below are disabled do not have enough quota configured
+	// Regions below are disabled do not have enough quota configured (CPU < 28 or SSD storage < 896)
 	// "europe-west3":            true,
 	// "europe-west6":            true,
 	// "europe-north1":           true,
