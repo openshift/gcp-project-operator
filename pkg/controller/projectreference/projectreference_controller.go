@@ -9,6 +9,7 @@ import (
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
+	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -101,7 +102,8 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
-	adapter, err := newReferenceAdapter(projectReference, reqLogger, r.client, gcpClient)
+	util := gcputil.NewUtil()
+	adapter, err := newReferenceAdapter(projectReference, reqLogger, r.client, gcpClient, util)
 	if err != nil {
 		reqLogger.Error(err, "could not create ReferenceAdapter")
 		return r.requeueOnErr(err)

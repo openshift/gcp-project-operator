@@ -195,12 +195,13 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 }
 
 func TestSetCondition(t *testing.T) {
+	util := NewUtil()
 	sut := &[]gcpv1alpha1.Condition{}
 	status := corev1.ConditionTrue
 	reason := "dummy reconcile"
 	message := "fake error"
 
-	err := SetCondition(sut, status, reason, message)
+	err := util.SetCondition(sut, status, reason, message)
 	if err != nil {
 		t.Errorf("no expected err, got %v", err)
 	}
@@ -223,7 +224,7 @@ func TestSetCondition(t *testing.T) {
 	probe := obj.LastProbeTime
 	transition := obj.LastTransitionTime
 
-	err = SetCondition(sut, status, reason, message)
+	err = util.SetCondition(sut, status, reason, message)
 	// get new updated obj
 	obj = (*sut)[0]
 	if err != nil {

@@ -97,9 +97,10 @@ type ReferenceAdapter struct {
 	logger           logr.Logger
 	kubeClient       client.Client
 	gcpClient        gcpclient.Client
+	util             gcputil.Util
 }
 
-func newReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client) (*ReferenceAdapter, error) {
+func newReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, gcputil gcputil.Util) (*ReferenceAdapter, error) {
 	projectClaim, err := getMatchingClaimLink(projectReference, client)
 	if err != nil {
 		return &ReferenceAdapter{}, err
@@ -110,6 +111,7 @@ func newReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger 
 		logger:           logger,
 		kubeClient:       client,
 		gcpClient:        gcpClient,
+		util:             gcputil,
 	}, nil
 }
 
@@ -598,7 +600,7 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
 // SetProjectReferenceCondition calls SetCondition() with project reference conditions
 func (r *ReferenceAdapter) SetProjectReferenceCondition(status corev1.ConditionStatus, reason string, message string) error {
 	conditions := &r.projectReference.Status.Conditions
-	err := gcputil.SetCondition(conditions, status, reason, message)
+	err := r.util.SetCondition(conditions, status, reason, message)
 	if err != nil {
 		return err
 	}

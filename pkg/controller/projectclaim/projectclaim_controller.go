@@ -5,6 +5,7 @@ import (
 	"time"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -92,17 +93,16 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 		return r.requeueOnErr(err)
 	}
 
-	adapter := NewProjectClaimAdapter(instance, reqLogger, r.client)
+	util := gcputil.NewUtil()
+	adapter := NewProjectClaimAdapter(instance, reqLogger, r.client, util)
 	result, err := r.ReconcileHandler(adapter)
 	if err != nil {
-		message := err.Error()
 		reason := "ReconcileFailed"
 		// Update the ProjectClaimConditionCRD, ignore the error
-		_ = adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
-		return result, err
+		_ = adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, err.Error())
 	}
 
-	return result, nil
+	return result, err
 }
 
 // ReconcileHandler reads that state of the cluster for a ProjectClaim object and makes changes based on the state read

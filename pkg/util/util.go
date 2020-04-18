@@ -14,6 +14,67 @@ import (
 	kubeclientpkg "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Util is a wrapper object for actual util functions to allow for easier mocking/testing.
+// Currently, it doesn't have all actual util functions, only mockable ones are defined
+type Util interface {
+	SetCondition(conditions *[]gcpv1alpha1.Condition, status corev1.ConditionStatus, reason string, message string) error
+}
+
+type gcpUtil struct {
+}
+
+// NewUtil returns a valid util object with bound functions that can be mockable
+func NewUtil() Util {
+	return &gcpUtil{}
+}
+
+// SetCondition sets a condition on a custom resource's status
+func (u *gcpUtil) SetCondition(conditions *[]gcpv1alpha1.Condition, status corev1.ConditionStatus, reason string, message string) error {
+	conditionType := gcpv1alpha1.ConditionError
+	now := metav1.Now()
+	existingCondition := u.findProjectClaimCondition(*conditions)
+	if existingCondition == nil {
+		if status == corev1.ConditionTrue {
+			*conditions = append(
+				*conditions,
+				gcpv1alpha1.Condition{
+					Type:               conditionType,
+					Status:             status,
+					Reason:             reason,
+					Message:            message,
+					LastTransitionTime: now,
+					LastProbeTime:      now,
+				},
+			)
+		}
+	} else {
+		// If it does not exist, assign it as now. Otherwise, do not touch
+		if existingCondition.Status != status {
+			existingCondition.LastTransitionTime = now
+		}
+		existingCondition.Status = status
+		existingCondition.Reason = reason
+		existingCondition.Message = message
+		existingCondition.LastProbeTime = now
+	}
+
+	return nil
+}
+
+// findProjectClaimCondition finds the suitable Condition object
+// by looking for adapter's condition list.
+// If none exists, then returns nil.
+func (u *gcpUtil) findProjectClaimCondition(conditions []gcpv1alpha1.Condition) *gcpv1alpha1.Condition {
+	conditionType := gcpv1alpha1.ConditionError
+	for i, condition := range conditions {
+		if condition.Type == conditionType {
+			return &conditions[i]
+		}
+	}
+
+	return nil
+}
+
 const (
 	// secret information
 	gcpSecretName = "gcp"
@@ -154,51 +215,4 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 	}
 
 	return
-}
-
-// SetCondition sets a condition on a custom resource's status
-func SetCondition(conditions *[]gcpv1alpha1.Condition, status corev1.ConditionStatus, reason string, message string) error {
-	conditionType := gcpv1alpha1.ConditionError
-	now := metav1.Now()
-	existingCondition := findProjectClaimCondition(*conditions)
-	if existingCondition == nil {
-		if status == corev1.ConditionTrue {
-			*conditions = append(
-				*conditions,
-				gcpv1alpha1.Condition{
-					Type:               conditionType,
-					Status:             status,
-					Reason:             reason,
-					Message:            message,
-					LastTransitionTime: now,
-					LastProbeTime:      now,
-				},
-			)
-		}
-	} else {
-		// If it does not exist, assign it as now. Otherwise, do not touch
-		if existingCondition.Status != status {
-			existingCondition.LastTransitionTime = now
-		}
-		existingCondition.Status = status
-		existingCondition.Reason = reason
-		existingCondition.Message = message
-		existingCondition.LastProbeTime = now
-	}
-
-	return nil
-}
-
-// findProjectClaimCondition finds the suitable Condition object
-// by looking for adapter's condition list.
-// If none exists, then returns nil.
-func findProjectClaimCondition(conditions []gcpv1alpha1.Condition) *gcpv1alpha1.Condition {
-	conditionType := gcpv1alpha1.ConditionError
-	for i, condition := range conditions {
-		if condition.Type == conditionType {
-			return &conditions[i]
-		}
-	}
-
-	return nil
 }

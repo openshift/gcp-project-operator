@@ -2,6 +2,7 @@ package projectclaim_test
 
 import (
 	"context"
+	e "errors"
 	"time"
 
 	"github.com/golang/mock/gomock"
@@ -18,6 +19,7 @@ import (
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
+	mockutil "github.com/openshift/gcp-project-operator/pkg/util/mocks/util"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -28,16 +30,18 @@ var _ = Describe("Customresourceadapter", func() {
 		mockClient       *mocks.MockClient
 		mockStatusWriter *mocks.MockStatusWriter
 		projectClaim     *gcpv1alpha1.ProjectClaim
+		mockUtil         *mockutil.MockUtil
 	)
 
 	BeforeEach(func() {
 		projectClaim = testStructs.NewProjectClaimBuilder().Initialized().GetProjectClaim()
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = mocks.NewMockClient(mockCtrl)
+		mockUtil = mockutil.NewMockUtil(mockCtrl)
 		mockStatusWriter = mocks.NewMockStatusWriter(mockCtrl)
 	})
 	JustBeforeEach(func() {
-		adapter = NewProjectClaimAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient)
+		adapter = NewProjectClaimAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient, mockUtil)
 	})
 
 	AfterEach(func() {
@@ -292,41 +296,25 @@ var _ = Describe("Customresourceadapter", func() {
 		})
 
 		Context("SetProjectClaimCondition()", func() {
+			var (
+				message = "ReconcileFailed"
+				reason  = "ReconcileFailed"
+			)
 			Context("when the err comes from reconcileHandler", func() {
-				var (
-					firstLastTransitionTime metav1.Time
-					firstLastProbeTime      metav1.Time
-					message                 = "ReconcileFailed"
-					reason                  = "ReconcileFailed"
-				)
-
 				It("should update the CRD", func() {
 					matcher := testStructs.NewProjectClaimMatcher()
 					mockClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
-					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
-					adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
-
-					var found *gcpv1alpha1.Condition
-					for i, condition := range projectClaim.Status.Conditions {
-						if condition.Type == gcpv1alpha1.ConditionError {
-							found = &projectClaim.Status.Conditions[i]
-						}
-					}
-
-					Expect(message).To(Equal(found.Message))
-					Expect(reason).To(Equal(found.Reason))
-
-					//Hold the last state
-					firstLastProbeTime = found.LastProbeTime
-					firstLastTransitionTime = found.LastTransitionTime
-
-					adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
-
-					Expect(message).To(Equal(found.Message))
-					Expect(reason).To(Equal(found.Reason))
-					Expect(firstLastTransitionTime).To(Equal(found.LastTransitionTime))
-					Expect(firstLastProbeTime).NotTo(Equal(found.LastProbeTime))
+					mockUtil.EXPECT().SetCondition(gomock.Any(), corev1.ConditionTrue, reason, message).Times(1)
+					err := adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("when the err comes from reconcileHandler", func() {
+				It("shouldn't update the CRD if we took error from SetCondition()", func() {
+					mockUtil.EXPECT().SetCondition(gomock.Any(), corev1.ConditionTrue, reason, message).Times(1).Return(e.New("fake set condition error"))
+					err := adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
+					Expect(err).To(Equal(e.New("fake set condition error")))
 				})
 			})
 		})
