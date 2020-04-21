@@ -14,7 +14,7 @@
 | Field | Description | Scheme | Required |
 | ----- | ----------- | ------ | -------- |
 | region | GCP Region Zone | string | true |
-| gcpProjectID | GCP Project unique identifier | string | true |
+| gcpProjectID | GCP Project unique identifier | string | false |
 
 #### gcpCredentialSecret
 

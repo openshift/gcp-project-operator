@@ -108,7 +108,7 @@ cat image-name.tar | podman load
 
 The Operator requires some GCP–related configs to be present on your cluster.
 
-Follow [these instructions](./gcpconfig.md) to create both the `configmap` and the `secret` required.
+Follow [these instructions](./gcpconfig.md) to create both the `ConfigMap` and the `secret` required.
 
 ## Use the Operator
 

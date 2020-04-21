@@ -1,33 +1,71 @@
+# GCP Project Operator
 
-   * [Info](#info)
-      * [Workflow - ProjectClaim](#workflow---projectclaim)
-         * [Example CR](#example-cr)
-      * [Workflow - ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
-      * [Requirements](#requirements)
-   * [Deployment](#deployment)
-      * [Building](#building)
-      * [Local Dev](#local-dev)
-         * [Prerequisites](#prerequisites)
-         * [Start operator locally](#start-operator-locally)
-      * [Configuration](#configuration)
-         * [Auth Secret](#auth-secret)
-         * [Configmap](#configmap)
+[![Go Report Card](https://goreportcard.com/badge/github.com/openshift/gcp-project-operator)](https://goreportcard.com/report/github.com/openshift/gcp-project-operator)
+![Go Coverage](./coverage_badge.png)
+[![GoDoc](https://godoc.org/github.com/openshift/gcp-project-operator?status.svg)](https://pkg.go.dev/mod/github.com/openshift/gcp-project-operator)
+[![License](https://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
+
+[![GCP Project Operator](./docs/images/gcpprojectoperator.png)](https://github.com/openshift/gcp-project-operator)
+
+----
+GCP Project Operator is an open source project responsible for creating and destroying projects and service accounts in GCP.
+It stores the credentials in a secret, so other Kubernetes applications (_operators_) can use them and interact with GCP to create cloud resources or any other underlying infrastructure (_such as storage or virtual machines_).
+
+GCP Project Operator is one of the operators used for provisioning [OpenShift Dedicated](https://www.openshift.com/products/dedicated/) clusters on [Google Cloud Platform](https://cloud.google.com/) managed by Red Hat Site-Reliability Engineers.
+
+If you like to contribute to GCP Project Operator, please be so kind to read our [Contribution Policy](./docs/CONTRIBUTING.md) first.
+
+----
+
+* [Info](#info)
+   * [Documentation](#documentation)
+      * [For Users](#for-users)
+      * [For Developers](#for-developers)
+   * [Workflow - ProjectClaim](#workflow---projectclaim)
+      * [Example CR](#example-cr)
+   * [Workflow - ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
+   * [Requirements](#requirements)
+* [Deployment](#deployment)
+   * [Building](#building)
+   * [Local Dev](#local-dev)
+      * [Prerequisites](#prerequisites)
+      * [Start operator locally](#start-operator-locally)
+   * [Configuration](#configuration)
+      * [Auth Secret](#auth-secret)
+      * [ConfigMap](#ConfigMap)
 
 # Info
 
-The gcp project operator is reponsible for creating projects and service accounts in GCP and storing the credentials in a secret.
+## Documentation
+
+### For Users
+
+* [Google GCP configuration](./docs/gcpconfig.md) -- The Operator expects a `ConfigMap` and a `Secret` to be already present in the cluster before you use it.
+* [How to use it](./docs/userstory.md) -- Tell the Operator to create or delete a new GCP Project for you.
+* [Debugging](./docs/debug.md) -- Useful tips and commands.
+* [API](./docs/api.md) -- Options you can fine-tune for `ProjectClaim`.
+
+### For Developers
+
+* [Design](./docs/design.md) -- Describes the interaction between the custom resource definitions.
+* [Building](./docs/building.md) -- Instructions for building the project.
+* [Development](./docs/development.md) -- Instructions for developers who want to contribute.
+* [Testing](./docs/testing.md) -- Instructions for writing tests.
+* [Troubleshooting](./docs/troubleshooting.md) -- Common errors and pitfalls.
+* [Code Analysis](./docs/analyze.md) -- A high-level analysis of the code to get yourself familiar with the codebase.
+
 
 ## Workflow - ProjectClaim
 
-1. The operator watches all namespaces for `ProjectClaim` resources
-2. When a `ProjectClaim` is found (see example below) the operator triggers the creation of a project in GCP
-3. After successful project creation
-    * the field `State` will be set to Ready
-    * A secret is created in the cluster namespace, as defined in the `ProjectClaim`
-    * The field `spec.gcpProjectID` will be filled with the ID of the GCP project
+1. The operator watches all namespaces for `ProjectClaim` resources.
+2. When a `ProjectClaim` is found (see example below) the operator triggers the creation of a project in GCP.
+3. After successful project creation:
+    * The field `State` will be set to `Ready`.
+    * A secret is created in the cluster namespace, as defined in the `ProjectClaim`.
+    * The field `spec.gcpProjectID` will be filled with the ID of the GCP project.
     * A list of available zones in the input region is set in `spec.availabilityZones`.
-4. When a `ProjectClaim` is removed, the GCP project and service accounts are deleted (WIP)
-5. The operator removes the finalizer from the `ProjectClaim` (WIP)
+4. When a `ProjectClaim` is removed, the secret, the GCP project and its ServiceAccounts are deleted.
+5. The operator removes the finalizer from the `ProjectClaim`.
 
 ### Example Input Custom Resource
 
