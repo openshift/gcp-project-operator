@@ -104,7 +104,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
-	adapter, err := newReferenceAdapter(projectReference, reqLogger, r.client, gcpClient)
+	adapter, err := NewReferenceAdapter(projectReference, reqLogger, r.client, gcpClient)
 	if err != nil {
 		reqLogger.Error(err, "could not create ReferenceAdapter")
 		return r.requeueOnErr(err)
@@ -132,14 +132,14 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	}
 
 	//only make changes to ProjectReference if ProjelctClaim is pending
-	if adapter.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
+	if adapter.ProjectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
 		return r.requeueAfter(5*time.Second, nil)
 	}
 
 	// make sure we meet mimimum requirements to process request and set its state to creating or error if its not supported
 	if projectReference.Status.State == "" {
 		reqLogger.Info("Checking Requirements")
-		err := adapter.checkRequirements()
+		err := adapter.CheckRequirements()
 		if err != nil {
 			// TODO: add condition here SupportedRegion = false to give more information on the error state
 			reqLogger.Error(err, "Region not supported")
@@ -164,7 +164,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 
 	if projectReference.Spec.GCPProjectID == "" {
 		reqLogger.Info("Creating ProjectID in ProjectReference CR")
-		err := adapter.updateProjectID()
+		err := adapter.UpdateProjectID()
 		if err != nil {
 			reqLogger.Error(err, "Could not update ProjectID in Project Reference CR")
 			return r.requeueOnErr(err)

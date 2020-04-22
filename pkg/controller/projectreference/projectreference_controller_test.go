@@ -319,7 +319,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		JustBeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "Some fake id"
 			projectReference.Status.State = api.ProjectReferenceStatusCreating
-			projectReference.SetFinalizers([]string{finalizerName})
+			projectReference.SetFinalizers([]string{FinalizerName})
 			gomock.InOrder(
 				mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
