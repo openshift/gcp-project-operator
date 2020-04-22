@@ -24,24 +24,18 @@ func (c *ConditionManager) SetCondition(conditions *[]gcpv1alpha1.Condition, con
 	now := metav1.Now()
 	existingCondition := c.FindCondition(*conditions, conditionType)
 	if existingCondition == nil {
-		if status == corev1.ConditionTrue {
-			*conditions = append(
-				*conditions,
-				gcpv1alpha1.Condition{
-					Type:               conditionType,
-					Status:             status,
-					Reason:             reason,
-					Message:            message,
-					LastTransitionTime: now,
-					LastProbeTime:      now,
-				},
-			)
-		}
+		*conditions = append(
+			*conditions,
+			gcpv1alpha1.Condition{
+				Type:               conditionType,
+				Status:             status,
+				Reason:             reason,
+				Message:            message,
+				LastTransitionTime: now,
+				LastProbeTime:      now,
+			},
+		)
 	} else {
-		// If it does not exist, assign it as now. Otherwise, do not touch
-		if existingCondition.Status != status {
-			existingCondition.LastTransitionTime = now
-		}
 		existingCondition.Status = status
 		existingCondition.Reason = reason
 		existingCondition.Message = message
