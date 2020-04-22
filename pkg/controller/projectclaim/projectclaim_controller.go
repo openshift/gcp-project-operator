@@ -5,7 +5,7 @@ import (
 	"time"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
-	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
+	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -93,8 +93,8 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 		return r.requeueOnErr(err)
 	}
 
-	util := gcputil.NewUtil()
-	adapter := NewProjectClaimAdapter(instance, reqLogger, r.client, util)
+	conditionManager := condition.NewConditionManager()
+	adapter := NewProjectClaimAdapter(instance, reqLogger, r.client, conditionManager)
 	result, err := r.ReconcileHandler(adapter)
 	if err != nil {
 		reason := "ReconcileFailed"

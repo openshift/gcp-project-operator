@@ -7,9 +7,9 @@ import (
 
 	"github.com/go-logr/logr"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
-	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -102,8 +102,8 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
-	util := gcputil.NewUtil()
-	adapter, err := NewReferenceAdapter(projectReference, reqLogger, r.client, gcpClient, util)
+	conditionManager := condition.NewConditionManager()
+	adapter, err := NewReferenceAdapter(projectReference, reqLogger, r.client, gcpClient, conditionManager)
 	if err != nil {
 		reqLogger.Error(err, "could not create ReferenceAdapter")
 		return r.requeueOnErr(err)

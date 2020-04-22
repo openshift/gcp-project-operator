@@ -9,12 +9,12 @@ import (
 	. "github.com/onsi/gomega"
 	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	mockconditions "github.com/openshift/gcp-project-operator/pkg/condition/mock"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectreference"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
-	mockutil "github.com/openshift/gcp-project-operator/pkg/util/mocks/util"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iam/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +30,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		projectReference *api.ProjectReference
 		mockKubeClient   *mocks.MockClient
 		mockGCPClient    *mockGCP.MockClient
-		mockUtil         *mockutil.MockUtil
+		mockConditions   *mockconditions.MockConditions
 		mockStatusWriter *mocks.MockStatusWriter
 		projectClaim     *api.ProjectClaim
 		err              error
@@ -42,12 +42,12 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		mockStatusWriter = mocks.NewMockStatusWriter(ctrl)
 		mockKubeClient = mocks.NewMockClient(ctrl)
 		mockGCPClient = mockGCP.NewMockClient(ctrl)
-		mockUtil = mockutil.NewMockUtil(ctrl)
+		mockConditions = mockconditions.NewMockConditions(ctrl)
 	})
 	JustBeforeEach(func() {
 		claimLink := types.NamespacedName{Name: projectReference.Spec.ProjectClaimCRLink.Name, Namespace: projectReference.Spec.ProjectClaimCRLink.Namespace}
 		mockKubeClient.EXPECT().Get(gomock.Any(), claimLink, gomock.Any()).SetArg(2, *projectClaim)
-		adapter, err = NewReferenceAdapter(projectReference, logf.Log.WithName("Test Logger"), mockKubeClient, mockGCPClient, mockUtil)
+		adapter, err = NewReferenceAdapter(projectReference, logf.Log.WithName("Test Logger"), mockKubeClient, mockGCPClient, mockConditions)
 		Expect(err).NotTo(HaveOccurred())
 	})
 	Context("generated project names", func() {
@@ -140,16 +140,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					It("should update the CRD", func() {
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-						mockUtil.EXPECT().SetCondition(gomock.Any(), corev1.ConditionTrue, reason, message).Times(1)
-						err = adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, message)
-						Expect(err).NotTo(HaveOccurred())
-					})
-				})
-				Context("when the err comes from reconcileHandler", func() {
-					It("shouldn't update the CRD if we took error from SetCondition()", func() {
-						mockUtil.EXPECT().SetCondition(gomock.Any(), corev1.ConditionTrue, reason, message).Times(1).Return(errors.New("fake set condition error"))
-						err = adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, message)
-						Expect(err).To(Equal(errors.New("fake set condition error")))
+						mockConditions.EXPECT().SetCondition(corev1.ConditionTrue, reason, message).Times(1)
+						adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, message)
 					})
 				})
 			})

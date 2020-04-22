@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
@@ -98,11 +99,11 @@ type ReferenceAdapter struct {
 	logger           logr.Logger
 	kubeClient       client.Client
 	gcpClient        gcpclient.Client
-	util             gcputil.Util
+	conditions       condition.Conditions
 }
 
 // NewReferenceAdapter creates an adapter to turn what is requested in a ProjectReference into a GCP project and write the output back.
-func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, gcputil gcputil.Util) (*ReferenceAdapter, error) {
+func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, conditions condition.Conditions) (*ReferenceAdapter, error) {
 	projectClaim, err := getMatchingClaimLink(projectReference, client)
 	if err != nil {
 		return &ReferenceAdapter{}, err
@@ -113,7 +114,7 @@ func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger 
 		logger:           logger,
 		kubeClient:       client,
 		gcpClient:        gcpClient,
-		util:             gcputil,
+		conditions:       conditions,
 	}, nil
 }
 
@@ -599,12 +600,7 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
 
 // SetProjectReferenceCondition calls SetCondition() with project reference conditions
 func (r *ReferenceAdapter) SetProjectReferenceCondition(status corev1.ConditionStatus, reason string, message string) error {
-	conditions := &r.ProjectReference.Status.Conditions
-	err := r.util.SetCondition(conditions, status, reason, message)
-	if err != nil {
-		return err
-	}
-
+	r.conditions.SetCondition(status, reason, message)
 	return r.StatusUpdate()
 }
 

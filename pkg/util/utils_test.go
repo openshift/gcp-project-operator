@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/util/errors"
 	builders "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	"github.com/stretchr/testify/assert"
@@ -191,51 +190,5 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 			}
 
 		})
-	}
-}
-
-func TestSetCondition(t *testing.T) {
-	util := NewUtil()
-	sut := &[]gcpv1alpha1.Condition{}
-	status := corev1.ConditionTrue
-	reason := "dummy reconcile"
-	message := "fake error"
-
-	err := util.SetCondition(sut, status, reason, message)
-	if err != nil {
-		t.Errorf("no expected err, got %v", err)
-	}
-
-	if len(*sut) != 1 {
-		t.Errorf("item count should be 1, got item: %v", len(*sut))
-	}
-
-	obj := (*sut)[0]
-	if obj.Status != status {
-		t.Errorf("expected status: %v, got %v", status, obj.Status)
-	}
-	if obj.Reason != reason {
-		t.Errorf("expected reason: %v, got %v", reason, obj.Reason)
-	}
-	if obj.Message != message {
-		t.Errorf("expected message: %v, got %v", message, obj.Message)
-	}
-
-	probe := obj.LastProbeTime
-	transition := obj.LastTransitionTime
-
-	err = util.SetCondition(sut, status, reason, message)
-	// get new updated obj
-	obj = (*sut)[0]
-	if err != nil {
-		t.Errorf("no expected err, got %v", err)
-	}
-
-	if obj.LastProbeTime == probe {
-		t.Errorf("expected %v should not equal to %v", probe, obj.LastProbeTime)
-	}
-
-	if obj.LastTransitionTime != transition {
-		t.Errorf("transition time shouldn't be changed, expected %v, got %v", transition, obj.LastTransitionTime)
 	}
 }

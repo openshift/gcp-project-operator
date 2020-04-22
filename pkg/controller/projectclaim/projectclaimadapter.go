@@ -7,7 +7,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/openshift/cluster-api/pkg/util"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
-	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
+	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -21,7 +21,7 @@ type ProjectClaimAdapter struct {
 	logger           logr.Logger
 	client           client.Client
 	projectReference *gcpv1alpha1.ProjectReference
-	util             gcputil.Util
+	conditions       condition.Conditions
 }
 
 type ObjectState bool
@@ -33,9 +33,9 @@ const (
 
 const ProjectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
 
-func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, gcputil gcputil.Util) *ProjectClaimAdapter {
+func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, conditions condition.Conditions) *ProjectClaimAdapter {
 	projectReference := newMatchingProjectReference(projectClaim)
-	return &ProjectClaimAdapter{projectClaim, logger, client, projectReference, gcputil}
+	return &ProjectClaimAdapter{projectClaim, logger, client, projectReference, conditions}
 }
 
 func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1alpha1.ProjectReference {
@@ -191,12 +191,7 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimSta
 
 // SetProjectClaimCondition calls SetCondition() with project claim conditions
 func (c *ProjectClaimAdapter) SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error {
-	conditions := &c.projectClaim.Status.Conditions
-	err := c.util.SetCondition(conditions, status, reason, message)
-	if err != nil {
-		return err
-	}
-
+	c.conditions.SetCondition(status, reason, message)
 	return c.StatusUpdate()
 }
 
