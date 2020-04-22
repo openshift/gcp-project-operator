@@ -8,32 +8,25 @@ import (
 
 // Conditions is a wrapper object for actual Condition functions to allow for easier mocking/testing.
 type Conditions interface {
-	SetCondition(status corev1.ConditionStatus, reason string, message string)
-	GetConditions() *[]gcpv1alpha1.Condition
+	SetCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType, status corev1.ConditionStatus, reason string, message string)
 }
 
 type ConditionManager struct {
-	conditions []gcpv1alpha1.Condition
 }
 
-// NewConditionManager returns a ConditionManager object which holds condition list
+// NewConditionManager returns a ConditionManager object
 func NewConditionManager() Conditions {
 	return &ConditionManager{}
 }
 
-func (c *ConditionManager) GetConditions() *[]gcpv1alpha1.Condition {
-	return &c.conditions
-}
-
 // SetCondition sets a condition on a custom resource's status
-func (c *ConditionManager) SetCondition(status corev1.ConditionStatus, reason string, message string) {
-	conditionType := gcpv1alpha1.ConditionError
+func (c *ConditionManager) SetCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType, status corev1.ConditionStatus, reason string, message string) {
 	now := metav1.Now()
-	existingCondition := c.FindCondition()
+	existingCondition := c.FindCondition(*conditions, conditionType)
 	if existingCondition == nil {
 		if status == corev1.ConditionTrue {
-			c.conditions = append(
-				c.conditions,
+			*conditions = append(
+				*conditions,
 				gcpv1alpha1.Condition{
 					Type:               conditionType,
 					Status:             status,
@@ -59,11 +52,10 @@ func (c *ConditionManager) SetCondition(status corev1.ConditionStatus, reason st
 // FindCondition finds the suitable Condition object
 // by looking for adapter's condition list.
 // If none exists, then returns nil.
-func (c *ConditionManager) FindCondition() *gcpv1alpha1.Condition {
-	conditionType := gcpv1alpha1.ConditionError
-	for i, condition := range c.conditions {
+func (c *ConditionManager) FindCondition(conditions []gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) *gcpv1alpha1.Condition {
+	for i, condition := range conditions {
 		if condition.Type == conditionType {
-			return &c.conditions[i]
+			return &conditions[i]
 		}
 	}
 

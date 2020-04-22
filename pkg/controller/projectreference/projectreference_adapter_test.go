@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	mockconditions "github.com/openshift/gcp-project-operator/pkg/condition/mock"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectreference"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
@@ -133,14 +134,15 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 			Context("SetProjectReferenceCondition()", func() {
 				var (
-					message = "fakeError"
-					reason  = "fakeReconcileHandlerFailed"
+					message       = "fakeError"
+					reason        = "fakeReconcileHandlerFailed"
+					conditionType = gcpv1alpha1.ConditionError
 				)
 				Context("when the err comes from reconcileHandler", func() {
 					It("should update the CRD", func() {
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-						mockConditions.EXPECT().SetCondition(corev1.ConditionTrue, reason, message).Times(1)
+						mockConditions.EXPECT().SetCondition(gomock.Any(), conditionType, corev1.ConditionTrue, reason, message).Times(1)
 						adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, message)
 					})
 				})

@@ -21,7 +21,7 @@ type ProjectClaimAdapter struct {
 	logger           logr.Logger
 	client           client.Client
 	projectReference *gcpv1alpha1.ProjectReference
-	conditions       condition.Conditions
+	conditionManager condition.Conditions
 }
 
 type ObjectState bool
@@ -33,9 +33,9 @@ const (
 
 const ProjectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
 
-func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, conditions condition.Conditions) *ProjectClaimAdapter {
+func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, manager condition.Conditions) *ProjectClaimAdapter {
 	projectReference := newMatchingProjectReference(projectClaim)
-	return &ProjectClaimAdapter{projectClaim, logger, client, projectReference, conditions}
+	return &ProjectClaimAdapter{projectClaim, logger, client, projectReference, manager}
 }
 
 func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1alpha1.ProjectReference {
@@ -191,7 +191,9 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimSta
 
 // SetProjectClaimCondition calls SetCondition() with project claim conditions
 func (c *ProjectClaimAdapter) SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error {
-	c.conditions.SetCondition(status, reason, message)
+	conditions := &c.projectClaim.Status.Conditions
+	conditionType := gcpv1alpha1.ConditionError
+	c.conditionManager.SetCondition(conditions, conditionType, status, reason, message)
 	return c.StatusUpdate()
 }
 

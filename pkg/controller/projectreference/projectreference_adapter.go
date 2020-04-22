@@ -99,11 +99,11 @@ type ReferenceAdapter struct {
 	logger           logr.Logger
 	kubeClient       client.Client
 	gcpClient        gcpclient.Client
-	conditions       condition.Conditions
+	conditionManager condition.Conditions
 }
 
 // NewReferenceAdapter creates an adapter to turn what is requested in a ProjectReference into a GCP project and write the output back.
-func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, conditions condition.Conditions) (*ReferenceAdapter, error) {
+func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, manager condition.Conditions) (*ReferenceAdapter, error) {
 	projectClaim, err := getMatchingClaimLink(projectReference, client)
 	if err != nil {
 		return &ReferenceAdapter{}, err
@@ -114,7 +114,7 @@ func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger 
 		logger:           logger,
 		kubeClient:       client,
 		gcpClient:        gcpClient,
-		conditions:       conditions,
+		conditionManager: manager,
 	}, nil
 }
 
@@ -600,7 +600,9 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
 
 // SetProjectReferenceCondition calls SetCondition() with project reference conditions
 func (r *ReferenceAdapter) SetProjectReferenceCondition(status corev1.ConditionStatus, reason string, message string) error {
-	r.conditions.SetCondition(status, reason, message)
+	conditions := &r.ProjectReference.Status.Conditions
+	conditionType := gcpv1alpha1.ConditionError
+	r.conditionManager.SetCondition(conditions, conditionType, status, reason, message)
 	return r.StatusUpdate()
 }
 

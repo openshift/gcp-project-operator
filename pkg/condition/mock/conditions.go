@@ -35,27 +35,13 @@ func (m *MockConditions) EXPECT() *MockConditionsMockRecorder {
 }
 
 // SetCondition mocks base method
-func (m *MockConditions) SetCondition(status v1.ConditionStatus, reason, message string) {
+func (m *MockConditions) SetCondition(conditions *[]v1alpha1.Condition, conditionType v1alpha1.ConditionType, status v1.ConditionStatus, reason, message string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetCondition", status, reason, message)
+	m.ctrl.Call(m, "SetCondition", conditions, conditionType, status, reason, message)
 }
 
 // SetCondition indicates an expected call of SetCondition
-func (mr *MockConditionsMockRecorder) SetCondition(status, reason, message interface{}) *gomock.Call {
+func (mr *MockConditionsMockRecorder) SetCondition(conditions, conditionType, status, reason, message interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCondition", reflect.TypeOf((*MockConditions)(nil).SetCondition), status, reason, message)
-}
-
-// GetConditions mocks base method
-func (m *MockConditions) GetConditions() *[]v1alpha1.Condition {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetConditions")
-	ret0, _ := ret[0].(*[]v1alpha1.Condition)
-	return ret0
-}
-
-// GetConditions indicates an expected call of GetConditions
-func (mr *MockConditionsMockRecorder) GetConditions() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetConditions", reflect.TypeOf((*MockConditions)(nil).GetConditions))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCondition", reflect.TypeOf((*MockConditions)(nil).SetCondition), conditions, conditionType, status, reason, message)
 }

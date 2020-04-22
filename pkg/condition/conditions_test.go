@@ -3,17 +3,19 @@ package condition
 import (
 	"testing"
 
+	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
 func TestSetCondition(t *testing.T) {
 	conditionManager := NewConditionManager()
-	sut := conditionManager.GetConditions()
+	sut := &[]gcpv1alpha1.Condition{}
+	conditionType := gcpv1alpha1.ConditionError
 	status := corev1.ConditionTrue
 	reason := "dummy reconcile"
 	message := "fake error"
 
-	conditionManager.SetCondition(status, reason, message)
+	conditionManager.SetCondition(sut, conditionType, status, reason, message)
 
 	if len(*sut) != 1 {
 		t.Errorf("item count should be 1, got item: %v", len(*sut))
@@ -33,7 +35,7 @@ func TestSetCondition(t *testing.T) {
 	probe := obj.LastProbeTime
 	transition := obj.LastTransitionTime
 
-	conditionManager.SetCondition(status, reason, message)
+	conditionManager.SetCondition(sut, conditionType, status, reason, message)
 	// get new updated obj
 	obj = (*sut)[0]
 

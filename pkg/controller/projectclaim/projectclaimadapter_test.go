@@ -296,15 +296,16 @@ var _ = Describe("Customresourceadapter", func() {
 
 		Context("SetProjectClaimCondition()", func() {
 			var (
-				message = "ReconcileFailed"
-				reason  = "ReconcileFailed"
+				message       = "ReconcileFailed"
+				reason        = "ReconcileFailed"
+				conditionType = gcpv1alpha1.ConditionError
 			)
 			Context("when the err comes from reconcileHandler", func() {
 				It("should update the CRD", func() {
 					matcher := testStructs.NewProjectClaimMatcher()
 					mockClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
-					mockConditions.EXPECT().SetCondition(corev1.ConditionTrue, reason, message).Times(1)
+					mockConditions.EXPECT().SetCondition(gomock.Any(), conditionType, corev1.ConditionTrue, reason, message).Times(1)
 					adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
 				})
 			})
