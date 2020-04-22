@@ -103,7 +103,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	}
 
 	util := gcputil.NewUtil()
-	adapter, err := newReferenceAdapter(projectReference, reqLogger, r.client, gcpClient, util)
+	adapter, err := NewReferenceAdapter(projectReference, reqLogger, r.client, gcpClient, util)
 	if err != nil {
 		reqLogger.Error(err, "could not create ReferenceAdapter")
 		return r.requeueOnErr(err)
@@ -140,7 +140,7 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 	}
 
 	// If ProjectReference is in error state exit and do nothing
-	if adapter.projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusError {
+	if adapter.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusError {
 		reqLogger.Info("ProjectReference CR is in an Error state")
 		return r.doNotRequeue()
 	}
@@ -152,19 +152,19 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 	}
 
 	//only make changes to ProjectReference if ProjelctClaim is pending
-	if adapter.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
+	if adapter.ProjectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
 		return r.requeueAfter(5*time.Second, nil)
 	}
 
 	// make sure we meet mimimum requirements to process request and set its state to creating or error if its not supported
-	if adapter.projectReference.Status.State == "" {
+	if adapter.ProjectReference.Status.State == "" {
 		reqLogger.Info("Checking Requirements")
-		err := adapter.checkRequirements()
+		err := adapter.CheckRequirements()
 		if err != nil {
 			// TODO: add condition here SupportedRegion = false to give more information on the error state
 			reqLogger.Error(err, "Region not supported")
-			adapter.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.client.Status().Update(context.TODO(), adapter.projectReference)
+			adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
+			err := r.client.Status().Update(context.TODO(), adapter.ProjectReference)
 			if err != nil {
 				reqLogger.Error(err, "Error updating ProjectReference Status")
 				return r.requeueOnErr(err)
@@ -174,17 +174,17 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 
 		reqLogger.Info(fmt.Sprintf("Setting ProjectReferenceStatus %s", gcpv1alpha1.ProjectReferenceStatusCreating))
 		// passed requirementes check set to creating
-		adapter.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
-		err = r.client.Status().Update(context.TODO(), adapter.projectReference)
+		adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
+		err = r.client.Status().Update(context.TODO(), adapter.ProjectReference)
 		if err != nil {
 			reqLogger.Error(err, "Error updating ProjectReference Status")
 			return r.requeueOnErr(err)
 		}
 	}
 
-	if adapter.projectReference.Spec.GCPProjectID == "" {
+	if adapter.ProjectReference.Spec.GCPProjectID == "" {
 		reqLogger.Info("Creating ProjectID in ProjectReference CR")
-		err := adapter.updateProjectID()
+		err := adapter.UpdateProjectID()
 		if err != nil {
 			reqLogger.Error(err, "Could not update ProjectID in Project Reference CR")
 			return r.requeueOnErr(err)

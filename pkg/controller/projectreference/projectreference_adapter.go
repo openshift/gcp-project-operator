@@ -33,7 +33,7 @@ const (
 
 const (
 	osdServiceAccountName = "osd-managed-admin"
-	finalizerName         = "finalizer.gcp.managed.openshift.io"
+	FinalizerName         = "finalizer.gcp.managed.openshift.io"
 )
 
 // OSDRequiredAPIS is list of API's, required to setup
@@ -75,39 +75,41 @@ var supportedRegions = map[string]bool{
 	"us-east4":        true,
 	"us-west1":        true,
 
-	// The regions below are all currently
-	// They do not have enough quota configured by default
-	// "asia-east2":              true,
-	// "asia-northeast2":         true,
-	// "asia-south1":             true,
-	// "australia-southeast1":    true,
-	// "europe-north1":           true,
-	// "europe-west2":            true,
+	// Regions below don't have enough quota configured by default, but our org has sufficient quota
+	"asia-east2":              true,
+	"asia-south1":             true,
+	"australia-southeast1":    true,
+	"europe-west2":            true,
+	"northamerica-northeast1": true,
+	"southamerica-east1":      true,
+	"us-west2":                true,
+
+	// Regions below are disabled do not have enough quota configured (CPU < 28 or SSD storage < 896)
 	// "europe-west3":            true,
 	// "europe-west6":            true,
-	// "northamerica-northeast1": true,
-	// "southamerica-east1":      true,
-	// "us-west2":                true,
+	// "europe-north1":           true,
+	// "asia-northeast2":         true,
 }
 
 //ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
 type ReferenceAdapter struct {
-	projectClaim     *gcpv1alpha1.ProjectClaim
-	projectReference *gcpv1alpha1.ProjectReference
+	ProjectClaim     *gcpv1alpha1.ProjectClaim
+	ProjectReference *gcpv1alpha1.ProjectReference
 	logger           logr.Logger
 	kubeClient       client.Client
 	gcpClient        gcpclient.Client
 	util             gcputil.Util
 }
 
-func newReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, gcputil gcputil.Util) (*ReferenceAdapter, error) {
+// NewReferenceAdapter creates an adapter to turn what is requested in a ProjectReference into a GCP project and write the output back.
+func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, gcputil gcputil.Util) (*ReferenceAdapter, error) {
 	projectClaim, err := getMatchingClaimLink(projectReference, client)
 	if err != nil {
 		return &ReferenceAdapter{}, err
 	}
 	return &ReferenceAdapter{
-		projectClaim:     projectClaim,
-		projectReference: projectReference,
+		ProjectClaim:     projectClaim,
+		ProjectReference: projectReference,
 		logger:           logger,
 		kubeClient:       client,
 		gcpClient:        gcpClient,
@@ -116,39 +118,39 @@ func newReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger 
 }
 
 func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, error) {
-	if r.projectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
-		return r.projectClaim.Status.State, nil
+	if r.ProjectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
+		return r.ProjectClaim.Status.State, nil
 	}
 
-	if r.projectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && r.projectClaim.Status.State == gcpv1alpha1.ClaimStatusReady {
+	if r.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusReady {
 		r.logger.Info("ProjectReference and ProjectClaim CR are in READY state nothing to process.")
-		return r.projectClaim.Status.State, nil
+		return r.ProjectClaim.Status.State, nil
 	}
 
 	azModified, err := r.ensureClaimAvailibilityZonesSet()
 	if err != nil {
 		r.logger.Error(err, "Error ensuring availibility zones")
-		return r.projectClaim.Status.State, err
+		return r.ProjectClaim.Status.State, err
 	}
 
 	idModified := r.ensureClaimProjectIDSet()
 
 	if azModified || idModified {
-		err := r.kubeClient.Update(context.TODO(), r.projectClaim)
+		err := r.kubeClient.Update(context.TODO(), r.ProjectClaim)
 		if err != nil {
 			r.logger.Error(err, "Error updating ProjectClaim Spec")
-			return r.projectClaim.Status.State, err
+			return r.ProjectClaim.Status.State, err
 		}
 	}
 
 	//Project Ready update matchingClaim to ready
-	r.projectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
-	err = r.kubeClient.Status().Update(context.TODO(), r.projectClaim)
+	r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
+	err = r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim)
 	if err != nil {
 		r.logger.Error(err, "Error updating ProjectClaim Status")
-		return r.projectClaim.Status.State, err
+		return r.ProjectClaim.Status.State, err
 	}
-	return r.projectClaim.Status.State, nil
+	return r.ProjectClaim.Status.State, nil
 }
 
 func (r *ReferenceAdapter) EnsureProjectConfigured() error {
@@ -162,8 +164,8 @@ func (r *ReferenceAdapter) EnsureProjectConfigured() error {
 	if err != nil {
 		if err == operrors.ErrInactiveProject {
 			log.Error(err, "Unrecoverable Error")
-			r.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+			r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
+			err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
 			if err != nil {
 				r.logger.Error(err, "Error updating ProjectReference Status")
 				return err
@@ -196,10 +198,10 @@ func (r *ReferenceAdapter) EnsureProjectConfigured() error {
 }
 
 func (r *ReferenceAdapter) EnsureStateReady() error {
-	if r.projectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
+	if r.ProjectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
 		r.logger.Info("Setting Status on projectReference")
-		r.projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
-		return r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+		r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
+		return r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
 	}
 	return nil
 }
@@ -214,38 +216,38 @@ func getMatchingClaimLink(projectReference *gcpv1alpha1.ProjectReference, client
 	return projectClaim, nil
 }
 
-// updateProjectID updates the ProjectReference with a unique ID for the ProjectID
-func (r *ReferenceAdapter) updateProjectID() error {
+// UpdateProjectID updates the ProjectReference with a unique ID for the ProjectID
+func (r *ReferenceAdapter) UpdateProjectID() error {
 	projectID, err := GenerateProjectID()
 	if err != nil {
 		return err
 	}
-	r.projectReference.Spec.GCPProjectID = projectID
-	return r.kubeClient.Update(context.TODO(), r.projectReference)
+	r.ProjectReference.Spec.GCPProjectID = projectID
+	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
 }
 
 // IsDeletionRequested checks the metadata.deletionTimestamp of ProjectReference instance, and returns if delete requested.
 // The controllers watching the ProjectReference use this as a signal to know when to execute the finalizer.
 func (r *ReferenceAdapter) IsDeletionRequested() bool {
-	return r.projectReference.DeletionTimestamp != nil
+	return r.ProjectReference.DeletionTimestamp != nil
 }
 
-// EnsureFinalizerAdded parses the meta.Finalizers of ProjectReference instance and adds finalizerName if not found.
+// EnsureFinalizerAdded parses the meta.Finalizers of ProjectReference instance and adds FinalizerName if not found.
 func (r *ReferenceAdapter) EnsureFinalizerAdded() error {
-	if !clusterapi.Contains(r.projectReference.GetFinalizers(), finalizerName) {
-		r.projectReference.SetFinalizers(append(r.projectReference.GetFinalizers(), finalizerName))
-		return r.kubeClient.Update(context.TODO(), r.projectReference)
+	if !clusterapi.Contains(r.ProjectReference.GetFinalizers(), FinalizerName) {
+		r.ProjectReference.SetFinalizers(append(r.ProjectReference.GetFinalizers(), FinalizerName))
+		return r.kubeClient.Update(context.TODO(), r.ProjectReference)
 	}
 	return nil
 }
 
-// EnsureFinalizerDeleted parses the meta.Finalizers of ProjectReference instance and removes finalizerName if found;
+// EnsureFinalizerDeleted parses the meta.Finalizers of ProjectReference instance and removes FinalizerName if found;
 func (r *ReferenceAdapter) EnsureFinalizerDeleted() error {
 	r.logger.Info("Deleting Finalizer")
-	finalizers := r.projectReference.GetFinalizers()
-	if clusterapi.Contains(finalizers, finalizerName) {
-		r.projectReference.SetFinalizers(clusterapi.Filter(finalizers, finalizerName))
-		return r.kubeClient.Update(context.TODO(), r.projectReference)
+	finalizers := r.ProjectReference.GetFinalizers()
+	if clusterapi.Contains(finalizers, FinalizerName) {
+		r.ProjectReference.SetFinalizers(clusterapi.Filter(finalizers, FinalizerName))
+		return r.kubeClient.Update(context.TODO(), r.ProjectReference)
 	}
 	return nil
 }
@@ -282,15 +284,13 @@ func GenerateProjectID() (string, error) {
 	return "o-" + shortuuid, nil
 }
 
-// updateProjectID updates the ProjectReference with a unique ID for the ProjectID
 func (r *ReferenceAdapter) clearProjectID() error {
-	r.projectReference.Spec.GCPProjectID = ""
-	return r.kubeClient.Update(context.TODO(), r.projectReference)
+	r.ProjectReference.Spec.GCPProjectID = ""
+	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
 }
 
-// checkRequirements checks that region is supported
-func (r *ReferenceAdapter) checkRequirements() error {
-	if _, ok := supportedRegions[r.projectClaim.Spec.Region]; !ok {
+func (r *ReferenceAdapter) CheckRequirements() error {
+	if _, ok := supportedRegions[r.ProjectClaim.Spec.Region]; !ok {
 		return operrors.ErrRegionNotSupported
 	}
 	return nil
@@ -299,7 +299,7 @@ func (r *ReferenceAdapter) checkRequirements() error {
 // deleteProject checks the Project's lifecycle state of the projectReference.Spec.GCPProjectID instance in Google GCP
 // and deletes it if not active
 func (r *ReferenceAdapter) deleteProject() error {
-	project, projectExists, err := r.getProject(r.projectReference.Spec.GCPProjectID)
+	project, projectExists, err := r.getProject(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
 		return err
 	}
@@ -325,7 +325,7 @@ func (r *ReferenceAdapter) deleteProject() error {
 }
 
 func (r *ReferenceAdapter) createProject(parentFolderID string) error {
-	project, projectExists, err := r.getProject(r.projectReference.Spec.GCPProjectID)
+	project, projectExists, err := r.getProject(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
 		return err
 	}
@@ -347,7 +347,7 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 	// If we cannot create the project clear the projectID from spec so we can try again with another unique key
 	_, err = r.gcpClient.CreateProject(parentFolderID)
 	if err != nil {
-		r.logger.Error(err, "could not create project", "Parent Folder ID", parentFolderID, "Requested Project ID", r.projectReference.Spec.GCPProjectID)
+		r.logger.Error(err, "could not create project", "Parent Folder ID", parentFolderID, "Requested Project ID", r.ProjectReference.Spec.GCPProjectID)
 		r.logger.Info("Clearing gcpProjectID from ProjectReferenceSpec")
 		//Todo() We need to requeue here ot it will continue to the next step.
 		err = r.clearProjectID()
@@ -375,23 +375,23 @@ func (r *ReferenceAdapter) getProject(projectId string) (*cloudresourcemanager.P
 
 func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) error {
 	r.logger.Info("Enabling Billing API")
-	err := r.gcpClient.EnableAPI(r.projectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
+	err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
 	if err != nil {
-		r.logger.Error(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.projectReference.Spec.GCPProjectID))
+		r.logger.Error(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
 		return err
 	}
 
 	r.logger.Info("Linking Cloud Billing Account")
-	err = r.gcpClient.CreateCloudBillingAccount(r.projectReference.Spec.GCPProjectID, config.BillingAccount)
+	err = r.gcpClient.CreateCloudBillingAccount(r.ProjectReference.Spec.GCPProjectID, config.BillingAccount)
 	if err != nil {
 		r.logger.Error(err, "error creating CloudBilling")
 		return err
 	}
 
 	for _, a := range OSDRequiredAPIS {
-		err = r.gcpClient.EnableAPI(r.projectReference.Spec.GCPProjectID, a)
+		err = r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, a)
 		if err != nil {
-			r.logger.Error(err, fmt.Sprintf("error enabling %s api for project %s", a, r.projectReference.Spec.GCPProjectID))
+			r.logger.Error(err, fmt.Sprintf("error enabling %s api for project %s", a, r.ProjectReference.Spec.GCPProjectID))
 			return err
 		}
 	}
@@ -431,7 +431,7 @@ func (r *ReferenceAdapter) configureServiceAccount() error {
 	r.logger.Info("Setting Service Account Policies")
 	err = r.SetIAMPolicy(serviceAccount.Email)
 	if err != nil {
-		r.logger.Error(err, "could not update policy on project", "Project Name", r.projectReference.Spec.GCPProjectID)
+		r.logger.Error(err, "could not update policy on project", "Project Name", r.ProjectReference.Spec.GCPProjectID)
 		return err
 	}
 	return nil
@@ -460,14 +460,14 @@ func (r *ReferenceAdapter) createCredentials() error {
 	}
 
 	secret := gcputil.NewGCPSecretCR(string(privateKeyString), types.NamespacedName{
-		Namespace: r.projectClaim.Spec.GCPCredentialSecret.Namespace,
-		Name:      r.projectClaim.Spec.GCPCredentialSecret.Name,
+		Namespace: r.ProjectClaim.Spec.GCPCredentialSecret.Namespace,
+		Name:      r.ProjectClaim.Spec.GCPCredentialSecret.Name,
 	})
 
-	r.logger.Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.projectClaim.Spec.GCPCredentialSecret.Name, r.projectClaim.Spec.GCPCredentialSecret.Namespace))
+	r.logger.Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace))
 	createErr := r.kubeClient.Create(context.TODO(), secret)
 	if createErr != nil {
-		r.logger.Error(createErr, "could not create service account secret ", "Service Account Secret Name", r.projectClaim.Spec.GCPCredentialSecret.Name)
+		r.logger.Error(createErr, "could not create service account secret ", "Service Account Secret Name", r.ProjectClaim.Spec.GCPCredentialSecret.Name)
 		return createErr
 	}
 
@@ -477,8 +477,8 @@ func (r *ReferenceAdapter) createCredentials() error {
 func (r *ReferenceAdapter) deleteCredentials() error {
 	r.logger.Info("Deleting Credentials")
 	secret := types.NamespacedName{
-		Namespace: r.projectClaim.Spec.GCPCredentialSecret.Namespace,
-		Name:      r.projectClaim.Spec.GCPCredentialSecret.Name,
+		Namespace: r.ProjectClaim.Spec.GCPCredentialSecret.Namespace,
+		Name:      r.ProjectClaim.Spec.GCPCredentialSecret.Name,
 	}
 
 	// Check if the Secret exists
@@ -504,31 +504,31 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 // ensureAvailibilityZonesSet sets the az in the projectclaim spec if necessary
 // returns true if the project claim has been modified
 func (r *ReferenceAdapter) ensureClaimAvailibilityZonesSet() (bool, error) {
-	if len(r.projectClaim.Spec.AvailibilityZones) > 0 {
+	if len(r.ProjectClaim.Spec.AvailibilityZones) > 0 {
 		return false, nil
 	}
 
-	zones, err := r.gcpClient.ListAvilibilityZones(r.projectReference.Spec.GCPProjectID, r.projectClaim.Spec.Region)
+	zones, err := r.gcpClient.ListAvilibilityZones(r.ProjectReference.Spec.GCPProjectID, r.ProjectClaim.Spec.Region)
 	if err != nil {
 		return false, err
 	}
 
-	r.projectClaim.Spec.AvailibilityZones = zones
+	r.ProjectClaim.Spec.AvailibilityZones = zones
 
 	return true, nil
 }
 
 func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
-	if r.projectClaim.Spec.GCPProjectID == "" {
-		r.projectClaim.Spec.GCPProjectID = r.projectReference.Spec.GCPProjectID
+	if r.ProjectClaim.Spec.GCPProjectID == "" {
+		r.ProjectClaim.Spec.GCPProjectID = r.ProjectReference.Spec.GCPProjectID
 		return true
 	}
 	return false
 }
 
 func (r *ReferenceAdapter) EnsureProjectReferenceInitialized() (ObjectState, error) {
-	if r.projectReference.Status.Conditions == nil {
-		r.projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
+	if r.ProjectReference.Status.Conditions == nil {
+		r.ProjectReference.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := r.StatusUpdate()
 		if err != nil {
 			r.logger.Error(err, "Failed to initalize ProjectReference")
@@ -547,7 +547,7 @@ type AddorUpdateBindingResponse struct {
 
 // AddOrUpdateBindings gets the policy and checks if the bindings match the required roles
 func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string) (AddorUpdateBindingResponse, error) {
-	policy, err := r.gcpClient.GetIamPolicy(r.projectReference.Spec.GCPProjectID)
+	policy, err := r.gcpClient.GetIamPolicy(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
 		return AddorUpdateBindingResponse{}, err
 	}
@@ -599,7 +599,7 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
 
 // SetProjectReferenceCondition calls SetCondition() with project reference conditions
 func (r *ReferenceAdapter) SetProjectReferenceCondition(status corev1.ConditionStatus, reason string, message string) error {
-	conditions := &r.projectReference.Status.Conditions
+	conditions := &r.ProjectReference.Status.Conditions
 	err := r.util.SetCondition(conditions, status, reason, message)
 	if err != nil {
 		return err
@@ -610,9 +610,9 @@ func (r *ReferenceAdapter) SetProjectReferenceCondition(status corev1.ConditionS
 
 // StatusUpdate updates the project reference status
 func (r *ReferenceAdapter) StatusUpdate() error {
-	err := r.kubeClient.Status().Update(context.TODO(), r.projectReference)
+	err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
 	if err != nil {
-		r.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim state for %s", r.projectReference.Name))
+		r.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim state for %s", r.ProjectReference.Name))
 		return err
 	}
 

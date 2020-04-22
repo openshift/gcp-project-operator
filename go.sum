@@ -194,14 +194,8 @@ github.com/onsi/ginkgo v1.12.0/go.mod h1:oUhWkIvk5aDxtKvDDuw8gItl8pKl42LzjC9KZE0
 github.com/onsi/gomega v1.7.1/go.mod h1:XdKZgCCFLUoM/7CFJVPcG8C1xQ1AJ0vpAezJrB7JYyY=
 github.com/onsi/gomega v1.9.0 h1:R1uwffexN6Pr340GtYRIdZmAiN4J+iw6WG4wog1DUXg=
 github.com/onsi/gomega v1.9.0/go.mod h1:Ho0h+IUsWyvy1OpqCwxlQ/21gkhVunqlU8fDGcoTdcA=
-github.com/openshift/api v0.0.0-20200217161739-c99157bc6492 h1:9lbsS5fdKZ1iKhw3mPDtvg+fUvkjCCe0my3VRn3vkAU=
-github.com/openshift/api v0.0.0-20200217161739-c99157bc6492/go.mod h1:fT6U/JfG8uZzemTRwZA2kBDJP5nWz7v05UHnty/D+pk=
 github.com/openshift/cluster-api v0.0.0-20191129101638-b09907ac6668 h1:IDZyg/Kye98ptqpc9j9rzPjZJlijjEDe8g7TZ67CmLU=
 github.com/openshift/cluster-api v0.0.0-20191129101638-b09907ac6668/go.mod h1:T18COkr6nLh9RyZKPMP7YjnwBME7RX8P2ar1SQbBltM=
-github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e h1:d+HIsGZbd33eAmkrrQE22YD2PywTf9WxVeNrxam0Jag=
-github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e/go.mod h1:M9dusM6U0OOmpKjTacoXquDKPhRPu23PvFA/ws8QML0=
-github.com/openshift/hive v0.0.0-20191114203647-105cae8c337d h1:+JUHqyYjqlvDa0Z3e/LA1tIaUTZ9H4IE0UUr022mKkc=
-github.com/openshift/hive v0.0.0-20191114203647-105cae8c337d/go.mod h1:t12kMAMjO4O1dRGOb+uMy3BGNR4zaJSg8KgaOfW/QtI=
 github.com/openzipkin/zipkin-go v0.1.3/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/operator-framework/operator-sdk v0.8.2 h1:A7gwtu+UpaS1t0CGyCD2+x2jt2MNwHjuJVJjkp1ed3Q=
 github.com/operator-framework/operator-sdk v0.8.2/go.mod h1:iVyukRkam5JZa8AnjYf+/G3rk7JI1+M6GsU0sq0B9NA=

@@ -1,38 +1,73 @@
+# GCP Project Operator
 
-   * [Info](#info)
-      * [Workflow - ProjectClaim](#workflow---projectclaim)
-         * [Example CR](#example-cr)
-      * [Workflow - ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
-      * [Requirements](#requirements)
-   * [Deployment](#deployment)
-      * [Building](#building)
-      * [Local Dev](#local-dev)
-         * [Prerequisites](#prerequisites)
-         * [Load Hive CRDS](#load-hive-crds)
-         * [Start operator locally](#start-operator-locally)
-      * [Remote](#remote)
-         * [Pushing Image To quay](#pushing-image-to-quay)
-         * [Deploying code](#deploying-code)
-      * [Configuration](#configuration)
-         * [Auth Secret](#auth-secret)
-         * [Configmap](#configmap)
+[![Go Report Card](https://goreportcard.com/badge/github.com/openshift/gcp-project-operator)](https://goreportcard.com/report/github.com/openshift/gcp-project-operator)
+![Go Coverage](./coverage_badge.png)
+[![GoDoc](https://godoc.org/github.com/openshift/gcp-project-operator?status.svg)](https://pkg.go.dev/mod/github.com/openshift/gcp-project-operator)
+[![License](https://img.shields.io/:license-apache-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0.html)
+
+[![GCP Project Operator](./docs/images/gcpprojectoperator.png)](https://github.com/openshift/gcp-project-operator)
+
+----
+GCP Project Operator is an open source project responsible for creating and destroying projects and service accounts in GCP.
+It stores the credentials in a secret, so other Kubernetes applications (_operators_) can use them and interact with GCP to create cloud resources or any other underlying infrastructure (_such as storage or virtual machines_).
+
+GCP Project Operator is one of the operators used for provisioning [OpenShift Dedicated](https://www.openshift.com/products/dedicated/) clusters on [Google Cloud Platform](https://cloud.google.com/) managed by Red Hat Site-Reliability Engineers.
+
+If you like to contribute to GCP Project Operator, please be so kind to read our [Contribution Policy](./docs/CONTRIBUTING.md) first.
+
+----
+
+* [Info](#info)
+   * [Documentation](#documentation)
+      * [For Users](#for-users)
+      * [For Developers](#for-developers)
+   * [Workflow - ProjectClaim](#workflow---projectclaim)
+      * [Example CR](#example-cr)
+   * [Workflow - ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
+   * [Requirements](#requirements)
+* [Deployment](#deployment)
+   * [Building](#building)
+   * [Local Dev](#local-dev)
+      * [Prerequisites](#prerequisites)
+      * [Start operator locally](#start-operator-locally)
+   * [Configuration](#configuration)
+      * [Auth Secret](#auth-secret)
+      * [ConfigMap](#ConfigMap)
 
 # Info
 
-The gcp project operator is reponsible for creating projects and service accounts in GCP and storing the credentials in a secret.
+## Documentation
+
+### For Users
+
+* [Google GCP configuration](./docs/gcpconfig.md) -- The Operator expects a `ConfigMap` and a `Secret` to be already present in the cluster before you use it.
+* [How to use it](./docs/userstory.md) -- Tell the Operator to create or delete a new GCP Project for you.
+* [Debugging](./docs/debug.md) -- Useful tips and commands.
+* [API](./docs/api.md) -- Options you can fine-tune for `ProjectClaim`.
+
+### For Developers
+
+* [Design](./docs/design.md) -- Describes the interaction between the custom resource definitions.
+* [Building](./docs/building.md) -- Instructions for building the project.
+* [Development](./docs/development.md) -- Instructions for developers who want to contribute.
+* [Testing](./docs/testing.md) -- Instructions for writing tests.
+* [Troubleshooting](./docs/troubleshooting.md) -- Common errors and pitfalls.
+* [Code Analysis](./docs/analyze.md) -- A high-level analysis of the code to get yourself familiar with the codebase.
+
 
 ## Workflow - ProjectClaim
 
-1. The operator watches all namespaces for `ProjectClaim` resources
-2. When a `ProjectClaim` is found (see example below) the operator triggers the creation of a project in GCP
-3. After successful project creation
-    * the field `State` will be set to Ready
-    * A secret is created in the cluster namespace, as defined in the `ProjectClaim`
-    * The field `spec.gcpProjectID` will be filled with the ID of the GCP project
-4. When a `ProjectClaim` is removed, the GCP project and service accounts are deleted (WIP)
-5. The operator removes the finalizer from the `ProjectClaim` (WIP)
+1. The operator watches all namespaces for `ProjectClaim` resources.
+2. When a `ProjectClaim` is found (see example below) the operator triggers the creation of a project in GCP.
+3. After successful project creation:
+    * The field `State` will be set to `Ready`.
+    * A secret is created in the cluster namespace, as defined in the `ProjectClaim`.
+    * The field `spec.gcpProjectID` will be filled with the ID of the GCP project.
+    * A list of available zones in the input region is set in `spec.availabilityZones`.
+4. When a `ProjectClaim` is removed, the secret, the GCP project and its ServiceAccounts are deleted.
+5. The operator removes the finalizer from the `ProjectClaim`.
 
-### Example CR
+### Example Input Custom Resource
 
 ```yaml
 apiVersion: gcp.managed.openshift.io/v1alpha1
@@ -50,31 +85,6 @@ spec:
     id: example-legal-entity-id
 ```
 
-## Workflow - ClusterDeployment (deprecated)
-
-- The operator would watch clusterdeployments in all namespaces.
-- Operator would check that the clusterdeployment’s labels “api.openshift.com/managed = true” and “hive.openshift.io/cluster-platform = gcp"
-  - If both labels are as expected and clusterdeployment field “Spec.Installed = false”
-    - The operator will create a project for the cluster from the name provided in
-“Spec.Platform.GCP.ProjectID” in the region provided by "Spec.Platform.GCP.Region"
-    - The operator will then enable the required APIs.
-    - The operator will set quotas as required
-    - The operator will then create a service account for the operator and key
-    - The operator will create a secret called gcp
-    - The operator will add a finalizer to the clusterdeployment
-  - If both labels are as expected and the clusterdeployment field “Spec.Installed = true” and the clusterdeployment is attempted to be deleted.
-    - The operator will delete the service account and project
-    - The operator will remove the finalizer
-
-## Requirements
-
-- OCM will provide a clusterdeployment with the following
-  - An agreed upon secret name in "Spec.PlatformSecrets.GCP.Credentials.Name" now it is using name **_gcp_**
-  - Unique name in projectID “Spec.Platform.GCP.ProjectID”
-  - Supported region in “Spec.Platform.GCP.Region”
-  - Ssh Key in the clusterdeployment namesapcew with the clusterdeployment  "Spec.SshKey.Name" filled out
--- Service account credentials with permissions to create projects, service accounts, and service account keys  in the operator namespace _**gcp-project-operator**_
-
 # Deployment
 
 ## Building
@@ -87,17 +97,6 @@ Just run `make`.
 
 * Typically you'll want to use [CRC](https://github.com/code-ready/crc/), though it's fine if you're running OpenShift another way.
 * You need to have [the operator-sdk binary](https://github.com/operator-framework/operator-sdk/releases) in your `$PATH`.
-
-### Load Hive CRDS
-
-For gcp-project-operator to work, the cluster needs to have CRDs from [Hive](https://github.com/openshift/hive) present in the system.
-
-Note: the `git clone` below *isn't* using the `master` branch.
-
-```
-git clone --branch v1alpha1 https://github.com/openshift/hive
-for crd in hive/config/crds/hive_v1alpha1_*.yaml; do (set -x; oc apply -f $crd); done
-```
 
 ### Start operator locally
 
@@ -113,37 +112,9 @@ If everything went ok, you should see some startup logs from the operator in you
 
 There are example CRs in `deploy/crds/` you might want to use to see how the operator reacts to their presence (and absence if you delete them).
 
+### Running tests
 
-## Remote
-
-### Pushing Image To quay
-
-If you have permissions to push to quay.io/razevedo/gcp-project-operator. You can use the following commands to push the latest code
-
-```
-podman build . -f build/Dockerfile -t quay.io/razevedo/gcp-project-operator
-
-podman push quay.io/razevedo/gcp-project-operator
-```
-
-### Deploying code
-
-Currently it is being deployed using image 'quay.io/razevedo/gcp-project-operator' Update deploy/operator.yaml with image you would like deployed.
-
-```
-oc apply -f deploy/cluster_role_binding.yaml
-oc apply -f deploy/cluster_role.yaml
-oc apply -f deploy/service_account.yaml
-oc apply -f deploy/operator.yaml
-```
-
-If you need to update to lastest image pushed to quay repo
-
-```
-oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=0
-
-oc scale deployment gcp-project-operator -n gcp-project-operator --replicas=1
-```
+You can run the tests using `make gotest` or `go test ./...`
 
 ## Configuration
 
@@ -166,7 +137,7 @@ It will parse it and verify its contents, expecting to extract the values of two
 * `billingAccount`
 * `parentFolderID`
 
-To fulfil this prerequisite, please type:
+To fulfill this prerequisite, please type:
 
 ```bash
 export PARENTFOLDERID="123456789123"         # Google Cloud organization Parent Folder ID
