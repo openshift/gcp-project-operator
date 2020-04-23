@@ -10,7 +10,6 @@ import (
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -110,10 +109,8 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	}
 
 	result, err := r.ReconcileHandler(adapter, reqLogger)
-	if err != nil {
-		reason := "ProjectReferenceReconcileHandlerFailed"
-		_ = adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, err.Error())
-	}
+	reason := "ProjectReferenceReconcileHandlerFailed"
+	_ = adapter.SetProjectReferenceCondition(reason, err)
 
 	return result, err
 }

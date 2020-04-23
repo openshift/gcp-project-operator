@@ -134,16 +134,33 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 			Context("SetProjectReferenceCondition()", func() {
 				var (
-					message       = "fakeError"
+					err           = errors.New("fake reconcile error")
 					reason        = "fakeReconcileHandlerFailed"
 					conditionType = gcpv1alpha1.ConditionError
 				)
+				Context("when no conditions defined before and the err is nil", func() {
+					It("It returns nil ", func() {
+						errTemp := adapter.SetProjectReferenceCondition(reason, nil)
+						Expect(errTemp).To(BeNil())
+					})
+				})
 				Context("when the err comes from reconcileHandler", func() {
-					It("should update the CRD", func() {
+					It("It should update the CRD", func() {
+						conditions := &adapter.ProjectReference.Status.Conditions
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-						mockConditions.EXPECT().SetCondition(gomock.Any(), conditionType, corev1.ConditionTrue, reason, message).Times(1)
-						adapter.SetProjectReferenceCondition(corev1.ConditionTrue, reason, message)
+						mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error()).Times(1)
+						adapter.SetProjectReferenceCondition(reason, err)
+					})
+				})
+				Context("when the err has been resolved", func() {
+					It("It should update the CRD condition status as resolved", func() {
+						conditions := &adapter.ProjectReference.Status.Conditions
+						*conditions = append(*conditions, gcpv1alpha1.Condition{})
+						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+						mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "", "").Times(1)
+						adapter.SetProjectReferenceCondition(reason, nil)
 					})
 				})
 			})

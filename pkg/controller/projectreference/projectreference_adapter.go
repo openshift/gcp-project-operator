@@ -599,10 +599,22 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
 }
 
 // SetProjectReferenceCondition calls SetCondition() with project reference conditions
-func (r *ReferenceAdapter) SetProjectReferenceCondition(status corev1.ConditionStatus, reason string, message string) error {
+// It returns nil if no conditions defined before and the err is nil
+// It updates the condition with err message, probe, etc... if err does exist
+// It marks the condition as resolved if the err is nil and there is at least one condition defined before
+func (r *ReferenceAdapter) SetProjectReferenceCondition(reason string, err error) error {
 	conditions := &r.ProjectReference.Status.Conditions
 	conditionType := gcpv1alpha1.ConditionError
-	r.conditionManager.SetCondition(conditions, conditionType, status, reason, message)
+	if err != nil {
+		r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error())
+	} else {
+		if len(*conditions) != 0 {
+			r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, "", "")
+		} else {
+			return nil
+		}
+	}
+
 	return r.StatusUpdate()
 }
 

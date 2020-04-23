@@ -6,7 +6,6 @@ import (
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,7 +29,7 @@ type CustomResourceAdapter interface {
 	EnsureProjectReferenceLink() (ObjectState, error)
 	EnsureFinalizer() (ObjectState, error)
 	FinalizeProjectClaim() (ObjectState, error)
-	SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error
+	SetProjectClaimCondition(reason string, err error) error
 }
 
 // Add creates a new ProjectClaim Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -96,11 +95,8 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 	conditionManager := condition.NewConditionManager()
 	adapter := NewProjectClaimAdapter(instance, reqLogger, r.client, conditionManager)
 	result, err := r.ReconcileHandler(adapter)
-	if err != nil {
-		reason := "ReconcileFailed"
-		// Update the ProjectClaimConditionCRD, ignore the error
-		_ = adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, err.Error())
-	}
+	reason := "ProjectClaimReconcileFailed"
+	_ = adapter.SetProjectClaimCondition(reason, err)
 
 	return result, err
 }

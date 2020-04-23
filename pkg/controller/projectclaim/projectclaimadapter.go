@@ -190,10 +190,19 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimSta
 }
 
 // SetProjectClaimCondition calls SetCondition() with project claim conditions
-func (c *ProjectClaimAdapter) SetProjectClaimCondition(status corev1.ConditionStatus, reason string, message string) error {
+func (c *ProjectClaimAdapter) SetProjectClaimCondition(reason string, err error) error {
 	conditions := &c.projectClaim.Status.Conditions
 	conditionType := gcpv1alpha1.ConditionError
-	c.conditionManager.SetCondition(conditions, conditionType, status, reason, message)
+	if err != nil {
+		c.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error())
+	} else {
+		if len(*conditions) != 0 {
+			c.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, "", "")
+		} else {
+			return nil
+		}
+	}
+
 	return c.StatusUpdate()
 }
 

@@ -2,6 +2,7 @@ package projectclaim_test
 
 import (
 	"context"
+	er "errors"
 	"time"
 
 	"github.com/golang/mock/gomock"
@@ -296,17 +297,34 @@ var _ = Describe("Customresourceadapter", func() {
 
 		Context("SetProjectClaimCondition()", func() {
 			var (
-				message       = "ReconcileFailed"
+				err           = er.New("fake reconcile")
 				reason        = "ReconcileFailed"
 				conditionType = gcpv1alpha1.ConditionError
 			)
+			Context("when no conditions defined before and the err is nil", func() {
+				It("It returns nil ", func() {
+					errTemp := adapter.SetProjectClaimCondition(reason, nil)
+					Expect(errTemp).To(BeNil())
+				})
+			})
 			Context("when the err comes from reconcileHandler", func() {
 				It("should update the CRD", func() {
 					matcher := testStructs.NewProjectClaimMatcher()
 					mockClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
-					mockConditions.EXPECT().SetCondition(gomock.Any(), conditionType, corev1.ConditionTrue, reason, message).Times(1)
-					adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
+					mockConditions.EXPECT().SetCondition(gomock.Any(), conditionType, corev1.ConditionTrue, reason, err.Error()).Times(1)
+					adapter.SetProjectClaimCondition(reason, err)
+				})
+			})
+			Context("when the err has been resolved", func() {
+				It("It should update the CRD condition status as resolved", func() {
+					matcher := testStructs.NewProjectClaimMatcher()
+					conditions := &projectClaim.Status.Conditions
+					*conditions = append(*conditions, gcpv1alpha1.Condition{})
+					mockClient.EXPECT().Status().Return(mockStatusWriter)
+					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
+					mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "", "").Times(1)
+					adapter.SetProjectClaimCondition(reason, nil)
 				})
 			})
 		})

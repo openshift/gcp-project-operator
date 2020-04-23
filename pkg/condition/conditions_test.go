@@ -46,4 +46,14 @@ func TestSetCondition(t *testing.T) {
 	if obj.LastTransitionTime != transition {
 		t.Errorf("transition time shouldn't be changed, expected %v, got %v", transition, obj.LastTransitionTime)
 	}
+
+	// call setCondition() with conditionFalse and see if the status is marked as resolved
+	status = corev1.ConditionFalse
+	var expectedStatus corev1.ConditionStatus
+	expectedStatus = "Resolved"
+	conditionManager.SetCondition(sut, conditionType, status, reason, message)
+	obj = (*sut)[0]
+	if obj.Status != expectedStatus {
+		t.Errorf("SetCondition() called with conditionFalse, expected %v, got %v", expectedStatus, obj.Status)
+	}
 }
