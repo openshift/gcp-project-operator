@@ -50,10 +50,15 @@ func TestSetCondition(t *testing.T) {
 	// call setCondition() with conditionFalse and see if the status is marked as resolved
 	status = corev1.ConditionFalse
 	var expectedStatus corev1.ConditionStatus
-	expectedStatus = "Resolved"
+	expectedStatus = "False"
+	reason = reason + "changed"
 	conditionManager.SetCondition(sut, conditionType, status, reason, message)
 	obj = (*sut)[0]
 	if obj.Status != expectedStatus {
 		t.Errorf("SetCondition() called with conditionFalse, expected %v, got %v", expectedStatus, obj.Status)
+	}
+
+	if obj.Reason != reason {
+		t.Errorf("reason should be updated, expected %v, got %v", reason, obj.Reason)
 	}
 }

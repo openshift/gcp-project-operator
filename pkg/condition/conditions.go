@@ -37,12 +37,13 @@ func (c *ConditionManager) SetCondition(conditions *[]gcpv1alpha1.Condition, con
 		)
 	} else {
 		if status == corev1.ConditionTrue {
-			existingCondition.Status = "IssueIsOngoing"
+			existingCondition.Status = corev1.ConditionTrue
 			existingCondition.Reason = reason
 			existingCondition.Message = message
 			existingCondition.LastProbeTime = now
 		} else {
-			existingCondition.Status = "Resolved"
+			existingCondition.Status = corev1.ConditionFalse
+			existingCondition.Reason = reason
 		}
 	}
 }

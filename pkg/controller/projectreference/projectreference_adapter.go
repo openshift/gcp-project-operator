@@ -609,7 +609,8 @@ func (r *ReferenceAdapter) SetProjectReferenceCondition(reason string, err error
 		r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error())
 	} else {
 		if len(*conditions) != 0 {
-			r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, "", "")
+			reason = reason + "Resolved"
+			r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, reason, "")
 		} else {
 			return nil
 		}

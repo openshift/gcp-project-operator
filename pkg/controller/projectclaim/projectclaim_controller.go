@@ -95,7 +95,7 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 	conditionManager := condition.NewConditionManager()
 	adapter := NewProjectClaimAdapter(instance, reqLogger, r.client, conditionManager)
 	result, err := r.ReconcileHandler(adapter)
-	reason := "ProjectClaimReconcileFailed"
+	reason := "ReconcileError"
 	_ = adapter.SetProjectClaimCondition(reason, err)
 
 	return result, err

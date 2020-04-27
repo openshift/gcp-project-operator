@@ -298,7 +298,7 @@ var _ = Describe("Customresourceadapter", func() {
 		Context("SetProjectClaimCondition()", func() {
 			var (
 				err           = er.New("fake reconcile")
-				reason        = "ReconcileFailed"
+				reason        = "ReconcileError"
 				conditionType = gcpv1alpha1.ConditionError
 			)
 			Context("when no conditions defined before and the err is nil", func() {
@@ -323,7 +323,7 @@ var _ = Describe("Customresourceadapter", func() {
 					*conditions = append(*conditions, gcpv1alpha1.Condition{})
 					mockClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
-					mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "", "").Times(1)
+					mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "ReconcileErrorResolved", "").Times(1)
 					adapter.SetProjectClaimCondition(reason, nil)
 				})
 			})

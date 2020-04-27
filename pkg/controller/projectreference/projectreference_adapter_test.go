@@ -135,7 +135,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Context("SetProjectReferenceCondition()", func() {
 				var (
 					err           = errors.New("fake reconcile error")
-					reason        = "fakeReconcileHandlerFailed"
+					reason        = "ReconcileError"
 					conditionType = gcpv1alpha1.ConditionError
 				)
 				Context("when no conditions defined before and the err is nil", func() {
@@ -159,7 +159,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						*conditions = append(*conditions, gcpv1alpha1.Condition{})
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-						mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "", "").Times(1)
+						mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "ReconcileErrorResolved", "").Times(1)
 						adapter.SetProjectReferenceCondition(reason, nil)
 					})
 				})

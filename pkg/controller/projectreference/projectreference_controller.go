@@ -109,7 +109,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	}
 
 	result, err := r.ReconcileHandler(adapter, reqLogger)
-	reason := "ProjectReferenceReconcileHandlerFailed"
+	reason := "ReconcileError"
 	_ = adapter.SetProjectReferenceCondition(reason, err)
 
 	return result, err
