@@ -28,7 +28,7 @@ func (c *ConditionManager) SetCondition(conditions *[]gcpv1alpha1.Condition, con
 			*conditions,
 			gcpv1alpha1.Condition{
 				Type:               conditionType,
-				Status:             status,
+				Status:             corev1.ConditionTrue,
 				Reason:             reason,
 				Message:            message,
 				LastTransitionTime: now,
@@ -36,14 +36,16 @@ func (c *ConditionManager) SetCondition(conditions *[]gcpv1alpha1.Condition, con
 			},
 		)
 	} else {
-		if status == corev1.ConditionTrue {
-			existingCondition.Status = corev1.ConditionTrue
-			existingCondition.Reason = reason
+		existingCondition.LastProbeTime = now
+		existingCondition.Reason = reason
+		existingCondition.Status = status
+		if existingCondition.Message != message {
 			existingCondition.Message = message
-			existingCondition.LastProbeTime = now
-		} else {
+			existingCondition.LastTransitionTime = now
+		}
+		if status != corev1.ConditionTrue {
 			existingCondition.Status = corev1.ConditionFalse
-			existingCondition.Reason = reason
+			existingCondition.LastTransitionTime = now
 		}
 	}
 }
