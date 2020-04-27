@@ -2,6 +2,7 @@ package projectclaim_test
 
 import (
 	"context"
+	er "errors"
 	"time"
 
 	"github.com/golang/mock/gomock"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	mockconditions "github.com/openshift/gcp-project-operator/pkg/condition/mock"
 	"github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
@@ -28,16 +30,18 @@ var _ = Describe("Customresourceadapter", func() {
 		mockClient       *mocks.MockClient
 		mockStatusWriter *mocks.MockStatusWriter
 		projectClaim     *gcpv1alpha1.ProjectClaim
+		mockConditions   *mockconditions.MockConditions
 	)
 
 	BeforeEach(func() {
 		projectClaim = testStructs.NewProjectClaimBuilder().Initialized().GetProjectClaim()
 		mockCtrl = gomock.NewController(GinkgoT())
 		mockClient = mocks.NewMockClient(mockCtrl)
+		mockConditions = mockconditions.NewMockConditions(mockCtrl)
 		mockStatusWriter = mocks.NewMockStatusWriter(mockCtrl)
 	})
 	JustBeforeEach(func() {
-		adapter = NewProjectClaimAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient)
+		adapter = NewProjectClaimAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient, mockConditions)
 	})
 
 	AfterEach(func() {
@@ -292,41 +296,35 @@ var _ = Describe("Customresourceadapter", func() {
 		})
 
 		Context("SetProjectClaimCondition()", func() {
+			var (
+				err           = er.New("fake reconcile")
+				reason        = "ReconcileError"
+				conditionType = gcpv1alpha1.ConditionError
+			)
+			Context("when no conditions defined before and the err is nil", func() {
+				It("It returns nil ", func() {
+					errTemp := adapter.SetProjectClaimCondition(reason, nil)
+					Expect(errTemp).To(BeNil())
+				})
+			})
 			Context("when the err comes from reconcileHandler", func() {
-				var (
-					firstLastTransitionTime metav1.Time
-					firstLastProbeTime      metav1.Time
-					message                 = "ReconcileFailed"
-					reason                  = "ReconcileFailed"
-				)
-
 				It("should update the CRD", func() {
 					matcher := testStructs.NewProjectClaimMatcher()
 					mockClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
-					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
-					adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
-
-					var found *gcpv1alpha1.ProjectClaimCondition
-					for i, condition := range projectClaim.Status.Conditions {
-						if condition.Type == gcpv1alpha1.ClaimConditionError {
-							found = &projectClaim.Status.Conditions[i]
-						}
-					}
-
-					Expect(message).To(Equal(found.Message))
-					Expect(reason).To(Equal(found.Reason))
-
-					//Hold the last state
-					firstLastProbeTime = found.LastProbeTime
-					firstLastTransitionTime = found.LastTransitionTime
-
-					adapter.SetProjectClaimCondition(corev1.ConditionTrue, reason, message)
-
-					Expect(message).To(Equal(found.Message))
-					Expect(reason).To(Equal(found.Reason))
-					Expect(firstLastTransitionTime).To(Equal(found.LastTransitionTime))
-					Expect(firstLastProbeTime).NotTo(Equal(found.LastProbeTime))
+					mockConditions.EXPECT().SetCondition(gomock.Any(), conditionType, corev1.ConditionTrue, reason, err.Error()).Times(1)
+					adapter.SetProjectClaimCondition(reason, err)
+				})
+			})
+			Context("when the err has been resolved", func() {
+				It("It should update the CRD condition status as resolved", func() {
+					matcher := testStructs.NewProjectClaimMatcher()
+					conditions := &projectClaim.Status.Conditions
+					*conditions = append(*conditions, gcpv1alpha1.Condition{})
+					mockClient.EXPECT().Status().Return(mockStatusWriter)
+					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
+					mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "ReconcileErrorResolved", "").Times(1)
+					adapter.SetProjectClaimCondition(reason, nil)
 				})
 			})
 		})

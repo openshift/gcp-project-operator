@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
@@ -19,8 +20,16 @@ import (
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+type ObjectState bool
+
+const (
+	ObjectModified  ObjectState = true
+	ObjectUnchanged ObjectState = false
 )
 
 const (
@@ -90,10 +99,11 @@ type ReferenceAdapter struct {
 	logger           logr.Logger
 	kubeClient       client.Client
 	gcpClient        gcpclient.Client
+	conditionManager condition.Conditions
 }
 
 // NewReferenceAdapter creates an adapter to turn what is requested in a ProjectReference into a GCP project and write the output back.
-func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client) (*ReferenceAdapter, error) {
+func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, manager condition.Conditions) (*ReferenceAdapter, error) {
 	projectClaim, err := getMatchingClaimLink(projectReference, client)
 	if err != nil {
 		return &ReferenceAdapter{}, err
@@ -104,6 +114,7 @@ func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger 
 		logger:           logger,
 		kubeClient:       client,
 		gcpClient:        gcpClient,
+		conditionManager: manager,
 	}, nil
 }
 
@@ -516,6 +527,19 @@ func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
 	return false
 }
 
+func (r *ReferenceAdapter) EnsureProjectReferenceInitialized() (ObjectState, error) {
+	if r.ProjectReference.Status.Conditions == nil {
+		r.ProjectReference.Status.Conditions = []gcpv1alpha1.Condition{}
+		err := r.StatusUpdate()
+		if err != nil {
+			r.logger.Error(err, "Failed to initalize ProjectReference")
+			return ObjectUnchanged, err
+		}
+		return ObjectModified, nil
+	}
+	return ObjectUnchanged, nil
+}
+
 // AddorUpdateBindingResponse contines the data that is returned by the AddOrUpdarteBindings function
 type AddorUpdateBindingResponse struct {
 	modified bool
@@ -572,6 +596,38 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
 		return nil
 	}
 
+}
+
+// SetProjectReferenceCondition calls SetCondition() with project reference conditions
+// It returns nil if no conditions defined before and the err is nil
+// It updates the condition with err message, probe, etc... if err does exist
+// It marks the condition as resolved if the err is nil and there is at least one condition defined before
+func (r *ReferenceAdapter) SetProjectReferenceCondition(reason string, err error) error {
+	conditions := &r.ProjectReference.Status.Conditions
+	conditionType := gcpv1alpha1.ConditionError
+	if err != nil {
+		r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error())
+	} else {
+		if len(*conditions) != 0 {
+			reason = reason + "Resolved"
+			r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, reason, "")
+		} else {
+			return nil
+		}
+	}
+
+	return r.StatusUpdate()
+}
+
+// StatusUpdate updates the project reference status
+func (r *ReferenceAdapter) StatusUpdate() error {
+	err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
+	if err != nil {
+		r.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim state for %s", r.ProjectReference.Name))
+		return err
+	}
+
+	return nil
 }
 
 // convertProjectsToMap converts []*cloudresourcemanager.Project map[string]*cloudresourcemanager.Project with the projectID as the map key
