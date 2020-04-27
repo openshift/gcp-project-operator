@@ -39,11 +39,11 @@ func (c *ConditionManager) SetCondition(conditions *[]gcpv1alpha1.Condition, con
 		existingCondition.LastProbeTime = now
 		existingCondition.Reason = reason
 		existingCondition.Status = status
-		if existingCondition.Message != message {
+		if existingCondition.Message != message && status == corev1.ConditionTrue {
 			existingCondition.Message = message
 			existingCondition.LastTransitionTime = now
 		}
-		if status != corev1.ConditionTrue {
+		if status == corev1.ConditionFalse {
 			existingCondition.Status = corev1.ConditionFalse
 			existingCondition.LastTransitionTime = now
 		}
