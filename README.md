@@ -13,6 +13,8 @@ It stores the credentials in a secret, so other Kubernetes applications (_operat
 
 GCP Project Operator is one of the operators used for provisioning [OpenShift Dedicated](https://www.openshift.com/products/dedicated/) clusters on [Google Cloud Platform](https://cloud.google.com/) managed by Red Hat Site-Reliability Engineers.
 
+> You can get a quick overview of what's happening inside the Operator by watching [this video](https://www.youtube.com/watch?v=BQmvN9248sI).
+
 If you like to contribute to GCP Project Operator, please be so kind to read our [Contribution Policy](./docs/CONTRIBUTING.md) first.
 
 ----
