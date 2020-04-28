@@ -22,43 +22,38 @@ func NewConditionManager() Conditions {
 // SetCondition sets a condition on a custom resource's status
 func (c *ConditionManager) SetCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType, status corev1.ConditionStatus, reason string, message string) {
 	now := metav1.Now()
-	existingCondition := c.FindCondition(*conditions, conditionType)
-	if existingCondition == nil {
-		*conditions = append(
-			*conditions,
-			gcpv1alpha1.Condition{
-				Type:               conditionType,
-				Status:             corev1.ConditionTrue,
-				Reason:             reason,
-				Message:            message,
-				LastTransitionTime: now,
-				LastProbeTime:      now,
-			},
-		)
-	} else {
-		existingCondition.LastProbeTime = now
-		existingCondition.Reason = reason
-		existingCondition.Status = status
-		if existingCondition.Message != message && status == corev1.ConditionTrue {
-			existingCondition.Message = message
-			existingCondition.LastTransitionTime = now
-		}
-		if status == corev1.ConditionFalse {
-			existingCondition.Status = corev1.ConditionFalse
-			existingCondition.LastTransitionTime = now
-		}
+	condition := c.FindCondition(conditions, conditionType)
+	if message != condition.Message ||
+		status != condition.Status ||
+		reason != condition.Reason ||
+		conditionType != condition.Type {
+
+		condition.LastTransitionTime = now
 	}
+	if message != "" {
+		condition.Message = message
+	}
+	condition.LastProbeTime = now
+	condition.Reason = reason
+	condition.Status = status
 }
 
 // FindCondition finds the suitable Condition object
 // by looking for adapter's condition list.
-// If none exists, then returns nil.
-func (c *ConditionManager) FindCondition(conditions []gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) *gcpv1alpha1.Condition {
-	for i, condition := range conditions {
+// If none exists, it appends one.
+func (c *ConditionManager) FindCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) *gcpv1alpha1.Condition {
+	for i, condition := range *conditions {
 		if condition.Type == conditionType {
-			return &conditions[i]
+			return &(*conditions)[i]
 		}
 	}
 
-	return nil
+	*conditions = append(
+		*conditions,
+		gcpv1alpha1.Condition{
+			Type: conditionType,
+		},
+	)
+
+	return &(*conditions)[len(*conditions)-1]
 }
