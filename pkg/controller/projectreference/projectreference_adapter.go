@@ -77,13 +77,16 @@ var supportedRegions = map[string]bool{
 	"us-west1":        true,
 
 	// Regions below don't have enough quota configured by default, but our org has sufficient quota
-	"asia-east2":              true,
-	"asia-south1":             true,
-	"australia-southeast1":    true,
-	"europe-west2":            true,
-	"northamerica-northeast1": true,
-	"southamerica-east1":      true,
-	"us-west2":                true,
+	"asia-east2":   true,
+	"asia-south1":  true,
+	"europe-west2": true,
+	"us-west2":     true,
+
+	// Regions below have enough quota, but the region name will produce too long hostnames.
+	// This is an issue the openshift installer needs to fix.
+	// "australia-southeast1":    true,
+	// "northamerica-northeast1": true,
+	// "southamerica-east1":      true,
 
 	// Regions below are disabled do not have enough quota configured (CPU < 28 or SSD storage < 896)
 	// "europe-west3":            true,
