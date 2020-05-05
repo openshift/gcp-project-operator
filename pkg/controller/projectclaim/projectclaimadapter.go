@@ -8,6 +8,7 @@ import (
 	"github.com/openshift/cluster-api/pkg/util"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
+	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,6 +33,34 @@ const (
 )
 
 const ProjectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
+
+// Regions supported in the gcp-project-operator
+var supportedRegions = map[string]bool{
+	"asia-east1":      true,
+	"asia-northeast1": true,
+	"asia-southeast1": true,
+	"europe-west1":    true,
+	"europe-west4":    true,
+	"us-central1":     true,
+	"us-east1":        true,
+	"us-east4":        true,
+	"us-west1":        true,
+
+	// Regions below don't have enough quota configured by default, but our org has sufficient quota
+	"asia-east2":              true,
+	"asia-south1":             true,
+	"australia-southeast1":    true,
+	"europe-west2":            true,
+	"northamerica-northeast1": true,
+	"southamerica-east1":      true,
+	"us-west2":                true,
+
+	// Regions below are disabled do not have enough quota configured (CPU < 28 or SSD storage < 896)
+	// "europe-west3":            true,
+	// "europe-west6":            true,
+	// "europe-north1":           true,
+	// "asia-northeast2":         true,
+}
 
 func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, manager condition.Conditions) *ProjectClaimAdapter {
 	projectReference := newMatchingProjectReference(projectClaim)
@@ -205,6 +234,23 @@ func (c *ProjectClaimAdapter) SetProjectClaimCondition(reason string, err error)
 	}
 
 	return c.StatusUpdate()
+}
+
+func (c *ProjectClaimAdapter) CheckRequirementsHandler() error {
+	if _, ok := supportedRegions[c.projectClaim.Spec.Region]; !ok {
+		return operrors.ErrRegionNotSupported
+	}
+	return nil
+}
+
+func (c *ProjectClaimAdapter) CheckRequirements() error {
+	if err := c.CheckRequirementsHandler(); err != nil {
+		// If region is not supported make Status.State equal to ClaimStatusError.
+		c.logger.Error(err, "Region is not supported")
+		return c.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusError)
+	}
+	// Else make Status.State equal to ClaimStatusPending.
+	return c.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPending)
 }
 
 // StatusUpdate updates the project claim status

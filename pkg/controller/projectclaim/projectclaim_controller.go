@@ -25,6 +25,7 @@ type CustomResourceAdapter interface {
 	ProjectReferenceExists() (bool, error)
 	EnsureProjectClaimInitialized() (ObjectState, error)
 	EnsureProjectClaimState(gcpv1alpha1.ClaimStatus) error
+	CheckRequirements() error
 	EnsureProjectReferenceExists() error
 	EnsureProjectReferenceLink() (ObjectState, error)
 	EnsureFinalizer() (ObjectState, error)
@@ -113,6 +114,11 @@ func (r *ReconcileProjectClaim) ReconcileHandler(adapter CustomResourceAdapter) 
 			return r.requeueAfter(5*time.Second, err)
 		}
 		return r.doNotRequeue()
+	}
+
+	err := adapter.CheckRequirements()
+	if err != nil {
+		return r.requeueOnErr(err)
 	}
 
 	crState, err := adapter.EnsureProjectClaimInitialized()
