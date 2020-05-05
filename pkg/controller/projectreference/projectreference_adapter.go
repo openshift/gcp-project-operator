@@ -293,13 +293,6 @@ func (r *ReferenceAdapter) clearProjectID() error {
 	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
 }
 
-func (r *ReferenceAdapter) CheckRequirements() error {
-	if _, ok := supportedRegions[r.ProjectClaim.Spec.Region]; !ok {
-		return operrors.ErrRegionNotSupported
-	}
-	return nil
-}
-
 // deleteProject checks the Project's lifecycle state of the projectReference.Spec.GCPProjectID instance in Google GCP
 // and deletes it if not active
 func (r *ReferenceAdapter) deleteProject() error {
