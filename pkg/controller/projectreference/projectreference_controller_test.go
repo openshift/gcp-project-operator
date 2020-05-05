@@ -100,22 +100,6 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		})
 	})
 
-	Context("When Project Reference state is Error", func() {
-		BeforeEach(func() {
-			projectReference.Status.State = api.ProjectReferenceStatusError
-			projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
-		})
-		It("Does not requeue", func() {
-			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1)
-			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
-				Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
-			}).Times(1)
-			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *projectClaim).Times(1)
-			_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-
 	Context("When you cannot get credenitals", func() {
 		It("Requeues with error", func() {
 			gomock.InOrder(
@@ -236,35 +220,6 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				Expect(err).To(HaveOccurred())
 			})
 		})
-
-		Context("When Reference State is empty and it failes to requirement check and update", func() {
-			BeforeEach(func() {
-				projectReference.Status.State = ""
-				projectClaim.Spec.Region = "bad region"
-			})
-
-			It("It reconciles with error", func() {
-				mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error")).Times(2)
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
-				Expect(err).To(HaveOccurred())
-			})
-		})
-
-		Context("When Reference State is empty and it failes to requirement check", func() {
-			BeforeEach(func() {
-				projectReference.Status.State = ""
-				projectClaim.Spec.Region = "bad region"
-			})
-
-			It("It does not reconcile", func() {
-				mockKubeClient.EXPECT().Status().Return(mockUpdater)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
-				Expect(err).ToNot(HaveOccurred())
-			})
-		})
-
 	})
 
 	Context("Project id generation", func() {

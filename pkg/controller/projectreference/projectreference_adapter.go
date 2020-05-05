@@ -64,37 +64,6 @@ var OSDRequiredRoles = []string{
 	"roles/compute.admin",
 }
 
-// Regions supported in the gcp-project-operator
-var supportedRegions = map[string]bool{
-	"asia-east1":      true,
-	"asia-northeast1": true,
-	"asia-southeast1": true,
-	"europe-west1":    true,
-	"europe-west4":    true,
-	"us-central1":     true,
-	"us-east1":        true,
-	"us-east4":        true,
-	"us-west1":        true,
-
-	// Regions below don't have enough quota configured by default, but our org has sufficient quota
-	"asia-east2":   true,
-	"asia-south1":  true,
-	"europe-west2": true,
-	"us-west2":     true,
-
-	// Regions below have enough quota, but the region name will produce too long hostnames.
-	// This is an issue the openshift installer needs to fix.
-	// "australia-southeast1":    true,
-	// "northamerica-northeast1": true,
-	// "southamerica-east1":      true,
-
-	// Regions below are disabled do not have enough quota configured (CPU < 28 or SSD storage < 896)
-	// "europe-west3":            true,
-	// "europe-west6":            true,
-	// "europe-north1":           true,
-	// "asia-northeast2":         true,
-}
-
 //ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
 type ReferenceAdapter struct {
 	ProjectClaim     *gcpv1alpha1.ProjectClaim
@@ -291,13 +260,6 @@ func GenerateProjectID() (string, error) {
 func (r *ReferenceAdapter) clearProjectID() error {
 	r.ProjectReference.Spec.GCPProjectID = ""
 	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
-}
-
-func (r *ReferenceAdapter) CheckRequirements() error {
-	if _, ok := supportedRegions[r.ProjectClaim.Spec.Region]; !ok {
-		return operrors.ErrRegionNotSupported
-	}
-	return nil
 }
 
 // deleteProject checks the Project's lifecycle state of the projectReference.Spec.GCPProjectID instance in Google GCP

@@ -82,6 +82,30 @@ var _ = Describe("Customresourceadapter", func() {
 		})
 	})
 
+	Context("When the EnsureRegionSupported() is called", func() {
+		Context("if the projectclaim has a supported region", func() {
+			BeforeEach(func() {
+				projectClaim.Spec.Region = "us-east1"
+			})
+			It("should return nil", func() {
+				err := adapter.EnsureRegionSupported()
+				Expect(err).To(BeNil())
+			})
+		})
+		Context("if the projectclaim has an unsupported region", func() {
+			BeforeEach(func() {
+				matcher := testStructs.NewProjectClaimMatcher()
+				mockClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
+				projectClaim.Spec.Region = "fake-region"
+			})
+			It("should return err", func() {
+				err := adapter.EnsureRegionSupported()
+				Expect(err).To(Equal(er.New("EnsureRegionSupported: RegionNotSupported")))
+			})
+		})
+	})
+
 	Context("FinalizeProjectClaim", func() {
 		var (
 			matcher *testStructs.ProjectClaimMatcher
