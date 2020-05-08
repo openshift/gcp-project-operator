@@ -26,7 +26,7 @@ spec:
               memory: "100Mi"
             limits:
               cpu: "50m"
-              memroy: "200Mi"
+              memory: "200Mi"
           env:
             - name: WATCH_NAMESPACE
               value: ""
