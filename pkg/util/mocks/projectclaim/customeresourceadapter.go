@@ -5,11 +5,10 @@
 package projectclaim
 
 import (
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
 	v1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	projectclaim "github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
+	reflect "reflect"
 )
 
 // MockCustomResourceAdapter is a mock of CustomResourceAdapter interface
@@ -106,6 +105,20 @@ func (m *MockCustomResourceAdapter) EnsureProjectReferenceLink() (projectclaim.O
 func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectReferenceLink() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectReferenceLink", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectReferenceLink))
+}
+
+// EnsureRegionSupported mocks base method
+func (m *MockCustomResourceAdapter) EnsureRegionSupported() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnsureRegionSupported")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// EnsureRegionSupported indicates an expected call of EnsureRegionSupported
+func (mr *MockCustomResourceAdapterMockRecorder) EnsureRegionSupported() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureRegionSupported", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureRegionSupported))
 }
 
 // FinalizeProjectClaim mocks base method

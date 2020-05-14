@@ -12,7 +12,6 @@ import (
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	mockconditions "github.com/openshift/gcp-project-operator/pkg/condition/mock"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectreference"
-	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
@@ -421,28 +420,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
 					err := adapter.EnsureProjectCleanedUp()
 					Expect(err).To(HaveOccurred())
-				})
-			})
-		})
-
-		Context("CheckRequirements", func() {
-			Context("When the region is supported", func() {
-				BeforeEach(func() {
-					projectClaim.Spec.Region = "us-east1"
-				})
-				It("does not return an error", func() {
-					err := adapter.CheckRequirements()
-					Expect(err).NotTo(HaveOccurred())
-				})
-			})
-			Context("When the region is not supported", func() {
-				BeforeEach(func() {
-					projectClaim.Spec.Region = "eu-west6"
-				})
-				It("does not return an error", func() {
-					err := adapter.CheckRequirements()
-					Expect(err).To(HaveOccurred())
-					Expect(err).To(Equal(operrors.ErrRegionNotSupported))
 				})
 			})
 		})

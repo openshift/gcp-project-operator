@@ -72,6 +72,7 @@ var _ = Describe("ProjectclaimController", func() {
 		Context("When the ProjectClaim is newly created", func() {
 			BeforeEach(func() {
 				mockAdapter = mockclaim.NewMockCustomResourceAdapter(mockCtrl)
+				mockAdapter.EXPECT().EnsureRegionSupported().Return(nil)
 				mockAdapter.EXPECT().EnsureProjectReferenceExists().Return(nil)
 				mockAdapter.EXPECT().IsProjectClaimDeletion().Return(false)
 				mockAdapter.EXPECT().EnsureProjectClaimInitialized().Return(ObjectUnchanged, nil)

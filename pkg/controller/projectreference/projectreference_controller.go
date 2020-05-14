@@ -2,7 +2,6 @@ package projectreference
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -136,12 +135,6 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 		return r.doNotRequeue()
 	}
 
-	// If ProjectReference is in error state exit and do nothing
-	if adapter.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusError {
-		reqLogger.Info("ProjectReference CR is in an Error state")
-		return r.doNotRequeue()
-	}
-
 	// Make projectReference  be processed based on state of ProjectClaim and Project Reference
 	claimStatus, err := adapter.EnsureProjectClaimReady()
 	if claimStatus == gcpv1alpha1.ClaimStatusReady || err != nil {
@@ -153,24 +146,7 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 		return r.requeueAfter(5*time.Second, nil)
 	}
 
-	// make sure we meet mimimum requirements to process request and set its state to creating or error if its not supported
 	if adapter.ProjectReference.Status.State == "" {
-		reqLogger.Info("Checking Requirements")
-		err := adapter.CheckRequirements()
-		if err != nil {
-			// TODO: add condition here SupportedRegion = false to give more information on the error state
-			reqLogger.Error(err, "Region not supported")
-			adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.client.Status().Update(context.TODO(), adapter.ProjectReference)
-			if err != nil {
-				reqLogger.Error(err, "Error updating ProjectReference Status")
-				return r.requeueOnErr(err)
-			}
-			return r.doNotRequeue()
-		}
-
-		reqLogger.Info(fmt.Sprintf("Setting ProjectReferenceStatus %s", gcpv1alpha1.ProjectReferenceStatusCreating))
-		// passed requirementes check set to creating
 		adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
 		err = r.client.Status().Update(context.TODO(), adapter.ProjectReference)
 		if err != nil {
