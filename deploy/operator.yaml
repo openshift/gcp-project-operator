@@ -20,6 +20,13 @@ spec:
           command:
           - gcp-project-operator
           imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "500Mi"
+            limits:
+              cpu: "500m"
+              memory: "500Mi"
           env:
             - name: WATCH_NAMESPACE
               value: ""
