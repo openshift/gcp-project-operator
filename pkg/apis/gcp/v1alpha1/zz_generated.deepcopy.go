@@ -130,6 +130,12 @@ func (in *ProjectClaimSpec) DeepCopyInto(out *ProjectClaimSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+
+	if in.AvailabilityZones != nil {
+		in, out := &in.AvailabilityZones, &out.AvailabilityZones
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

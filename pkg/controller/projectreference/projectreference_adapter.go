@@ -100,9 +100,9 @@ func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, e
 		return r.ProjectClaim.Status.State, nil
 	}
 
-	azModified, err := r.ensureClaimAvailibilityZonesSet()
+	azModified, err := r.ensureClaimAvailabilityZonesSet()
 	if err != nil {
-		r.logger.Error(err, "Error ensuring availibility zones")
+		r.logger.Error(err, "Error ensuring availability zones")
 		return r.ProjectClaim.Status.State, err
 	}
 
@@ -467,10 +467,14 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 	return nil
 }
 
-// ensureAvailibilityZonesSet sets the az in the projectclaim spec if necessary
+// ensureClaimAvailabilityZonesSet sets the az in the projectclaim spec if necessary
 // returns true if the project claim has been modified
-func (r *ReferenceAdapter) ensureClaimAvailibilityZonesSet() (bool, error) {
+func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (bool, error) {
 	if len(r.ProjectClaim.Spec.AvailibilityZones) > 0 {
+		return false, nil
+	}
+
+	if len(r.ProjectClaim.Spec.AvailabilityZones) > 0 {
 		return false, nil
 	}
 
@@ -480,6 +484,7 @@ func (r *ReferenceAdapter) ensureClaimAvailibilityZonesSet() (bool, error) {
 	}
 
 	r.ProjectClaim.Spec.AvailibilityZones = zones
+	r.ProjectClaim.Spec.AvailabilityZones = zones
 
 	return true, nil
 }
