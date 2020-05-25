@@ -10,9 +10,9 @@ import (
 	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
-	mockconditions "github.com/openshift/gcp-project-operator/pkg/condition/mock"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectreference"
 	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
+	mockconditions "github.com/openshift/gcp-project-operator/pkg/util/mocks/condition"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	"google.golang.org/api/cloudresourcemanager/v1"
@@ -34,15 +34,19 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		mockStatusWriter *mocks.MockStatusWriter
 		projectClaim     *api.ProjectClaim
 		err              error
+		mockCtrl         *gomock.Controller
 	)
 	BeforeEach(func() {
 		projectReference = testStructs.NewProjectReferenceBuilder().GetProjectReference()
 		projectClaim = testStructs.NewProjectClaimBuilder().GetProjectClaim()
-		ctrl := gomock.NewController(GinkgoT())
-		mockStatusWriter = mocks.NewMockStatusWriter(ctrl)
-		mockKubeClient = mocks.NewMockClient(ctrl)
-		mockGCPClient = mockGCP.NewMockClient(ctrl)
-		mockConditions = mockconditions.NewMockConditions(ctrl)
+		mockCtrl = gomock.NewController(GinkgoT())
+		mockStatusWriter = mocks.NewMockStatusWriter(mockCtrl)
+		mockKubeClient = mocks.NewMockClient(mockCtrl)
+		mockGCPClient = mockGCP.NewMockClient(mockCtrl)
+		mockConditions = mockconditions.NewMockConditions(mockCtrl)
+	})
+	AfterEach(func() {
+		mockCtrl.Finish()
 	})
 	JustBeforeEach(func() {
 		claimLink := types.NamespacedName{Name: projectReference.Spec.ProjectClaimCRLink.Name, Namespace: projectReference.Spec.ProjectClaimCRLink.Namespace}
@@ -112,22 +116,96 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			})
 
 			Context("When ProjectClaim is not in Ready state", func() {
-				BeforeEach(func() {
-					projectClaim.Status.State = api.ClaimStatusPending
-					projectClaim.Spec.GCPProjectID = ""
-					projectReference.Spec.GCPProjectID = "fake-gcp-project"
+				Context("When compute API is ready", func() {
+					BeforeEach(func() {
+						projectClaim.Status.State = api.ClaimStatusPending
+						projectClaim.Spec.GCPProjectID = ""
+						projectReference.Spec.GCPProjectID = "fake-gcp-project"
 
-					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
-					mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
-					mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
-					mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+						mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones").Times(1)
+						mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
+						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
+						mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+					})
+
+					It("updates the ProjectClaim, sets GCPProjectID and the state to Ready", func() {
+						state, err := adapter.EnsureProjectClaimReady()
+						Expect(err).NotTo(HaveOccurred())
+						Expect(state).To(Equal(api.ClaimStatusReady))
+						Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal(adapter.ProjectReference.Spec.GCPProjectID))
+						Expect(adapter.ProjectClaim.Spec.AvailibilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
+					})
 				})
+				Context("When compute API is not ready", func() {
+					var (
+						fakeCondition  gcpv1alpha1.Condition
+						conditionFound bool
+					)
+					JustBeforeEach(func() {
+						mockConditions.EXPECT().FindCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady).Return(&fakeCondition, conditionFound).Times(1)
+					})
+					BeforeEach(func() {
+						projectClaim.Status.State = api.ClaimStatusPending
+						projectClaim.Spec.GCPProjectID = ""
+						projectReference.Spec.GCPProjectID = "fake-gcp-project"
 
-				It("updates the ProjectClaim, sets GCPProjectID and the state to Ready", func() {
-					state, err := adapter.EnsureProjectClaimReady()
-					Expect(err).NotTo(HaveOccurred())
-					Expect(state).To(Equal(api.ClaimStatusReady))
-					Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal(adapter.ProjectReference.Spec.GCPProjectID))
+						conditionFound = false
+						mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones").Times(1)
+						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
+						mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{}, errors.New("googleapi: Error 403: Access Not Configured. Compute Engine API has not been used in project ...."))
+					})
+
+					Context("When compute API is not ready and no condition is set, yet", func() {
+						BeforeEach(func() {
+							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
+						})
+						It("does not return an error", func() {
+							state, err := adapter.EnsureProjectClaimReady()
+							Expect(err).NotTo(HaveOccurred())
+							Expect(state).NotTo(Equal(api.ClaimStatusReady))
+						})
+					})
+					Context("When compute API is not ready after 8 minutes", func() {
+						BeforeEach(func() {
+							conditionFound = true
+							fakeCondition = gcpv1alpha1.Condition{
+								Type:               gcpv1alpha1.ConditionComputeApiReady,
+								Status:             corev1.ConditionFalse,
+								LastProbeTime:      metav1.NewTime(time.Now()),
+								LastTransitionTime: metav1.NewTime(time.Now().Add(time.Duration(-9 * time.Minute))),
+								Reason:             "fake-reason",
+								Message:            "fake-message",
+							}
+							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
+
+						})
+						It("does not return an error", func() {
+							state, err := adapter.EnsureProjectClaimReady()
+							Expect(err).NotTo(HaveOccurred())
+							Expect(state).NotTo(Equal(api.ClaimStatusReady))
+						})
+					})
+					Context("When compute API is not ready after 11 minutes", func() {
+						BeforeEach(func() {
+							conditionFound = true
+							fakeCondition = gcpv1alpha1.Condition{
+								Type:               gcpv1alpha1.ConditionComputeApiReady,
+								Status:             corev1.ConditionFalse,
+								LastProbeTime:      metav1.NewTime(time.Now()),
+								LastTransitionTime: metav1.NewTime(time.Now().Add(time.Duration(-11 * time.Minute))),
+								Reason:             "fake-reason",
+								Message:            "fake-message",
+							}
+
+						})
+						It("returns an error", func() {
+							state, err := adapter.EnsureProjectClaimReady()
+							Expect(err).To(HaveOccurred())
+							Expect(state).NotTo(Equal(api.ClaimStatusReady))
+						})
+					})
 				})
 			})
 

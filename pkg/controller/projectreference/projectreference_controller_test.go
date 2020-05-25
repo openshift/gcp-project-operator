@@ -160,8 +160,8 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				It("Updates ProjectClaim GCPPRojectID", func() {
 					matcher := testStructs.NewProjectClaimMatcher()
 					mockKubeClient.EXPECT().Update(gomock.Any(), matcher).Return(nil)
-					mockKubeClient.EXPECT().Status().Return(mockUpdater)
-					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
+					mockKubeClient.EXPECT().Status().Return(mockUpdater).AnyTimes()
+					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).AnyTimes()
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(matcher.ActualProjectClaim.Spec.GCPProjectID).ToNot(Equal(""))
@@ -185,8 +185,8 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 
 				It("It updates az and does not reconcile", func() {
 					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-					mockKubeClient.EXPECT().Status().Return(mockUpdater)
-					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
+					mockKubeClient.EXPECT().Status().Return(mockUpdater).AnyTimes()
+					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).AnyTimes()
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).NotTo(HaveOccurred())
 				})
