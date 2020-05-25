@@ -51,7 +51,7 @@ type Client interface {
 	CreateCloudBillingAccount(projectID, billingAccount string) error
 
 	//Compute
-	ListAvilibilityZones(projectID, region string) ([]string, error)
+	ListAvailabilityZones(projectID, region string) ([]string, error)
 }
 
 type gcpClient struct {
@@ -116,9 +116,9 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 	}, nil
 }
 
-// ListAvilibilityZones returns a map of all avilibility zones a project has access to
+// ListAvailabilityZones returns a map of all availability zones a project has access to
 // where the key is the region and the values is a list of zones
-func (c *gcpClient) ListAvilibilityZones(projectID, region string) ([]string, error) {
+func (c *gcpClient) ListAvailabilityZones(projectID, region string) ([]string, error) {
 
 	zones := []string{}
 	req := c.computeClient.Zones.List(projectID)

@@ -226,17 +226,17 @@ func (mr *MockClientMockRecorder) CreateCloudBillingAccount(projectID, billingAc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateCloudBillingAccount", reflect.TypeOf((*MockClient)(nil).CreateCloudBillingAccount), projectID, billingAccount)
 }
 
-// ListAvilibilityZones mocks base method
-func (m *MockClient) ListAvilibilityZones(projectID, region string) ([]string, error) {
+// ListAvailabilityZones mocks base method
+func (m *MockClient) ListAvailabilityZones(projectID, region string) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAvilibilityZones", projectID, region)
+	ret := m.ctrl.Call(m, "ListAvailabilityZones", projectID, region)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListAvilibilityZones indicates an expected call of ListAvilibilityZones
-func (mr *MockClientMockRecorder) ListAvilibilityZones(projectID, region interface{}) *gomock.Call {
+// ListAvailabilityZones indicates an expected call of ListAvailabilityZones
+func (mr *MockClientMockRecorder) ListAvailabilityZones(projectID, region interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAvilibilityZones", reflect.TypeOf((*MockClient)(nil).ListAvilibilityZones), projectID, region)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAvailabilityZones", reflect.TypeOf((*MockClient)(nil).ListAvailabilityZones), projectID, region)
 }

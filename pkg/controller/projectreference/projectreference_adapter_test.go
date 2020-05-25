@@ -120,7 +120,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
 					mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
-					mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+					mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 				})
 
 				It("updates the ProjectClaim, sets GCPProjectID and the state to Ready", func() {

@@ -98,7 +98,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref common.ReferenceCallback)
 							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
 						},
 					},
-					"availibilityZones": {
+					"availabilityZones": {
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"array"},
 							Items: &spec.SchemaOrArray{
