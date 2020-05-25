@@ -470,9 +470,6 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 // ensureClaimAvailabilityZonesSet sets the az in the projectclaim spec if necessary
 // returns true if the project claim has been modified
 func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (bool, error) {
-	if len(r.ProjectClaim.Spec.AvailibilityZones) > 0 {
-		return false, nil
-	}
 
 	if len(r.ProjectClaim.Spec.AvailabilityZones) > 0 {
 		return false, nil
@@ -483,7 +480,6 @@ func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (bool, error) {
 		return false, err
 	}
 
-	r.ProjectClaim.Spec.AvailibilityZones = zones
 	r.ProjectClaim.Spec.AvailabilityZones = zones
 
 	return true, nil
