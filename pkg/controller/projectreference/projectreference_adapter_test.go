@@ -202,7 +202,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "DELETE_REQUESTED", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					err := adapter.EnsureProjectConfigured()
 					Expect(err).To(HaveOccurred())
 				})
@@ -213,7 +212,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "DELETE_REQUESTED", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					err := adapter.EnsureProjectConfigured()
 					Expect(err).To(HaveOccurred())
 				})
@@ -224,7 +222,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "DELETE_REQUESTED", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					err := adapter.EnsureProjectConfigured()
 					Expect(err).To(HaveOccurred())
 				})
@@ -235,7 +232,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "DELETE_REQUESTED", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					err := adapter.EnsureProjectConfigured()
 					Expect(err).To(HaveOccurred())
 				})
@@ -246,10 +242,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
-					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).Times(1)
-					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(errors.New("Fake Enable APIS Error"))
 					err := adapter.EnsureProjectConfigured()
 					Expect(err).To(HaveOccurred())
 				})
@@ -260,13 +252,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
-					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil)
-					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, errors.New("Some Fake Set IAM Error"))
 					err := adapter.EnsureProjectConfigured()
 					Expect(err).To(HaveOccurred())
 				})
@@ -275,7 +261,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Context("When the failing to create credentials", func() {
 				It("It requeues with error", func() {
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(2)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
 					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
@@ -290,7 +276,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 			Context("When processes the project reference correctly", func() {
 				It("It does not requeue", func() {
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(2)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
 					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
@@ -299,8 +285,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-					mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
-					mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error"))
 					err := adapter.EnsureProjectConfigured()
 					Expect(err).ToNot(HaveOccurred())
 				})
