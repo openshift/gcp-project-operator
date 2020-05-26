@@ -15,6 +15,12 @@ rules:
   - watch
 - apiGroups:
   - ""
+  resources:
+  - events
+  verbs:
+  - create
+- apiGroups:
+  - ""
   attributeRestrictions: null
   resources:
   - configmaps
