@@ -11,6 +11,7 @@ import (
 
 	"github.com/openshift/gcp-project-operator/pkg/apis"
 	"github.com/openshift/gcp-project-operator/pkg/controller"
+	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
@@ -32,9 +33,9 @@ var (
 var log = logf.Log.WithName("cmd")
 
 func printVersion() {
-	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
-	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
+	log.V(logtypes.OperatorSDK).Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
+	log.V(logtypes.OperatorSDK).Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
+	log.V(logtypes.OperatorSDK).Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
 }
 
 func main() {
@@ -95,7 +96,7 @@ func run() error {
 		return err
 	}
 
-	log.Info("Registering Components.")
+	log.V(logtypes.OperatorSDK).Info("Registering Components.")
 
 	// Setup Scheme for all resources
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
@@ -112,15 +113,15 @@ func run() error {
 	// Create Service object to expose the metrics port.
 	_, err = metrics.ExposeMetricsPort(ctx, metricsPort)
 	if err != nil {
-		log.Info(err.Error())
+		log.V(logtypes.OperatorSDK).Info(err.Error())
 	}
 
 	// start cache and wait for sync
-	log.Info("init chache")
+	log.V(logtypes.OperatorSDK).Info("init chache")
 	cache := mgr.GetCache()
 	go cache.Start(stopCh)
 	cache.WaitForCacheSync(stopCh)
-	log.Info("Starting the Cmd.")
+	log.V(logtypes.OperatorSDK).Info("Starting the Cmd.")
 
 	// Start the Cmd
 	return mgr.Start(stopCh)

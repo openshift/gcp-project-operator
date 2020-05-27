@@ -56,6 +56,7 @@ func NewGCPSecretCR(creds string, namespacedNamed kubetypes.NamespacedName) *cor
 	}
 }
 
+// GetGCPCredentialsFromSecret extracts the gcp credentials from a secret. return value is a bytearray
 func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(context.TODO(),
@@ -67,18 +68,18 @@ func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	if err != nil {
 		return []byte{}, fmt.Errorf("GetGCPCredentialsFromSecret.Get %v", err)
 	}
-	var osServiceAccountJson []byte
+	var osServiceAccountJSON []byte
 	var ok bool
-	osServiceAccountJson, ok = secret.Data["osServiceAccount.json"]
+	osServiceAccountJSON, ok = secret.Data["osServiceAccount.json"]
 	if !ok {
-		osServiceAccountJson, ok = secret.Data["key.json"]
+		osServiceAccountJSON, ok = secret.Data["key.json"]
 	}
 	if !ok {
 		return []byte{}, fmt.Errorf("GCP credentials secret %v did not contain key %v",
 			name, "{osServiceAccount,key}.json")
 	}
 
-	return osServiceAccountJson, nil
+	return osServiceAccountJSON, nil
 }
 
 // AddOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.
@@ -135,6 +136,7 @@ func rolebindingMap(roles []string, member string) map[string]cloudresourcemanag
 	return requiredBindings
 }
 
+// InArray checks if a needle exists inside of the haystack
 func InArray(needle interface{}, haystack interface{}) (exists bool, index int) {
 	exists = false
 	index = -1

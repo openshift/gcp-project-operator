@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
+	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
@@ -96,7 +97,6 @@ func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, e
 	}
 
 	if r.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusReady {
-		r.logger.Info("ProjectReference and ProjectClaim CR are in READY state nothing to process.")
 		return r.ProjectClaim.Status.State, nil
 	}
 
@@ -148,21 +148,21 @@ func (r *ReferenceAdapter) EnsureProjectConfigured() error {
 		return err
 	}
 
-	r.logger.Info("Configuring APIS")
+	r.logger.V(int(logtypes.ProjectReference)).Info("Configuring APIS")
 	err = r.configureAPIS(configMap)
 	if err != nil {
 		r.logger.Error(err, "Error configuring APIS")
 		return err
 	}
 
-	r.logger.Info("Configuring Service Account")
+	r.logger.V(int(logtypes.ProjectReference)).Info("Configuring Service Account")
 	err = r.configureServiceAccount()
 	if err != nil {
 		r.logger.Error(err, "Error configuring service account")
 		return err
 	}
 
-	r.logger.Info("Creating Credentials")
+	r.logger.V(int(logtypes.ProjectReference)).Info("Creating Credentials")
 	err = r.createCredentials()
 	if err != nil {
 		r.logger.Error(err, "Error creating credentials")
@@ -172,7 +172,7 @@ func (r *ReferenceAdapter) EnsureProjectConfigured() error {
 
 func (r *ReferenceAdapter) EnsureStateReady() error {
 	if r.ProjectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
-		r.logger.Info("Setting Status on projectReference")
+		r.logger.V(int(logtypes.ProjectReference)).Info("Setting Status on projectReference")
 		r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
 		return r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
 	}
@@ -299,7 +299,7 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 	if projectExists {
 		switch project.LifecycleState {
 		case "ACTIVE":
-			r.logger.Info("Project lifecycleState == ACTIVE")
+			r.logger.V(int(logtypes.ProjectReference)).Info("Project lifecycleState == ACTIVE")
 			return nil
 		case "DELETE_REQUESTED":
 			return operrors.ErrInactiveProject
@@ -309,12 +309,12 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 		}
 	}
 
-	r.logger.Info("Creating Project")
+	r.logger.V(int(logtypes.ProjectReference)).Info("Creating Project")
 	// If we cannot create the project clear the projectID from spec so we can try again with another unique key
 	_, err = r.gcpClient.CreateProject(parentFolderID)
 	if err != nil {
 		r.logger.Error(err, "could not create project", "Parent Folder ID", parentFolderID, "Requested Project ID", r.ProjectReference.Spec.GCPProjectID)
-		r.logger.Info("Clearing gcpProjectID from ProjectReferenceSpec")
+		r.logger.V(int(logtypes.ProjectReference)).Info("Clearing gcpProjectID from ProjectReferenceSpec")
 		//Todo() We need to requeue here ot it will continue to the next step.
 		err = r.clearProjectID()
 		if err != nil {
@@ -340,14 +340,14 @@ func (r *ReferenceAdapter) getProject(projectId string) (*cloudresourcemanager.P
 }
 
 func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) error {
-	r.logger.Info("Enabling Billing API")
+	r.logger.V(int(logtypes.ProjectReference)).Info("Enabling Billing API")
 	err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
 	if err != nil {
 		r.logger.Error(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
 		return err
 	}
 
-	r.logger.Info("Linking Cloud Billing Account")
+	r.logger.V(int(logtypes.ProjectReference)).Info("Linking Cloud Billing Account")
 	err = r.gcpClient.CreateCloudBillingAccount(r.ProjectReference.Spec.GCPProjectID, config.BillingAccount)
 	if err != nil {
 		r.logger.Error(err, "error creating CloudBilling")
@@ -385,7 +385,7 @@ func (r *ReferenceAdapter) configureServiceAccount() error {
 	serviceAccount, err := r.gcpClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
 		// Create OSDManged Service account
-		r.logger.Info("Creating Service Account")
+		r.logger.V(int(logtypes.ProjectReference)).Info("Creating Service Account")
 		account, err := r.gcpClient.CreateServiceAccount(osdServiceAccountName, osdServiceAccountName)
 		if err != nil {
 			r.logger.Error(err, "could not create service account", "Service Account Name", osdServiceAccountName)
@@ -394,7 +394,7 @@ func (r *ReferenceAdapter) configureServiceAccount() error {
 		serviceAccount = account
 	}
 
-	r.logger.Info("Setting Service Account Policies")
+	r.logger.V(int(logtypes.ProjectReference)).Info("Setting Service Account Policies")
 	err = r.SetIAMPolicy(serviceAccount.Email)
 	if err != nil {
 		r.logger.Error(err, "could not update policy on project", "Project Name", r.ProjectReference.Spec.GCPProjectID)
@@ -411,7 +411,7 @@ func (r *ReferenceAdapter) createCredentials() error {
 		return err
 	}
 
-	r.logger.Info("Creating Service AccountKey")
+	r.logger.V(int(logtypes.ProjectReference)).Info("Creating Service AccountKey")
 	key, err := r.gcpClient.CreateServiceAccountKey(serviceAccount.Email)
 	if err != nil {
 		r.logger.Error(err, "could not create service account key", "Service Account Name", serviceAccount.Email)
@@ -430,7 +430,7 @@ func (r *ReferenceAdapter) createCredentials() error {
 		Name:      r.ProjectClaim.Spec.GCPCredentialSecret.Name,
 	})
 
-	r.logger.Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace))
+	r.logger.V(int(logtypes.ProjectReference)).Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace))
 	createErr := r.kubeClient.Create(context.TODO(), secret)
 	if createErr != nil {
 		r.logger.Error(createErr, "could not create service account secret ", "Service Account Secret Name", r.ProjectClaim.Spec.GCPCredentialSecret.Name)

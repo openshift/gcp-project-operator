@@ -37,7 +37,7 @@ The operator can run either:
 
 No matter which option you choose, before running the Operator you have to create the following Custom Resource Definitions on the cluster:
 
-```zsh
+```shell
 kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
 kubectl create -f deploy/crds/gcp_v1alpha1_projectreference_crd.yaml
 ```
@@ -46,12 +46,23 @@ kubectl create -f deploy/crds/gcp_v1alpha1_projectreference_crd.yaml
 
 Make sure you have the [operator-sdk](https://github.com/operator-framework/operator-sdk/releases) binary in your `$PATH` and run it locally:
 
-```zsh
+```shell
 $ operator-sdk run --local --namespace gcp-project-operator
 ```
 
 You will see some initialization logs.
 The Operator will remain _idle_ after that, waiting for `ProjectClaim` resources to be present in the cluster.
+
+You can change the verbosity of the logs, by passing the `--zap-level` flag as part of the `--operator-flags`:
+
+```shell
+run --local --namespace gcp-project-operator --operator-flags --zap-level=99
+```
+
+* Level 1: ProjectReference
+* Level 2: ProjectClaim
+* Level 3: gcpclient
+* Level 4: operator-sdk framrwork logs (golang version, etc)
 
 ### Remotely
 
@@ -59,7 +70,7 @@ The Operator will remain _idle_ after that, waiting for `ProjectClaim` resources
 
 Push the image to your container registry of your choice. For example:
 
-```bash
+```shell
 username="razevedo"
 podman build . -f build/Dockerfile -t "quay.io/$username/gcp-project-operator"
 podman push "quay.io/$username/gcp-project-operator"
@@ -85,7 +96,7 @@ kubectl scale deployment gcp-project-operator -n gcp-project-operator --replicas
 
 Otherwise, you can directly upload the image to your kubernetes cluster by hand
 
-```zsh
+```shell
 # Export the image locally
 docker save $image-name > image-name.tar
 
