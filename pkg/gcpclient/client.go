@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 	"golang.org/x/oauth2/google"
 	cloudbilling "google.golang.org/api/cloudbilling/v1"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
@@ -157,7 +158,7 @@ func (c *gcpClient) GetProject(projectID string) (*cloudresourcemanager.Project,
 
 // CreateProject creates a project in a given folder.
 func (c *gcpClient) CreateProject(parentFolderID string) (*cloudresourcemanager.Operation, error) {
-	log.Info("gcpClient.CreateProject")
+	log.V(logtypes.GCPClient).Info("gcpClient.CreateProject")
 	project := cloudresourcemanager.Project{
 		//Labels:          nil,
 		Name: c.projectName,
@@ -281,7 +282,7 @@ func (c *gcpClient) SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIa
 }
 
 func (c *gcpClient) EnableAPI(projectID, api string) error {
-	log.Info(fmt.Sprintf("enable %s api", api))
+	log.V(logtypes.GCPClient).Info(fmt.Sprintf("enable %s api", api))
 	enableServicerequest := &serviceManagment.EnableServiceRequest{
 		ConsumerId: fmt.Sprintf("project:%s", projectID),
 	}
@@ -302,7 +303,7 @@ func (c *gcpClient) EnableAPI(projectID, api string) error {
 			// creation is completed and marked as Done.
 			// Something is not propagating in the backend.
 			if ok && ae.Code == http.StatusForbidden && retry <= gcpAPIRetriesCount {
-				log.Info(fmt.Sprintf("retry %d for enable %s api", retry, api))
+				log.V(logtypes.GCPClient).Info(fmt.Sprintf("retry %d for enable %s api", retry, api))
 				continue
 			}
 			return err

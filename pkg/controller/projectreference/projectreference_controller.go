@@ -9,6 +9,7 @@ import (
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
+	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -81,7 +82,6 @@ type ReconcileProjectReference struct {
 // Reconcile wraps ReconcileHandler() and updates the conditions if any error occurs
 func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling ProjectReference")
 
 	projectReference := &gcpv1alpha1.ProjectReference{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, projectReference)
@@ -156,7 +156,7 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 	}
 
 	if adapter.ProjectReference.Spec.GCPProjectID == "" {
-		reqLogger.Info("Creating ProjectID in ProjectReference CR")
+		reqLogger.V(int(logtypes.ProjectReference)).Info("Creating ProjectID in ProjectReference CR")
 		err := adapter.UpdateProjectID()
 		if err != nil {
 			reqLogger.Error(err, "Could not update ProjectID in Project Reference CR")
@@ -165,14 +165,14 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 		return r.requeue()
 	}
 
-	reqLogger.Info("Adding a Finalizer")
+	reqLogger.V(int(logtypes.ProjectReference)).Info("Adding a Finalizer")
 	err = adapter.EnsureFinalizerAdded()
 	if err != nil {
 		reqLogger.Error(err, "Error adding the finalizer")
 		return r.requeueOnErr(err)
 	}
 
-	reqLogger.Info("Configuring Project")
+	reqLogger.V(int(logtypes.ProjectReference)).Info("Configuring Project")
 	err = adapter.EnsureProjectConfigured()
 	if err != nil {
 		return r.requeueAfter(5*time.Second, err)
