@@ -49,4 +49,6 @@ const (
 	ConditionVerification ConditionType = "Verification"
 	// ConditionError is set when a project custom resource state changes to Error
 	ConditionError ConditionType = "Error"
+	// ConditionComputeApiReady is set when the compute API is not yet ready
+	ConditionComputeApiReady ConditionType = "ComputeApiReady"
 )

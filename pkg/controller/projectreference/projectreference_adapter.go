@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -21,6 +22,7 @@ import (
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -74,6 +76,14 @@ type ReferenceAdapter struct {
 	conditionManager condition.Conditions
 }
 
+type ensureAzResult int
+
+const (
+	ensureAzResultNotReady ensureAzResult = iota
+	ensureAzResultModified
+	ensureAzResultNoChange
+)
+
 // NewReferenceAdapter creates an adapter to turn what is requested in a ProjectReference into a GCP project and write the output back.
 func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, manager condition.Conditions) (*ReferenceAdapter, error) {
 	projectClaim, err := getMatchingClaimLink(projectReference, client)
@@ -100,7 +110,7 @@ func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, e
 		return r.ProjectClaim.Status.State, nil
 	}
 
-	azModified, err := r.ensureClaimAvailabilityZonesSet()
+	azResult, err := r.ensureClaimAvailabilityZonesSet()
 	if err != nil {
 		r.logger.Error(err, "Error ensuring availability zones")
 		return r.ProjectClaim.Status.State, err
@@ -108,12 +118,16 @@ func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, e
 
 	idModified := r.ensureClaimProjectIDSet()
 
-	if azModified || idModified {
+	if azResult == ensureAzResultModified || idModified {
 		err := r.kubeClient.Update(context.TODO(), r.ProjectClaim)
 		if err != nil {
 			r.logger.Error(err, "Error updating ProjectClaim Spec")
 			return r.ProjectClaim.Status.State, err
 		}
+	}
+
+	if azResult == ensureAzResultNotReady {
+		return r.ProjectClaim.Status.State, nil
 	}
 
 	//Project Ready update matchingClaim to ready
@@ -467,33 +481,55 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 	return nil
 }
 
-// ensureClaimAvailabilityZonesSet sets the az in the projectclaim spec if necessary
+// ensureAvailibilityZonesSet sets the az in the projectclaim spec if necessary
 // returns true if the project claim has been modified
-func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (bool, error) {
+func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (ensureAzResult, error) {
 	if len(r.ProjectClaim.Spec.AvailibilityZones) > 0 {
-		return false, nil
+		return ensureAzResultNoChange, nil
 	}
 
 	if len(r.ProjectClaim.Spec.AvailabilityZones) > 0 {
-		return false, nil
+		return ensureAzResultNoChange, nil
 	}
 
 	zones, err := r.gcpClient.ListAvilibilityZones(r.ProjectReference.Spec.GCPProjectID, r.ProjectClaim.Spec.Region)
 	if err != nil {
-		return false, err
+		return r.handleAvailabilityZonesError(err)
 	}
+	conditions := &r.ProjectReference.Status.Conditions
+	r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones")
 
 	r.ProjectClaim.Spec.AvailibilityZones = zones
 	r.ProjectClaim.Spec.AvailabilityZones = zones
 
-	return true, nil
+	return ensureAzResultModified, nil
 }
 
+func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (ensureAzResult, error) {
+	conditions := &r.ProjectReference.Status.Conditions
+	if matchesComputeApiNotReadyError(err) {
+		apiCondition, found := r.conditionManager.FindCondition(conditions, gcpv1alpha1.ConditionComputeApiReady)
+		tenMinutesAgo := metav1.NewTime(time.Now().Add(time.Duration(-10 * time.Minute)))
+		if found && apiCondition.LastTransitionTime.Before(&tenMinutesAgo) {
+			r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
+			_ = r.StatusUpdate()
+			return ensureAzResultNoChange, err
+		}
+		r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
+		return ensureAzResultNotReady, r.StatusUpdate()
+	}
+	return ensureAzResultNoChange, err
+}
+
+func matchesComputeApiNotReadyError(err error) bool {
+	return strings.HasPrefix(err.Error(), "googleapi: Error 403: Access Not Configured. Compute Engine API has not been used in project")
+}
 func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
 	if r.ProjectClaim.Spec.GCPProjectID == "" {
 		r.ProjectClaim.Spec.GCPProjectID = r.ProjectReference.Spec.GCPProjectID
 		return true
 	}
+
 	return false
 }
 

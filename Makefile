@@ -18,7 +18,7 @@ generate:
 	go get golang.org/x/tools/cmd/goimports
 	go generate pkg/gcpclient/client.go
 	go generate pkg/controller/projectclaim/projectclaim_controller.go
-
+	go generate pkg/condition/conditions.go
 coverage:
 	go get github.com/jpoles1/gopherbadger
 	gopherbadger

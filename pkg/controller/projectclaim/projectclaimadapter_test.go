@@ -15,10 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
-	mockconditions "github.com/openshift/gcp-project-operator/pkg/condition/mock"
 	"github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
+	mockconditions "github.com/openshift/gcp-project-operator/pkg/util/mocks/condition"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )

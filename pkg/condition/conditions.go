@@ -7,8 +7,10 @@ import (
 )
 
 // Conditions is a wrapper object for actual Condition functions to allow for easier mocking/testing.
+//go:generate mockgen -destination=../util/mocks/$GOPACKAGE/conditions.go -package=$GOPACKAGE -source conditions.go
 type Conditions interface {
 	SetCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType, status corev1.ConditionStatus, reason string, message string)
+	FindCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) (*gcpv1alpha1.Condition, bool)
 }
 
 type ConditionManager struct {
@@ -22,7 +24,7 @@ func NewConditionManager() Conditions {
 // SetCondition sets a condition on a custom resource's status
 func (c *ConditionManager) SetCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType, status corev1.ConditionStatus, reason string, message string) {
 	now := metav1.Now()
-	condition := c.FindCondition(conditions, conditionType)
+	condition, _ := c.FindCondition(conditions, conditionType)
 	if message != condition.Message ||
 		status != condition.Status ||
 		reason != condition.Reason ||
@@ -41,10 +43,11 @@ func (c *ConditionManager) SetCondition(conditions *[]gcpv1alpha1.Condition, con
 // FindCondition finds the suitable Condition object
 // by looking for adapter's condition list.
 // If none exists, it appends one.
-func (c *ConditionManager) FindCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) *gcpv1alpha1.Condition {
+// the second return code is true if the condition already existed before
+func (c *ConditionManager) FindCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) (*gcpv1alpha1.Condition, bool) {
 	for i, condition := range *conditions {
 		if condition.Type == conditionType {
-			return &(*conditions)[i]
+			return &(*conditions)[i], true
 		}
 	}
 
@@ -55,5 +58,5 @@ func (c *ConditionManager) FindCondition(conditions *[]gcpv1alpha1.Condition, co
 		},
 	)
 
-	return &(*conditions)[len(*conditions)-1]
+	return &(*conditions)[len(*conditions)-1], false
 }
