@@ -2,6 +2,32 @@
 
 Some useful commands:
 
+### Log verbosity
+
+You can modify the verbosity by adding `args:`to the [operator.yaml](../deploy/operator.yaml)
+
+If you want to see `info` logs coming from the `ProjectReference` use `--zap-level=X`, where X can be:
+
+1. ProjectReference logs
+2. ProjectClaim logs
+3. gcp client logs
+4. operator-sdk logs (golang version, etc)
+
+as described in the type [ComponentLogLevel](../pkg/util/types/comonentloglevel.go)
+
+e.g. if you are interested only in error messages, you can do it like this:
+
+```yaml
+      containers:
+        - name: gcp-project-operator
+          image: quay.io/app-sre/gcp-project-operator
+          command:
+          - gcp-project-operator
+          args:
+          - '--zap-level=error'
+          imagePullPolicy: Always
+```
+
 ### ProjectClaim
 
 The `ProjectClaim` is getting deployed onto a namespace defined at the Resource.

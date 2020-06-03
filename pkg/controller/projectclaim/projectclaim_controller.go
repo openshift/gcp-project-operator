@@ -79,7 +79,6 @@ func NewReconcileProjectClaim(client client.Client, scheme *runtime.Scheme) *Rec
 // Reconcile calls ReconcileHandler and updates the CRD if any err occurs
 func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling ProjectClaim")
 
 	// Fetch the ProjectClaim instance
 	instance := &gcpv1alpha1.ProjectClaim{}

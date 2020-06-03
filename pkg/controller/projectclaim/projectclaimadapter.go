@@ -6,6 +6,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/openshift/cluster-api/pkg/util"
+	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
+
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
@@ -175,7 +177,7 @@ func (c *ProjectClaimAdapter) EnsureProjectReferenceLink() (ObjectState, error) 
 
 func (c *ProjectClaimAdapter) EnsureFinalizer() (ObjectState, error) {
 	if !util.Contains(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer) {
-		c.logger.Info("Adding Finalizer to the ProjectClaim")
+		c.logger.V(int(logtypes.ProjectClaim)).Info("Adding Finalizer to the ProjectClaim")
 		c.projectClaim.SetFinalizers(append(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer))
 
 		err := c.client.Update(context.TODO(), c.projectClaim)
