@@ -1,15 +1,22 @@
-approvers:
-- sre-platform-leads
+reviewers:
+- boranx
+- drewandersonnz
+- drpaneas
+- mmazur
+- NautiluX
+- ninabauer
+- pyates86
+- rafael-azevedo
 - RiRa12621
+- Tessg22
+- georgettica
+- sulmer-redhat
+approvers:
 - NautiluX
 - rafael-azevedo
-reviewers:
-- fahlmant
-- jewzaam
-- mwoodson
 - boranx
-- ninabauer
-- mmazur
 - drpaneas
-- pyates86
-- drewandersonnz
+- RiRa12621
+maintainers:
+- NautiluX
+- rafael-azevedo
