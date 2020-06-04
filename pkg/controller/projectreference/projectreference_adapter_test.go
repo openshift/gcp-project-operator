@@ -126,7 +126,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
-						mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+						mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 					})
 
 					It("updates the ProjectClaim, sets GCPProjectID and the state to Ready", func() {
@@ -134,7 +134,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						Expect(err).NotTo(HaveOccurred())
 						Expect(state).To(Equal(api.ClaimStatusReady))
 						Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal(adapter.ProjectReference.Spec.GCPProjectID))
-						Expect(adapter.ProjectClaim.Spec.AvailibilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
+						Expect(adapter.ProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
 					})
 				})
 				Context("When compute API is not ready", func() {
@@ -154,7 +154,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones").Times(1)
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
-						mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{}, errors.New("googleapi: Error 403: Access Not Configured. Compute Engine API has not been used in project ...."))
+						mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{}, errors.New("googleapi: Error 403: Access Not Configured. Compute Engine API has not been used in project ...."))
 					})
 
 					Context("When compute API is not ready and no condition is set, yet", func() {
