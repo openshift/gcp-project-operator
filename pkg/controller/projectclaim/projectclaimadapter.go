@@ -151,8 +151,7 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (ObjectState, erro
 		c.projectClaim.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := c.client.Status().Update(context.TODO(), c.projectClaim)
 		if err != nil {
-			c.logger.Error(err, "Failed to initalize ProjectClaim")
-			return ObjectUnchanged, err
+			return ObjectUnchanged, operrors.Wrap(err, "failed to initalize projectclaim")
 		}
 		return ObjectModified, nil
 	}
@@ -182,8 +181,7 @@ func (c *ProjectClaimAdapter) EnsureFinalizer() (ObjectState, error) {
 
 		err := c.client.Update(context.TODO(), c.projectClaim)
 		if err != nil {
-			c.logger.Error(err, "Failed to update ProjectClaim with finalizer")
-			return ObjectUnchanged, err
+			return ObjectUnchanged, operrors.Wrap(err, "failed to initalize projectclaim with finalizer")
 		}
 		return ObjectModified, nil
 	}
@@ -256,17 +254,15 @@ func (c *ProjectClaimAdapter) EnsureRegionSupported() error {
 	if err := c.IsRegionSupported(); err != nil {
 		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
 		c.StatusUpdate()
-		return fmt.Errorf("EnsureRegionSupported: %v", err)
+		return operrors.Wrap(err, "")
 	}
 	return nil
 }
 
 // StatusUpdate updates the project claim status
 func (c *ProjectClaimAdapter) StatusUpdate() error {
-	err := c.client.Status().Update(context.TODO(), c.projectClaim)
-	if err != nil {
-		c.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim state for %s", c.projectClaim.Name))
-		return err
+	if err := c.client.Status().Update(context.TODO(), c.projectClaim); err != nil {
+		return operrors.Wrap(err, fmt.Sprintf("failed to update ProjectClaim state for %s", c.projectClaim.Name))
 	}
 
 	return nil

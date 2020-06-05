@@ -2,6 +2,7 @@ package projectreference
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -9,6 +10,7 @@ import (
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
+	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -103,7 +105,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	conditionManager := condition.NewConditionManager()
 	adapter, err := NewReferenceAdapter(projectReference, reqLogger, r.client, gcpClient, conditionManager)
 	if err != nil {
-		reqLogger.Error(err, "could not create ReferenceAdapter")
+		err = operrors.Wrap(err, "could not create ReferenceAdapter")
 		return r.requeueOnErr(err)
 	}
 
@@ -150,7 +152,7 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 		adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
 		err = r.client.Status().Update(context.TODO(), adapter.ProjectReference)
 		if err != nil {
-			reqLogger.Error(err, "Error updating ProjectReference Status")
+			err = operrors.Wrap(err, "error updating ProjectReference status")
 			return r.requeueOnErr(err)
 		}
 	}
@@ -159,7 +161,7 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 		reqLogger.V(int(logtypes.ProjectReference)).Info("Creating ProjectID in ProjectReference CR")
 		err := adapter.UpdateProjectID()
 		if err != nil {
-			reqLogger.Error(err, "Could not update ProjectID in Project Reference CR")
+			err = operrors.Wrap(err, "could not update ProjectID in Project Reference CR")
 			return r.requeueOnErr(err)
 		}
 		return r.requeue()
@@ -168,7 +170,7 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 	reqLogger.V(int(logtypes.ProjectReference)).Info("Adding a Finalizer")
 	err = adapter.EnsureFinalizerAdded()
 	if err != nil {
-		reqLogger.Error(err, "Error adding the finalizer")
+		err = operrors.Wrap(err, "error adding the finalizer")
 		return r.requeueOnErr(err)
 	}
 
@@ -186,17 +188,17 @@ func (r *ReconcileProjectReference) getGcpClient(projectID string, logger logr.L
 	// Get org creds from secret
 	creds, err := util.GetGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
 	if err != nil {
-		logger.Error(err, "could not get org Creds from secret", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
+		err = operrors.Wrap(err, fmt.Sprintf("could not get org Creds from secret: %s, for namespace %s", orgGcpSecretName, operatorNamespace))
 		return nil, err
 	}
 
 	// Get gcpclient with creds
 	gcpClient, err := r.gcpClientBuilder(projectID, creds)
-
 	if err != nil {
-		logger.Error(err, "could not get gcp client with secret creds", "Secret Name", orgGcpSecretName, "Operator Namespace", operatorNamespace)
+		return nil, operrors.Wrap(err, fmt.Sprintf("could not get gcp client with secret: %s, for namespace %s", orgGcpSecretName, operatorNamespace))
 	}
-	return gcpClient, err
+
+	return gcpClient, nil
 }
 
 func (r *ReconcileProjectReference) doNotRequeue() (reconcile.Result, error) {
