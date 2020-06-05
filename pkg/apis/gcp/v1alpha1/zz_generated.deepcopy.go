@@ -125,11 +125,6 @@ func (in *ProjectClaimSpec) DeepCopyInto(out *ProjectClaimSpec) {
 	out.LegalEntity = in.LegalEntity
 	out.GCPCredentialSecret = in.GCPCredentialSecret
 	out.ProjectReferenceCRLink = in.ProjectReferenceCRLink
-	if in.AvailibilityZones != nil {
-		in, out := &in.AvailibilityZones, &out.AvailibilityZones
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	if in.AvailabilityZones != nil {
 		in, out := &in.AvailabilityZones, &out.AvailabilityZones
 		*out = make([]string, len(*in))

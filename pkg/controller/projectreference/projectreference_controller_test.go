@@ -153,7 +153,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		Context("When Reference State is Ready", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = api.ProjectReferenceStatusReady
-				mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+				mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 			})
 
 			Context("When ProjectClaim GCPProjectID is empty", func() {
@@ -196,7 +196,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		Context("When Reference State is Ready and it fails to update", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = api.ProjectReferenceStatusReady
-				mockGCPClient.EXPECT().ListAvilibilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+				mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 			})
 
 			It("It reconciles with error", func() {

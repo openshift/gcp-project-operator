@@ -481,25 +481,20 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 	return nil
 }
 
-// ensureAvailibilityZonesSet sets the az in the projectclaim spec if necessary
+// ensureAvailabilityZonesSet sets the az in the projectclaim spec if necessary
 // returns true if the project claim has been modified
 func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (ensureAzResult, error) {
-	if len(r.ProjectClaim.Spec.AvailibilityZones) > 0 {
-		return ensureAzResultNoChange, nil
-	}
-
 	if len(r.ProjectClaim.Spec.AvailabilityZones) > 0 {
 		return ensureAzResultNoChange, nil
 	}
 
-	zones, err := r.gcpClient.ListAvilibilityZones(r.ProjectReference.Spec.GCPProjectID, r.ProjectClaim.Spec.Region)
+	zones, err := r.gcpClient.ListAvailabilityZones(r.ProjectReference.Spec.GCPProjectID, r.ProjectClaim.Spec.Region)
 	if err != nil {
 		return r.handleAvailabilityZonesError(err)
 	}
 	conditions := &r.ProjectReference.Status.Conditions
 	r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones")
 
-	r.ProjectClaim.Spec.AvailibilityZones = zones
 	r.ProjectClaim.Spec.AvailabilityZones = zones
 
 	return ensureAzResultModified, nil

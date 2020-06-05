@@ -12,7 +12,6 @@ type ProjectClaimSpec struct {
 	Region                 string         `json:"region"`
 	GCPProjectID           string         `json:"gcpProjectID,omitempty"`
 	ProjectReferenceCRLink NamespacedName `json:"projectReferenceCRLink,omitempty"`
-	AvailibilityZones      []string       `json:"availibilityZones,omitempty"`
 	AvailabilityZones      []string       `json:"availabilityZones,omitempty"`
 }
 
