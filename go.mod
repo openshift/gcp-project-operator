@@ -5,7 +5,6 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.4.9 // indirect
 	github.com/Azure/go-autorest v11.5.2+incompatible // indirect
 	github.com/appscode/jsonpatch v0.0.0-20190108182946-7c0e3b262f30 // indirect
-	github.com/coreos/prometheus-operator v0.26.0 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/emicklei/go-restful v2.11.2+incompatible // indirect
 	github.com/go-logr/logr v0.1.0
@@ -21,12 +20,13 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/onsi/ginkgo v1.12.0
-	github.com/onsi/gomega v1.9.0
+	github.com/onsi/ginkgo v1.12.3
+	github.com/onsi/gomega v1.10.1
 	github.com/openshift/cluster-api v0.0.0-20191129101638-b09907ac6668
-	github.com/operator-framework/operator-sdk v0.8.3-0.20190722210327-daf62d44e47e
+	github.com/openshift/operator-custom-metrics v0.3.0 // indirect
+	github.com/operator-framework/operator-sdk v0.12.0
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/prometheus/client_golang v1.4.0 // indirect
+	github.com/prometheus/client_golang v1.4.0
 	github.com/rogpeppe/go-internal v1.5.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.4.0
@@ -47,7 +47,7 @@ require (
 	k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20190816220812-743ec37842bf
-	sigs.k8s.io/controller-runtime v0.2.0-beta.2
+	sigs.k8s.io/controller-runtime v0.3.0
 	sigs.k8s.io/controller-tools v0.2.2-0.20190919191502-76a25b63325a
 	sigs.k8s.io/testing_frameworks v0.1.0 // indirect
 )
