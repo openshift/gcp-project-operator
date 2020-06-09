@@ -103,9 +103,9 @@ Just run `make`.
 ### Start operator locally
 
 ```
-oc new-project gcp-project-operator
-oc apply -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
-oc apply -f deploy/crds/gcp_v1alpha1_projectreference_crd.yaml
+oc project gcp-project-operator || oc new-project gcp-project-operator
+oc apply -f deploy/crds/gcp.managed.openshift.io_projectclaims_crd.yaml
+oc apply -f deploy/crds/gcp.managed.openshift.io_projectreferences_crd.yaml
 
 operator-sdk run --local --namespace gcp-project-operator
 ```
@@ -120,6 +120,9 @@ You can run the tests using `make gotest` or `go test ./...`
 
 ## Configuration
 
+Before you begin, copy the file `./hack/gcp_resources.env.example` to `hack/gcp_resources.env` and change the parameters accordingly to the next steps
+
+
 For the operator to interact with GCP properly, it needs a bit of configuration first.
 
 Note: unless you're running this against your very own GCP org, **someone likely already has this stuff prepared for you.**
@@ -129,7 +132,7 @@ Note: unless you're running this against your very own GCP org, **someone likely
 
 1. Create a gcp service account with appropriate permissions to an empty folder ("(Project) Owner" and "Project Creator" should suffice).
 2. Generate keys for the service account and download them.
-3. Run `oc create -n gcp-project-operator secret generic gcp-project-operator-credentials --from-file=key.json=YOUR-KEYS-FILE-NAME.json`
+3. set the env parameter in `hack/gcp_resources.env` GCP_PRIVATE_KEY_LOCATION to be the full path to the file
 
 ### Configmap
 
@@ -138,12 +141,9 @@ It will parse it and verify its contents, expecting to extract the values of two
 
 * `billingAccount`
 * `parentFolderID`
+set the env parameters in `hack/gcp_resources.env`  PARENTFOLDERID and BILLINGACCOUNT to correlate with the data.
 
-To fulfill this prerequisite, please type:
-
-```bash
-export PARENTFOLDERID="123456789123"         # Google Cloud organization Parent Folder ID
-export BILLINGACCOUNT="123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
-
-kubectl create -n gcp-project-operator configmap gcp-project-operator --from-literal parentFolderID=$PARENTFOLDERID --from-literal billingAccount=$BILLINGACCOUNT
+to conclude, run the command:
+```
+./hack/create_gcp_resources.sh
 ```

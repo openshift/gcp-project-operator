@@ -15,10 +15,10 @@ import (
 
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
-	"github.com/operator-framework/operator-sdk/pkg/metrics"
-	"github.com/operator-framework/operator-sdk/pkg/restmapper"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
+
 	"github.com/spf13/pflag"
+
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -85,12 +85,12 @@ func run() error {
 		return err
 	}
 
-	// Create a new Cmd to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, manager.Options{
+	options := manager.Options{
 		Namespace:          "", //watch all namespaces
-		MapperProvider:     restmapper.NewDynamicRESTMapper,
 		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
-	})
+	}
+
+	mgr, err := manager.New(cfg, options)
 	if err != nil {
 		log.Error(err, "")
 		return err
@@ -110,17 +110,6 @@ func run() error {
 		return err
 	}
 
-	// Create Service object to expose the metrics port.
-	_, err = metrics.ExposeMetricsPort(ctx, metricsPort)
-	if err != nil {
-		log.V(logtypes.OperatorSDK).Info(err.Error())
-	}
-
-	// start cache and wait for sync
-	log.V(logtypes.OperatorSDK).Info("init chache")
-	cache := mgr.GetCache()
-	go cache.Start(stopCh)
-	cache.WaitForCacheSync(stopCh)
 	log.V(logtypes.OperatorSDK).Info("Starting the Cmd.")
 
 	// Start the Cmd
