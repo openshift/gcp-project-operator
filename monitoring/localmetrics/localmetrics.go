@@ -2,6 +2,7 @@ package localmetrics
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -43,16 +44,21 @@ func (m MetricsConfig) PublishMetrics() {
 		for {
 			select {
 			case <-time.After(3 * time.Second):
-				m.TotalProjectClaims()
+				err := m.TotalProjectClaims()
+				if err != nil {
+					m.log.Error(err, "Cannot Expose metrics to prometheus")
+				}
 			}
 		}
 	}()
 }
-func (m MetricsConfig) TotalProjectClaims() {
+
+func (m MetricsConfig) TotalProjectClaims() error {
 	r := &v1alpha1.ProjectClaimList{}
 	if err := m.c.List(context.TODO(), &client.ListOptions{}, r); err != nil {
-		m.log.Error(err, "Cannot list `ProjectClaim`")
+		return fmt.Errorf("Cannot list `ProjectClaim`, error is  %v", err)
 	}
 	items := len(r.Items)
 	MetricTotalProjectClaims.With(prometheus.Labels{"name": "gcp-project-operator"}).Set(float64(items))
+	return nil
 }

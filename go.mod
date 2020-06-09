@@ -5,6 +5,7 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.4.9 // indirect
 	github.com/Azure/go-autorest v11.5.2+incompatible // indirect
 	github.com/appscode/jsonpatch v0.0.0-20190108182946-7c0e3b262f30 // indirect
+	github.com/coreos/prometheus-operator v0.0.0-00010101000000-000000000000 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/emicklei/go-restful v2.11.2+incompatible // indirect
 	github.com/go-logr/logr v0.1.0
@@ -23,7 +24,6 @@ require (
 	github.com/onsi/ginkgo v1.12.3
 	github.com/onsi/gomega v1.10.1
 	github.com/openshift/cluster-api v0.0.0-20191129101638-b09907ac6668
-	github.com/openshift/operator-custom-metrics v0.3.0 // indirect
 	github.com/operator-framework/operator-sdk v0.12.0
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/prometheus/client_golang v1.4.0

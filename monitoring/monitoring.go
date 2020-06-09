@@ -37,12 +37,12 @@ func main() {
 	}
 	stop := controllers.SetupSignalHandler()
 	// start cache and wait for sync
-	log.Info("init chache")
+	log.Info("Initialize and start cache")
 	cache := mgr.GetCache()
 	go cache.Start(stop)
 	cache.WaitForCacheSync(stop)
-	log.Info("Starting the Cmd.")
 
+	log.Info("Starting the Cmd.")
 	apis.AddToSchemes.AddToScheme(mgr.GetScheme())
 	kubeClient := mgr.GetClient()
 	m := localmetrics.NewMetricsConfig(kubeClient, log)
