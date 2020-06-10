@@ -26,7 +26,10 @@ OPERATOR_IMAGE_URI_LATEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):la
 OPERATOR_DOCKERFILE ?=build/ci-operator/Dockerfile
 
 BINFILE=build/_output/bin/$(OPERATOR_NAME)
+MONITORING_NAME=monitoring
+MONITORING_BINFILE=build/_output/bin/$(MONITORING_NAME)
 MAINPACKAGE=./cmd/manager
+MONITORINGPACKAGE=./monitoring
 GOENV=GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 GOFLAGS=-gcflags="all=-trimpath=${GOPATH}" -asmflags="all=-trimpath=${GOPATH}" -mod=vendor
 export GO111MODULE=on
@@ -67,6 +70,7 @@ gocheck: ## Lint code
 .PHONY: gobuild
 gobuild: gocheck gotest ## Build binary
 	${GOENV} go build ${GOFLAGS} -o ${BINFILE} ${MAINPACKAGE}
+	${GOENV} go build ${GOFLAGS} -o ${MONITORING_BINFILE} ${MONITORINGPACKAGE}
 
 .PHONY: gotest
 gotest:
