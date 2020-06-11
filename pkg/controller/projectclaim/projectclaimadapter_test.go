@@ -101,7 +101,10 @@ var _ = Describe("Customresourceadapter", func() {
 			})
 			It("should return err", func() {
 				err := adapter.EnsureRegionSupported()
-				Expect(err).To(Equal(er.New("EnsureRegionSupported: RegionNotSupported")))
+				Expect(err.Error()).Should(ContainSubstring("gcp-project-operator/pkg/controller/projectclaim/projectclaimadapter.go"))
+				Expect(err.Error()).Should(ContainSubstring("Line:"))
+				Expect(err.Error()).Should(ContainSubstring("gcp-project-operator/pkg/controller/projectclaim.(*ProjectClaimAdapter).EnsureRegionSupported"))
+				Expect(err.Error()).Should(ContainSubstring("RegionNotSupported"))
 			})
 		})
 	})

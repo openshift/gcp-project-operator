@@ -112,8 +112,7 @@ func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, e
 
 	azResult, err := r.ensureClaimAvailabilityZonesSet()
 	if err != nil {
-		r.logger.Error(err, "Error ensuring availability zones")
-		return r.ProjectClaim.Status.State, err
+		return r.ProjectClaim.Status.State, operrors.Wrap(err, "error ensuring availability zones")
 	}
 
 	idModified := r.ensureClaimProjectIDSet()
@@ -121,8 +120,7 @@ func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, e
 	if azResult == ensureAzResultModified || idModified {
 		err := r.kubeClient.Update(context.TODO(), r.ProjectClaim)
 		if err != nil {
-			r.logger.Error(err, "Error updating ProjectClaim Spec")
-			return r.ProjectClaim.Status.State, err
+			return r.ProjectClaim.Status.State, operrors.Wrap(err, "error updating ProjectClaim spec")
 		}
 	}
 
@@ -134,8 +132,7 @@ func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, e
 	r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
 	err = r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim)
 	if err != nil {
-		r.logger.Error(err, "Error updating ProjectClaim Status")
-		return r.ProjectClaim.Status.State, err
+		return r.ProjectClaim.Status.State, operrors.Wrap(err, "error updating ProjectClaim status")
 	}
 	return r.ProjectClaim.Status.State, nil
 }
@@ -143,45 +140,40 @@ func (r *ReferenceAdapter) EnsureProjectClaimReady() (gcpv1alpha1.ClaimStatus, e
 func (r *ReferenceAdapter) EnsureProjectConfigured() error {
 	configMap, err := r.getConfigMap()
 	if err != nil {
-		r.logger.Error(err, "could not get ConfigMap:", orgGcpConfigMap, "Operator Namespace", operatorNamespace)
-		return err
+		return operrors.Wrap(err, fmt.Sprintf("could not get ConfigMap: %s Operator Namespace: %s", orgGcpConfigMap, operatorNamespace))
 	}
 
 	err = r.createProject(configMap.ParentFolderID)
 	if err != nil {
 		if err == operrors.ErrInactiveProject {
-			log.Error(err, "Unrecoverable Error")
 			r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
 			err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
 			if err != nil {
-				r.logger.Error(err, "Error updating ProjectReference Status")
-				return err
+				return operrors.Wrap(err, "error updating ProjectReference status")
 			}
 		}
-		r.logger.Error(err, "Could not create project")
-		return err
+		return operrors.Wrap(err, "could not create project")
 	}
 
 	r.logger.V(int(logtypes.ProjectReference)).Info("Configuring APIS")
 	err = r.configureAPIS(configMap)
 	if err != nil {
-		r.logger.Error(err, "Error configuring APIS")
-		return err
+		return operrors.Wrap(err, "error configuring APIS")
 	}
 
 	r.logger.V(int(logtypes.ProjectReference)).Info("Configuring Service Account")
 	err = r.configureServiceAccount()
 	if err != nil {
-		r.logger.Error(err, "Error configuring service account")
-		return err
+		return operrors.Wrap(err, "error configuring service account")
 	}
 
 	r.logger.V(int(logtypes.ProjectReference)).Info("Creating Credentials")
 	err = r.createCredentials()
 	if err != nil {
-		r.logger.Error(err, "Error creating credentials")
+		return operrors.Wrap(err, "error creating credentials")
 	}
-	return err
+
+	return nil
 }
 
 func (r *ReferenceAdapter) EnsureStateReady() error {
@@ -293,8 +285,7 @@ func (r *ReferenceAdapter) deleteProject() error {
 		r.logger.Info("Project lifecycleState == DELETE_REQUESTED")
 		return nil
 	case "LIFECYCLE_STATE_UNSPECIFIED":
-		r.logger.Error(operrors.ErrUnexpectedLifecycleState, "Unexpected LifecycleState", project.LifecycleState)
-		return operrors.ErrUnexpectedLifecycleState
+		return operrors.Wrap(operrors.ErrUnexpectedLifecycleState, fmt.Sprintf("unexpected lifecycleState for %s", project.LifecycleState))
 	case "ACTIVE":
 		r.logger.Info("Deleting Project")
 		_, err := r.gcpClient.DeleteProject(project.ProjectId)
@@ -318,23 +309,21 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 		case "DELETE_REQUESTED":
 			return operrors.ErrInactiveProject
 		default:
-			r.logger.Error(operrors.ErrUnexpectedLifecycleState, "Unexpected LifecycleState", project.LifecycleState)
-			return operrors.ErrUnexpectedLifecycleState
+			return operrors.Wrap(operrors.ErrUnexpectedLifecycleState, fmt.Sprintf("unexpected lifecycleState for %s", project.LifecycleState))
 		}
 	}
 
 	r.logger.V(int(logtypes.ProjectReference)).Info("Creating Project")
 	// If we cannot create the project clear the projectID from spec so we can try again with another unique key
-	_, err = r.gcpClient.CreateProject(parentFolderID)
-	if err != nil {
-		r.logger.Error(err, "could not create project", "Parent Folder ID", parentFolderID, "Requested Project ID", r.ProjectReference.Spec.GCPProjectID)
+	_, creationFailed := r.gcpClient.CreateProject(parentFolderID)
+	if creationFailed != nil {
 		r.logger.V(int(logtypes.ProjectReference)).Info("Clearing gcpProjectID from ProjectReferenceSpec")
 		//Todo() We need to requeue here ot it will continue to the next step.
-		err = r.clearProjectID()
-		if err != nil {
-			return err
+		if err = r.clearProjectID(); err != nil {
+			return operrors.Wrap(creationFailed, fmt.Sprintf("could not clear project ID: %v", err))
 		}
-		return err
+
+		return operrors.Wrap(creationFailed, fmt.Sprintf("could not create project. Parent Folder ID: %s, Requested Project ID: %s", parentFolderID, r.ProjectReference.Spec.GCPProjectID))
 	}
 
 	return nil
@@ -357,22 +346,19 @@ func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) err
 	r.logger.V(int(logtypes.ProjectReference)).Info("Enabling Billing API")
 	err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
 	if err != nil {
-		r.logger.Error(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
-		return err
+		return operrors.Wrap(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
 	}
 
 	r.logger.V(int(logtypes.ProjectReference)).Info("Linking Cloud Billing Account")
 	err = r.gcpClient.CreateCloudBillingAccount(r.ProjectReference.Spec.GCPProjectID, config.BillingAccount)
 	if err != nil {
-		r.logger.Error(err, "error creating CloudBilling")
-		return err
+		return operrors.Wrap(err, "error creating CloudBilling")
 	}
 
 	for _, a := range OSDRequiredAPIS {
 		err = r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, a)
 		if err != nil {
-			r.logger.Error(err, fmt.Sprintf("error enabling %s api for project %s", a, r.ProjectReference.Spec.GCPProjectID))
-			return err
+			return operrors.Wrap(err, fmt.Sprintf("error enabling %s api for project %s", a, r.ProjectReference.Spec.GCPProjectID))
 		}
 	}
 
@@ -382,14 +368,13 @@ func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) err
 func (r *ReferenceAdapter) getConfigMap() (configmap.OperatorConfigMap, error) {
 	operatorConfigMap, err := configmap.GetOperatorConfigMap(r.kubeClient)
 	if err != nil {
-		r.logger.Error(err, "could not find the OperatorConfigMap")
-		return operatorConfigMap, err
+		return operatorConfigMap, operrors.Wrap(err, "could not find the OperatorConfigMap")
 	}
 
 	if err := configmap.ValidateOperatorConfigMap(operatorConfigMap); err != nil {
-		r.logger.Error(err, "configmap didn't get filled properly")
-		return operatorConfigMap, err
+		return operatorConfigMap, operrors.Wrap(err, "configmap didn't get filled properly")
 	}
+
 	return operatorConfigMap, err
 }
 
@@ -402,8 +387,7 @@ func (r *ReferenceAdapter) configureServiceAccount() error {
 		r.logger.V(int(logtypes.ProjectReference)).Info("Creating Service Account")
 		account, err := r.gcpClient.CreateServiceAccount(osdServiceAccountName, osdServiceAccountName)
 		if err != nil {
-			r.logger.Error(err, "could not create service account", "Service Account Name", osdServiceAccountName)
-			return err
+			return operrors.Wrap(err, fmt.Sprintf("could not create service account for %s", osdServiceAccountName))
 		}
 		serviceAccount = account
 	}
@@ -411,9 +395,9 @@ func (r *ReferenceAdapter) configureServiceAccount() error {
 	r.logger.V(int(logtypes.ProjectReference)).Info("Setting Service Account Policies")
 	err = r.SetIAMPolicy(serviceAccount.Email)
 	if err != nil {
-		r.logger.Error(err, "could not update policy on project", "Project Name", r.ProjectReference.Spec.GCPProjectID)
-		return err
+		return operrors.Wrap(err, fmt.Sprintf("could not update policy on project for %s", r.ProjectReference.Spec.GCPProjectID))
 	}
+
 	return nil
 }
 
@@ -421,22 +405,19 @@ func (r *ReferenceAdapter) createCredentials() error {
 	var serviceAccount *iam.ServiceAccount
 	serviceAccount, err := r.gcpClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
-		r.logger.Error(err, "could not get service account")
-		return err
+		return operrors.Wrap(err, "could not get service account")
 	}
 
 	r.logger.V(int(logtypes.ProjectReference)).Info("Creating Service AccountKey")
 	key, err := r.gcpClient.CreateServiceAccountKey(serviceAccount.Email)
 	if err != nil {
-		r.logger.Error(err, "could not create service account key", "Service Account Name", serviceAccount.Email)
-		return err
+		return operrors.Wrap(err, fmt.Sprintf("could not create service account key for %s", serviceAccount.Email))
 	}
 
 	// Create secret for the key and store it
 	privateKeyString, err := base64.StdEncoding.DecodeString(key.PrivateKeyData)
 	if err != nil {
-		r.logger.Error(err, "could not decode secret")
-		return err
+		return operrors.Wrap(err, "could not decode secret")
 	}
 
 	secret := gcputil.NewGCPSecretCR(string(privateKeyString), types.NamespacedName{
@@ -447,8 +428,7 @@ func (r *ReferenceAdapter) createCredentials() error {
 	r.logger.V(int(logtypes.ProjectReference)).Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace))
 	createErr := r.kubeClient.Create(context.TODO(), secret)
 	if createErr != nil {
-		r.logger.Error(createErr, "could not create service account secret ", "Service Account Secret Name", r.ProjectClaim.Spec.GCPCredentialSecret.Name)
-		return createErr
+		return operrors.Wrap(createErr, fmt.Sprintf("could not create service account secret for %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name))
 	}
 
 	return nil
@@ -466,15 +446,13 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 		// Get the secret key
 		key, err := gcputil.GetSecret(r.kubeClient, secret.Name, secret.Namespace)
 		if err != nil {
-			r.logger.Error(err, "could not get the service account secret ", "Service Account Secret Name", secret.Name)
-			return err
+			return operrors.Wrap(err, fmt.Sprintf("could not get the service account secret for %s", secret.Name))
 		}
 
 		// Delete the secret
 		err = r.kubeClient.Delete(context.TODO(), key)
 		if err != nil {
-			r.logger.Error(err, "could not delete service account secret ", "Service Account Secret Name", secret.Name)
-			return err
+			return operrors.Wrap(err, fmt.Sprintf("could not delete service account secret for %s", secret.Name))
 		}
 	}
 
@@ -533,8 +511,7 @@ func (r *ReferenceAdapter) EnsureProjectReferenceInitialized() (ObjectState, err
 		r.ProjectReference.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := r.StatusUpdate()
 		if err != nil {
-			r.logger.Error(err, "Failed to initalize ProjectReference")
-			return ObjectUnchanged, err
+			return ObjectUnchanged, operrors.Wrap(err, "failed to initalize ProjectReference")
 		}
 		return ObjectModified, nil
 	}
@@ -624,8 +601,7 @@ func (r *ReferenceAdapter) SetProjectReferenceCondition(reason string, err error
 func (r *ReferenceAdapter) StatusUpdate() error {
 	err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
 	if err != nil {
-		r.logger.Error(err, fmt.Sprintf("failed to update ProjectClaim state for %s", r.ProjectReference.Name))
-		return err
+		return operrors.Wrap(err, fmt.Sprintf("failed to update ProjectClaim state for %s", r.ProjectReference.Name))
 	}
 
 	return nil
