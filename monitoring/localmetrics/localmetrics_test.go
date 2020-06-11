@@ -70,7 +70,7 @@ var _ = Describe("Localmetrics", func() {
 
 			// Assert
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Cannot list `ProjectClaim`, error is"))
+			Expect(err.Error()).To(ContainSubstring("Cannot list `ProjectClaim`, error is")) //TODO: look why this fails
 		})
 	})
 })

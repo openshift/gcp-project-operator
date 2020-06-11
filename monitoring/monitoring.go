@@ -45,6 +45,7 @@ func main() {
 	log.Info("Starting the Cmd.")
 	apis.AddToSchemes.AddToScheme(mgr.GetScheme())
 	kubeClient := mgr.GetClient()
+
 	m := localmetrics.NewMetricsConfig(kubeClient, log)
 	m.PublishMetrics()
 	//http.Handle("/metrics", promhttp.Handler())
