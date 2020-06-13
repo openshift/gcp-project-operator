@@ -50,11 +50,13 @@ func NewMetricsConfig(c client.Client, log logr.Logger) *MetricsConfig {
 	return &MetricsConfig{c: c, log: log}
 }
 
-func (m MetricsConfig) PublishMetrics() {
+func (m MetricsConfig) PublishMetrics(stop <-chan struct{}) {
 	m.TotalProjectClaims()
 	go func() {
 		for {
 			select {
+			case <-stop:
+				break
 			case <-time.After(3 * time.Second):
 				err := m.TotalProjectClaims()
 				if err != nil {

@@ -47,7 +47,7 @@ func main() {
 	kubeClient := mgr.GetClient()
 
 	m := localmetrics.NewMetricsConfig(kubeClient, log)
-	m.PublishMetrics()
+	m.PublishMetrics(stop)
 	//http.Handle("/metrics", promhttp.Handler())
 	http.Handle("/metrics", promhttp.HandlerFor(promRegistry, promhttp.HandlerOpts{}))
 	http.ListenAndServe(":2112", nil)
