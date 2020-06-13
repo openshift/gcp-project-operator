@@ -60,7 +60,7 @@ func (m MetricsConfig) PublishMetrics(stop <-chan struct{}) {
 			case <-time.After(3 * time.Second):
 				err := m.TotalProjectClaims()
 				if err != nil {
-					m.log.Error(err, "Cannot Expose metrics to prometheus")
+					m.log.Error(err, "Cannot Expose metrics")
 				}
 			}
 		}
