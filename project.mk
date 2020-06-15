@@ -4,7 +4,7 @@ OPERATOR_NAMESPACE?=$(shell sed -n 's/.*OperatorNamespace .*"\([^"]*\)".*/\1/p' 
 -WATCH_NAMESPACE?=""
 
 IMAGE_REGISTRY?=quay.io
-IMAGE_REPOSITORY?=$(USER)
+IMAGE_REPOSITORY?=rogreen
 IMAGE_NAME?=$(OPERATOR_NAME)
 
 VERSION_MAJOR?=0
