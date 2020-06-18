@@ -195,7 +195,7 @@ func (c *gcpClient) GetServiceAccount(accountName string) (*iam.ServiceAccount, 
 	resource := fmt.Sprintf("projects/%s/serviceAccounts/%s@%s.iam.gserviceaccount.com", c.projectName, accountName, c.projectName)
 	sa, err := c.iamClient.Projects.ServiceAccounts.Get(resource).Do()
 	if err != nil {
-		return &iam.ServiceAccount{}, fmt.Errorf("gcpclient.GetServiceAccount.Projects.ServiceAccounts.Get %v", err)
+		return &iam.ServiceAccount{}, err
 	}
 
 	return sa, nil
@@ -212,7 +212,7 @@ func (c *gcpClient) CreateServiceAccount(name, displayName string) (*iam.Service
 
 	serviceAccount, err := c.iamClient.Projects.ServiceAccounts.Create(fmt.Sprintf("projects/%s", c.projectName), CreateServiceAccountRequest).Do()
 	if err != nil {
-		return &iam.ServiceAccount{}, fmt.Errorf("gcpclient.CreateServiceAccount.Projects.ServiceAccounts.Create %v", err)
+		return &iam.ServiceAccount{}, err
 	}
 
 	return serviceAccount, nil
