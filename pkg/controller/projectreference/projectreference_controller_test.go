@@ -196,11 +196,11 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		Context("When Reference State is Ready and it fails to update", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = api.ProjectReferenceStatusReady
-				mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+				projectClaim.Spec.GCPProjectID = "fake-id"
+				projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
 			})
 
 			It("It reconciles with error", func() {
-				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 				mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
 				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error")).Times(2)
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
@@ -211,6 +211,8 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		Context("When Reference State is empty and it failes to update", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = ""
+				projectClaim.Spec.GCPProjectID = "fake-id"
+				projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
 			})
 
 			It("It reconciles with error", func() {
@@ -225,6 +227,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 	Context("Project id generation", func() {
 		BeforeEach(func() {
 			projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
+			projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
 			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1)
 			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 				Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
@@ -234,8 +237,6 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 
 		Context("When project id is not set", func() {
 			It("Updates the project id", func() {
-				mockKubeClient.EXPECT().Status().Return(mockUpdater)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
 				matcher := testStructs.NewProjectReferenceMatcher()
 				mockKubeClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
@@ -307,6 +308,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			It("It requeues with error", func() {
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
 				mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+				mockGCPClient.EXPECT().ListAPIs(gomock.Any())
 				mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
 				mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
 				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
@@ -326,6 +328,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			It("It does not requeue", func() {
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
 				mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+				mockGCPClient.EXPECT().ListAPIs(gomock.Any())
 				mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
 				mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
 				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)

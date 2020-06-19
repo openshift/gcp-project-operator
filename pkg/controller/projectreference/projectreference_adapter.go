@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/openshift/cluster-api/pkg/util"
 	clusterapi "github.com/openshift/cluster-api/pkg/util"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
@@ -122,10 +123,12 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (OperationResult, error) {
 		if err != nil {
 			return RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
 		}
+		return StopProcessing()
 	}
 
 	if azResult == ensureAzResultNotReady {
-		return ContinueProcessing()
+		r.logger.V(int(logtypes.ProjectReference)).Info("Compute API not yet fully initialized. Retrying in 30 seconds.")
+		return RequeueAfter(30*time.Second, nil)
 	}
 
 	//Project Ready update matchingClaim to ready
@@ -152,6 +155,7 @@ func EnsureProjectReferenceStatusCreating(adapter *ReferenceAdapter) (OperationR
 			err = operrors.Wrap(err, "error updating ProjectReference status")
 			return RequeueWithError(err)
 		}
+		return StopProcessing()
 	}
 	return ContinueProcessing()
 }
@@ -183,6 +187,7 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (OperationResult, error) {
 			if err != nil {
 				return RequeueWithError(operrors.Wrap(err, "error updating ProjectReference status"))
 			}
+			return StopProcessing()
 		}
 		return RequeueWithError(operrors.Wrap(err, "could not create project"))
 	}
@@ -387,10 +392,17 @@ func (r *ReferenceAdapter) getProject(projectId string) (*cloudresourcemanager.P
 }
 
 func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) error {
-	r.logger.V(int(logtypes.ProjectReference)).Info("Enabling Billing API")
-	err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
+	apis, err := r.gcpClient.ListAPIs(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
-		return operrors.Wrap(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
+		return err
+	}
+
+	r.logger.V(int(logtypes.ProjectReference)).Info("Enabling Billing API")
+	if !util.Contains(apis, "cloudbilling.googleapis.com") {
+		err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
+		if err != nil {
+			return operrors.Wrap(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
+		}
 	}
 
 	r.logger.V(int(logtypes.ProjectReference)).Info("Linking Cloud Billing Account")
@@ -400,9 +412,11 @@ func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) err
 	}
 
 	for _, a := range OSDRequiredAPIS {
-		err = r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, a)
-		if err != nil {
-			return operrors.Wrap(err, fmt.Sprintf("error enabling %s api for project %s", a, r.ProjectReference.Spec.GCPProjectID))
+		if !util.Contains(apis, a) {
+			err = r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, a)
+			if err != nil {
+				return operrors.Wrap(err, fmt.Sprintf("error enabling %s api for project %s", a, r.ProjectReference.Spec.GCPProjectID))
+			}
 		}
 	}
 
@@ -432,8 +446,8 @@ func (r *ReferenceAdapter) configureServiceAccount() (OperationResult, error) {
 		account, err := r.gcpClient.CreateServiceAccount(osdServiceAccountName, osdServiceAccountName)
 		if err != nil {
 			if matchesAlreadyExistsError(err) {
-				r.logger.V(int(logtypes.ProjectReference)).Info("Service Account not yet fully initialized. Retrying in 10 seconds.")
-				return RequeueAfter(10*time.Second, nil)
+				r.logger.V(int(logtypes.ProjectReference)).Info("Service Account not yet fully initialized. Retrying in 30 seconds.")
+				return RequeueAfter(30*time.Second, nil)
 			}
 			return RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not create service account for %s", osdServiceAccountName)))
 		}
@@ -454,16 +468,15 @@ func matchesAlreadyExistsError(err error) bool {
 }
 
 func (r *ReferenceAdapter) createCredentials() (OperationResult, error) {
-	err := r.deleteCredentials()
-	if err != nil {
-		return RequeueWithError(operrors.Wrap(err, "could not cleanup secret before creating new secret"))
+	if gcputil.SecretExists(r.kubeClient, r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace) {
+		return ContinueProcessing()
 	}
 
 	serviceAccount, err := r.gcpClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
 		if matchesNotFoundError(err) {
-			r.logger.V(int(logtypes.ProjectReference)).Info("Service Account not yet fully initialized. Retrying in 10 seconds.")
-			return RequeueAfter(10*time.Second, nil)
+			r.logger.V(int(logtypes.ProjectReference)).Info("Service Account not yet fully initialized. Retrying in 30 seconds.")
+			return RequeueAfter(30*time.Second, nil)
 		}
 		return RequeueWithError(operrors.Wrap(err, "could not get service account"))
 	}

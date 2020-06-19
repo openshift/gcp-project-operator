@@ -200,25 +200,30 @@ func (c *ProjectClaimAdapter) EnsureProjectReferenceExists() error {
 	return nil
 }
 
-func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimStatus) error {
+func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimStatus) (ObjectState, error) {
 	if c.projectClaim.Status.State == state {
-		return nil
+		return ObjectUnchanged, nil
 	}
 
 	if state == gcpv1alpha1.ClaimStatusPending && c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusError {
 		if c.projectClaim.Status.State != "" {
-			return nil
+			return ObjectUnchanged, nil
 		}
 	}
 
 	if state == gcpv1alpha1.ClaimStatusPendingProject {
 		if c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPending {
-			return nil
+			return ObjectUnchanged, nil
 		}
 	}
 
 	c.projectClaim.Status.State = state
-	return c.StatusUpdate()
+	err := c.StatusUpdate()
+	if err != nil {
+		return ObjectUnchanged, err
+	}
+
+	return ObjectModified, nil
 }
 
 // SetProjectClaimCondition calls SetCondition() with project claim conditions

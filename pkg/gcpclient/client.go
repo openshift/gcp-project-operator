@@ -17,7 +17,6 @@ import (
 	cloudbilling "google.golang.org/api/cloudbilling/v1"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
 	compute "google.golang.org/api/compute/v1"
-	dns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/googleapi"
 	iam "google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
@@ -47,6 +46,7 @@ type Client interface {
 
 	// ServiceManagement
 	EnableAPI(projectID, api string) error
+	ListAPIs(projectID string) ([]string, error)
 
 	// CloudBilling
 	CreateCloudBillingAccount(projectID, billingAccount string) error
@@ -60,7 +60,6 @@ type gcpClient struct {
 	creds                      *google.Credentials
 	cloudResourceManagerClient *cloudresourcemanager.Service
 	iamClient                  *iam.Service
-	dnsClient                  *dns.Service
 	serviceManagmentClient     *serviceManagment.APIService
 	cloudBillingClient         *cloudbilling.APIService
 	computeClient              *compute.Service
@@ -178,6 +177,7 @@ func (c *gcpClient) CreateProject(parentFolderID string) (*cloudresourcemanager.
 		}
 		return &cloudresourcemanager.Operation{}, fmt.Errorf("gcpclient.CreateProject.Projects.Create %v", err)
 	}
+	time.Sleep(3 * time.Second) //Wait 3 seconds to make it more probable the project is created after returning
 	return operation, nil
 }
 
@@ -279,6 +279,18 @@ func (c *gcpClient) SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIa
 		return &cloudresourcemanager.Policy{}, err
 	}
 	return policy, nil
+}
+
+func (c *gcpClient) ListAPIs(projectID string) ([]string, error) {
+	enabledAPIs := []string{}
+	response, err := c.serviceManagmentClient.Services.List().ConsumerId("project:" + projectID).Do()
+	if err != nil {
+		return enabledAPIs, err
+	}
+	for _, svc := range response.Services {
+		enabledAPIs = append(enabledAPIs, svc.ServiceName)
+	}
+	return enabledAPIs, err
 }
 
 func (c *gcpClient) EnableAPI(projectID, api string) error {

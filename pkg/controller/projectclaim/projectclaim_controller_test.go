@@ -76,7 +76,7 @@ var _ = Describe("ProjectclaimController", func() {
 				mockAdapter.EXPECT().EnsureProjectReferenceExists().Return(nil)
 				mockAdapter.EXPECT().IsProjectClaimDeletion().Return(false)
 				mockAdapter.EXPECT().EnsureProjectClaimInitialized().Return(ObjectUnchanged, nil)
-				mockAdapter.EXPECT().EnsureProjectClaimState(api.ClaimStatusPending).Return(nil)
+				mockAdapter.EXPECT().EnsureProjectClaimState(api.ClaimStatusPending).Return(ObjectUnchanged, nil)
 			})
 
 			Context("When the ProjectReferenceLink does not exist", func() {

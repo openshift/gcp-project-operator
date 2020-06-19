@@ -120,19 +120,36 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						projectClaim.Spec.GCPProjectID = ""
 						projectReference.Spec.GCPProjectID = "fake-gcp-project"
 
-						mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones").Times(1)
-						mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
-						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
-						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
-						mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 					})
 
-					It("updates the ProjectClaim, sets GCPProjectID and the state to Ready", func() {
-						_, err := EnsureProjectClaimReady(adapter)
-						Expect(err).NotTo(HaveOccurred())
-						Expect(adapter.ProjectClaim.Status.State).To(Equal(api.ClaimStatusReady))
-						Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal(adapter.ProjectReference.Spec.GCPProjectID))
-						Expect(adapter.ProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
+					Context("When availability zones are not set", func() {
+						BeforeEach(func() {
+							mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
+							mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones").Times(1)
+						})
+						It("updates the ProjectClaim with availability zones and sets GCPProjectID", func() {
+							_, err := EnsureProjectClaimReady(adapter)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(adapter.ProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
+							Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal(adapter.ProjectReference.Spec.GCPProjectID))
+						})
+
+					})
+					Context("When availability zones are set already", func() {
+						BeforeEach(func() {
+							mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+							mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
+							projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
+							projectClaim.Spec.GCPProjectID = "fake-id"
+						})
+
+						It("sets state to Ready", func() {
+							_, err := EnsureProjectClaimReady(adapter)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(adapter.ProjectClaim.Status.State).To(Equal(api.ClaimStatusReady))
+
+						})
 					})
 				})
 				Context("When compute API is not ready", func() {
@@ -338,6 +355,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				It("It requeues with error", func() {
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).AnyTimes()
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
 					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
@@ -355,6 +373,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				It("It does not requeue", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any())
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
 					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
