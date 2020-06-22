@@ -1,0 +1,15 @@
+# ensure correct oc server
+TARGET_OC_SERVER=api-crc-testing:6443
+
+# ensure correct gcloud connection
+TARGET_GCLOUD_USER=user@example.com
+
+# target gloud project
+GCLOUD_PROJECT=example-project
+
+# gcloud service account details
+GCLOUD_SA=example-sa
+
+# gcp-project-operator namespace and secret for service account to be delivered to
+GPO_NAMESPACE=gcp-project-operator
+GPO_SECRET=gcp-project-operator-credentials
