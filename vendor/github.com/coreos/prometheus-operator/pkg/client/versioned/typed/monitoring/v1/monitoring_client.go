@@ -19,17 +19,16 @@ package v1
 import (
 	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/coreos/prometheus-operator/pkg/client/versioned/scheme"
+	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
 
 type MonitoringV1Interface interface {
 	RESTClient() rest.Interface
 	AlertmanagersGetter
-	PodMonitorsGetter
 	PrometheusesGetter
 	PrometheusRulesGetter
 	ServiceMonitorsGetter
-	ThanosRulersGetter
 }
 
 // MonitoringV1Client is used to interact with features provided by the monitoring.coreos.com group.
@@ -39,10 +38,6 @@ type MonitoringV1Client struct {
 
 func (c *MonitoringV1Client) Alertmanagers(namespace string) AlertmanagerInterface {
 	return newAlertmanagers(c, namespace)
-}
-
-func (c *MonitoringV1Client) PodMonitors(namespace string) PodMonitorInterface {
-	return newPodMonitors(c, namespace)
 }
 
 func (c *MonitoringV1Client) Prometheuses(namespace string) PrometheusInterface {
@@ -55,10 +50,6 @@ func (c *MonitoringV1Client) PrometheusRules(namespace string) PrometheusRuleInt
 
 func (c *MonitoringV1Client) ServiceMonitors(namespace string) ServiceMonitorInterface {
 	return newServiceMonitors(c, namespace)
-}
-
-func (c *MonitoringV1Client) ThanosRulers(namespace string) ThanosRulerInterface {
-	return newThanosRulers(c, namespace)
 }
 
 // NewForConfig creates a new MonitoringV1Client for the given config.
@@ -93,7 +84,7 @@ func setConfigDefaults(config *rest.Config) error {
 	gv := v1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()

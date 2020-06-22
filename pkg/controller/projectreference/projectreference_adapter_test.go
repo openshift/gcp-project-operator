@@ -11,9 +11,9 @@ import (
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectreference"
+	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockconditions "github.com/openshift/gcp-project-operator/pkg/util/mocks/condition"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
-	"github.com/openshift/gcp-project-operator/pkg/util/mocks/k8sclient"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iam/v1"
@@ -28,10 +28,10 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 	var (
 		adapter          *ReferenceAdapter
 		projectReference *api.ProjectReference
-		mockKubeClient   *k8sclient.MockClient
+		mockKubeClient   *mocks.MockClient
 		mockGCPClient    *mockGCP.MockClient
 		mockConditions   *mockconditions.MockConditions
-		mockStatusWriter *k8sclient.MockStatusWriter
+		mockStatusWriter *mocks.MockStatusWriter
 		projectClaim     *api.ProjectClaim
 		err              error
 		mockCtrl         *gomock.Controller
@@ -40,8 +40,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		projectReference = testStructs.NewProjectReferenceBuilder().GetProjectReference()
 		projectClaim = testStructs.NewProjectClaimBuilder().GetProjectClaim()
 		mockCtrl = gomock.NewController(GinkgoT())
-		mockStatusWriter = k8sclient.NewMockStatusWriter(mockCtrl)
-		mockKubeClient = k8sclient.NewMockClient(mockCtrl)
+		mockStatusWriter = mocks.NewMockStatusWriter(mockCtrl)
+		mockKubeClient = mocks.NewMockClient(mockCtrl)
 		mockGCPClient = mockGCP.NewMockClient(mockCtrl)
 		mockConditions = mockconditions.NewMockConditions(mockCtrl)
 	})

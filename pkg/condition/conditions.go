@@ -7,7 +7,7 @@ import (
 )
 
 // Conditions is a wrapper object for actual Condition functions to allow for easier mocking/testing.
-//go:generate mockgen -destination=../util/mocks/$GOPACKAGE/$GOFILE  -package=$GOPACKAGE -source $GOFILE
+//go:generate mockgen -destination=../util/mocks/$GOPACKAGE/conditions.go -package=$GOPACKAGE -source conditions.go
 type Conditions interface {
 	SetCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType, status corev1.ConditionStatus, reason string, message string)
 	FindCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) (*gcpv1alpha1.Condition, bool)
