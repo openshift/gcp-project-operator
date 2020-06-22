@@ -57,11 +57,6 @@ type SummaryMetric interface {
 	Observe(float64)
 }
 
-// HistogramMetric counts individual observations.
-type HistogramMetric interface {
-	Observe(float64)
-}
-
 type noopMetric struct{}
 
 func (noopMetric) Inc()            {}
@@ -78,9 +73,9 @@ type defaultQueueMetrics struct {
 	// total number of adds handled by a workqueue
 	adds CounterMetric
 	// how long an item stays in a workqueue
-	latency HistogramMetric
+	latency SummaryMetric
 	// how long processing an item from a workqueue takes
-	workDuration         HistogramMetric
+	workDuration         SummaryMetric
 	addTimes             map[t]time.Time
 	processingStartTimes map[t]time.Time
 
@@ -109,7 +104,7 @@ func (m *defaultQueueMetrics) get(item t) {
 	m.depth.Dec()
 	m.processingStartTimes[item] = m.clock.Now()
 	if startTime, exists := m.addTimes[item]; exists {
-		m.latency.Observe(m.sinceInSeconds(startTime))
+		m.latency.Observe(m.sinceInMicroseconds(startTime))
 		delete(m.addTimes, item)
 	}
 }
@@ -120,7 +115,7 @@ func (m *defaultQueueMetrics) done(item t) {
 	}
 
 	if startTime, exists := m.processingStartTimes[item]; exists {
-		m.workDuration.Observe(m.sinceInSeconds(startTime))
+		m.workDuration.Observe(m.sinceInMicroseconds(startTime))
 		delete(m.processingStartTimes, item)
 	}
 }
@@ -131,14 +126,16 @@ func (m *defaultQueueMetrics) updateUnfinishedWork() {
 	var total float64
 	var oldest float64
 	for _, t := range m.processingStartTimes {
-		age := m.sinceInSeconds(t)
+		age := m.sinceInMicroseconds(t)
 		total += age
 		if age > oldest {
 			oldest = age
 		}
 	}
+	// Convert to seconds; microseconds is unhelpfully granular for this.
+	total /= 1000000
 	m.unfinishedWorkSeconds.Set(total)
-	m.longestRunningProcessor.Set(oldest)
+	m.longestRunningProcessor.Set(oldest) // in microseconds.
 }
 
 type noMetrics struct{}
@@ -148,9 +145,9 @@ func (noMetrics) get(item t)            {}
 func (noMetrics) done(item t)           {}
 func (noMetrics) updateUnfinishedWork() {}
 
-// Gets the time since the specified start in seconds.
-func (m *defaultQueueMetrics) sinceInSeconds(start time.Time) float64 {
-	return m.clock.Since(start).Seconds()
+// Gets the time since the specified start in microseconds.
+func (m *defaultQueueMetrics) sinceInMicroseconds(start time.Time) float64 {
+	return float64(m.clock.Since(start).Nanoseconds() / time.Microsecond.Nanoseconds())
 }
 
 type retryMetrics interface {
@@ -173,10 +170,10 @@ func (m *defaultRetryMetrics) retry() {
 type MetricsProvider interface {
 	NewDepthMetric(name string) GaugeMetric
 	NewAddsMetric(name string) CounterMetric
-	NewLatencyMetric(name string) HistogramMetric
-	NewWorkDurationMetric(name string) HistogramMetric
+	NewLatencyMetric(name string) SummaryMetric
+	NewWorkDurationMetric(name string) SummaryMetric
 	NewUnfinishedWorkSecondsMetric(name string) SettableGaugeMetric
-	NewLongestRunningProcessorSecondsMetric(name string) SettableGaugeMetric
+	NewLongestRunningProcessorMicrosecondsMetric(name string) SettableGaugeMetric
 	NewRetriesMetric(name string) CounterMetric
 }
 
@@ -190,11 +187,11 @@ func (_ noopMetricsProvider) NewAddsMetric(name string) CounterMetric {
 	return noopMetric{}
 }
 
-func (_ noopMetricsProvider) NewLatencyMetric(name string) HistogramMetric {
+func (_ noopMetricsProvider) NewLatencyMetric(name string) SummaryMetric {
 	return noopMetric{}
 }
 
-func (_ noopMetricsProvider) NewWorkDurationMetric(name string) HistogramMetric {
+func (_ noopMetricsProvider) NewWorkDurationMetric(name string) SummaryMetric {
 	return noopMetric{}
 }
 
@@ -202,7 +199,7 @@ func (_ noopMetricsProvider) NewUnfinishedWorkSecondsMetric(name string) Settabl
 	return noopMetric{}
 }
 
-func (_ noopMetricsProvider) NewLongestRunningProcessorSecondsMetric(name string) SettableGaugeMetric {
+func (_ noopMetricsProvider) NewLongestRunningProcessorMicrosecondsMetric(name string) SettableGaugeMetric {
 	return noopMetric{}
 }
 
@@ -238,7 +235,7 @@ func (f *queueMetricsFactory) newQueueMetrics(name string, clock clock.Clock) qu
 		latency:                 mp.NewLatencyMetric(name),
 		workDuration:            mp.NewWorkDurationMetric(name),
 		unfinishedWorkSeconds:   mp.NewUnfinishedWorkSecondsMetric(name),
-		longestRunningProcessor: mp.NewLongestRunningProcessorSecondsMetric(name),
+		longestRunningProcessor: mp.NewLongestRunningProcessorMicrosecondsMetric(name),
 		addTimes:                map[t]time.Time{},
 		processingStartTimes:    map[t]time.Time{},
 	}

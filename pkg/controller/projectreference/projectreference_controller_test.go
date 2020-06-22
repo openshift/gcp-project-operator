@@ -10,8 +10,8 @@ import (
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
+	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
-	"github.com/openshift/gcp-project-operator/pkg/util/mocks/k8sclient"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iam/v1"
@@ -36,14 +36,14 @@ const (
 var _ = Describe("ProjectReference controller reconcilation", func() {
 	var (
 		projectReference     *api.ProjectReference
-		mockKubeClient       *k8sclient.MockClient
+		mockKubeClient       *mocks.MockClient
 		projectReferenceName types.NamespacedName
 		reconciler           *ReconcileProjectReference
 		mockGCPClient        *mockGCP.MockClient
 		projectClaim         *api.ProjectClaim
 		configMap            corev1.ConfigMap
 		mockCtrl             *gomock.Controller
-		mockUpdater          *k8sclient.MockStatusWriter
+		mockUpdater          *mocks.MockStatusWriter
 	)
 
 	BeforeEach(func() {
@@ -54,9 +54,9 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		projectReference = testStructs.NewProjectReferenceBuilder().GetProjectReference()
 		projectClaim = testStructs.NewProjectClaimBuilder().GetProjectClaim()
 		mockCtrl = gomock.NewController(GinkgoT())
-		mockKubeClient = k8sclient.NewMockClient(mockCtrl)
+		mockKubeClient = mocks.NewMockClient(mockCtrl)
 		mockGCPClient = mockGCP.NewMockClient(mockCtrl)
-		mockUpdater = k8sclient.NewMockStatusWriter(mockCtrl)
+		mockUpdater = mocks.NewMockStatusWriter(mockCtrl)
 
 		gcpBuilder := func(projectName string, authJSON []byte) (gcpclient.Client, error) {
 			return mockGCPClient, nil

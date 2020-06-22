@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -32,9 +31,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"golang.org/x/crypto/ssh/terminal"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -43,14 +41,12 @@ import (
 	"k8s.io/client-go/pkg/apis/clientauthentication/v1alpha1"
 	"k8s.io/client-go/pkg/apis/clientauthentication/v1beta1"
 	"k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/transport"
 	"k8s.io/client-go/util/connrotation"
 	"k8s.io/klog"
 )
 
 const execInfoEnv = "KUBERNETES_EXEC_INFO"
-const onRotateListWarningLength = 1000
 
 var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
@@ -77,10 +73,8 @@ func newCache() *cache {
 	return &cache{m: make(map[string]*Authenticator)}
 }
 
-var spewConfig = &spew.ConfigState{DisableMethods: true, Indent: " "}
-
 func cacheKey(c *api.ExecConfig) string {
-	return spewConfig.Sprint(c)
+	return fmt.Sprintf("%#v", c)
 }
 
 type cache struct {
@@ -167,7 +161,7 @@ type Authenticator struct {
 	cachedCreds *credentials
 	exp         time.Time
 
-	onRotateList []func()
+	onRotate func()
 }
 
 type credentials struct {
@@ -178,9 +172,13 @@ type credentials struct {
 // UpdateTransportConfig updates the transport.Config to use credentials
 // returned by the plugin.
 func (a *Authenticator) UpdateTransportConfig(c *transport.Config) error {
-	c.Wrap(func(rt http.RoundTripper) http.RoundTripper {
+	wt := c.WrapTransport
+	c.WrapTransport = func(rt http.RoundTripper) http.RoundTripper {
+		if wt != nil {
+			rt = wt(rt)
+		}
 		return &roundTripper{a, rt}
-	})
+	}
 
 	if c.TLS.GetCert != nil {
 		return errors.New("can't add TLS certificate callback: transport.Config.TLS.GetCert already set")
@@ -194,15 +192,7 @@ func (a *Authenticator) UpdateTransportConfig(c *transport.Config) error {
 		dial = (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext
 	}
 	d := connrotation.NewDialer(dial)
-
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.onRotateList = append(a.onRotateList, d.CloseAll)
-	onRotateListLength := len(a.onRotateList)
-	if onRotateListLength > onRotateListWarningLength {
-		klog.Warningf("constructing many client instances from the same exec auth config can cause performance problems during cert rotation and can exhaust available network connections; %d clients constructed calling %q", onRotateListLength, a.cmd)
-	}
-
+	a.onRotate = d.CloseAll
 	c.Dial = d.DialContext
 
 	return nil
@@ -262,7 +252,6 @@ func (a *Authenticator) cert() (*tls.Certificate, error) {
 func (a *Authenticator) getCreds() (*credentials, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-
 	if a.cachedCreds != nil && !a.credsExpired() {
 		return a.cachedCreds, nil
 	}
@@ -270,7 +259,6 @@ func (a *Authenticator) getCreds() (*credentials, error) {
 	if err := a.refreshCredsLocked(nil); err != nil {
 		return nil, err
 	}
-
 	return a.cachedCreds, nil
 }
 
@@ -359,17 +347,6 @@ func (a *Authenticator) refreshCredsLocked(r *clientauthentication.Response) err
 		if err != nil {
 			return fmt.Errorf("failed parsing client key/certificate: %v", err)
 		}
-
-		// Leaf is initialized to be nil:
-		//  https://golang.org/pkg/crypto/tls/#X509KeyPair
-		// Leaf certificate is the first certificate:
-		//  https://golang.org/pkg/crypto/tls/#Certificate
-		// Populating leaf is useful for quickly accessing the underlying x509
-		// certificate values.
-		cert.Leaf, err = x509.ParseCertificate(cert.Certificate[0])
-		if err != nil {
-			return fmt.Errorf("failed parsing client leaf certificate: %v", err)
-		}
 		newCreds.cert = &cert
 	}
 
@@ -377,20 +354,8 @@ func (a *Authenticator) refreshCredsLocked(r *clientauthentication.Response) err
 	a.cachedCreds = newCreds
 	// Only close all connections when TLS cert rotates. Token rotation doesn't
 	// need the extra noise.
-	if oldCreds != nil && !reflect.DeepEqual(oldCreds.cert, a.cachedCreds.cert) {
-		// Can be nil if the exec auth plugin only returned token auth.
-		if oldCreds.cert != nil && oldCreds.cert.Leaf != nil {
-			metrics.ClientCertRotationAge.Observe(time.Now().Sub(oldCreds.cert.Leaf.NotBefore))
-		}
-		for _, onRotate := range a.onRotateList {
-			onRotate()
-		}
+	if a.onRotate != nil && oldCreds != nil && !reflect.DeepEqual(oldCreds.cert, a.cachedCreds.cert) {
+		a.onRotate()
 	}
-
-	expiry := time.Time{}
-	if a.cachedCreds.cert != nil && a.cachedCreds.cert.Leaf != nil {
-		expiry = a.cachedCreds.cert.Leaf.NotAfter
-	}
-	expirationMetrics.set(a, expiry)
 	return nil
 }

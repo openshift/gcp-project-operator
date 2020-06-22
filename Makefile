@@ -22,7 +22,3 @@ generate:
 coverage:
 	go get github.com/jpoles1/gopherbadger
 	gopherbadger
-
-.PHONY: updatevendor
-updatevendor:
-	go mod vendor
