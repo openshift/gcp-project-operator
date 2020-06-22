@@ -77,5 +77,6 @@ tags
 ### Goland ###
 .idea
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
-/key.json
+key.json
+config.source
 /secrets
