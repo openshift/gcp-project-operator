@@ -24,7 +24,7 @@ type CustomResourceAdapter interface {
 	IsProjectClaimDeletion() bool
 	ProjectReferenceExists() (bool, error)
 	EnsureProjectClaimInitialized() (ObjectState, error)
-	EnsureProjectClaimState(gcpv1alpha1.ClaimStatus) error
+	EnsureProjectClaimState(gcpv1alpha1.ClaimStatus) (ObjectState, error)
 	EnsureRegionSupported() error
 	EnsureProjectReferenceExists() error
 	EnsureProjectReferenceLink() (ObjectState, error)
@@ -125,8 +125,8 @@ func (r *ReconcileProjectClaim) ReconcileHandler(adapter CustomResourceAdapter) 
 		return r.requeueOnErr(err)
 	}
 
-	err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPending)
-	if err != nil {
+	crState, err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPending)
+	if crState == ObjectModified || err != nil {
 		return r.requeueOnErr(err)
 	}
 
@@ -145,8 +145,8 @@ func (r *ReconcileProjectClaim) ReconcileHandler(adapter CustomResourceAdapter) 
 		return r.requeueOnErr(err)
 	}
 
-	err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPendingProject)
-	if err != nil {
+	crState, err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPendingProject)
+	if crState == ObjectModified || err != nil {
 		return r.requeueOnErr(err)
 	}
 

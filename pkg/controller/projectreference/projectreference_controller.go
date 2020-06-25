@@ -113,6 +113,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	reason := "ReconcileError"
 	_ = adapter.SetProjectReferenceCondition(reason, err)
 
+	reqLogger.V(int(logtypes.ProjectReference)).Info(fmt.Sprintf("Finished Reconcile. Error occured: %t, Requeing: %t, Delay: %d", err != nil, result.Requeue, result.RequeueAfter))
 	return result, err
 }
 
@@ -121,67 +122,86 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+
+type OperationResult struct {
+	RequeueDelay   time.Duration
+	RequeueRequest bool
+	CancelRequest  bool
+}
+
+func StopProcessing() (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   0,
+		RequeueRequest: false,
+		CancelRequest:  true,
+	}
+	return
+}
+
+func RequeueWithError(errIn error) (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   0,
+		RequeueRequest: true,
+		CancelRequest:  false,
+	}
+	err = errIn
+	return
+}
+
+func RequeueOnErrorOrStop(errIn error) (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   0,
+		RequeueRequest: false,
+		CancelRequest:  true,
+	}
+	err = errIn
+	return
+}
+
+func RequeueAfter(delay time.Duration, errIn error) (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   delay,
+		RequeueRequest: true,
+		CancelRequest:  false,
+	}
+	err = errIn
+	return
+}
+
+func ContinueProcessing() (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   0,
+		RequeueRequest: false,
+		CancelRequest:  false,
+	}
+	return
+}
+
+type ReconcileOperation func(*ReferenceAdapter) (OperationResult, error)
+
 func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, reqLogger logr.Logger) (reconcile.Result, error) {
-	// Set conditions
-	prState, err := adapter.EnsureProjectReferenceInitialized()
-	if prState == ObjectModified || err != nil {
-		return r.requeueOnErr(err)
+	operations := []ReconcileOperation{
+		EnsureProjectReferenceInitialized, //Set conditions
+		EnsureDeletionProcessed,           // Cleanup
+		EnsureProjectClaimReady,           // Make projectReference  be processed based on state of ProjectClaim and Project Reference
+		VerifyProjectClaimPending,         //only make changes to ProjectReference if ProjectClaim is pending
+		EnsureProjectReferenceStatusCreating,
+		EnsureProjectID,
+		EnsureFinalizerAdded,
+		EnsureProjectConfigured,
+		EnsureStateReady,
 	}
 
-	// Cleanup
-	if adapter.IsDeletionRequested() {
-		err := adapter.EnsureProjectCleanedUp()
-		if err != nil {
-			return r.requeueAfter(5*time.Second, err)
+	for _, operation := range operations {
+		result, err := operation(adapter)
+		if err != nil || result.RequeueRequest {
+			return r.requeueAfter(result.RequeueDelay, err)
 		}
-		return r.doNotRequeue()
-	}
-
-	// Make projectReference  be processed based on state of ProjectClaim and Project Reference
-	claimStatus, err := adapter.EnsureProjectClaimReady()
-	if claimStatus == gcpv1alpha1.ClaimStatusReady || err != nil {
-		return r.requeueOnErr(err)
-	}
-
-	//only make changes to ProjectReference if ProjelctClaim is pending
-	if adapter.ProjectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
-		return r.requeueAfter(5*time.Second, nil)
-	}
-
-	if adapter.ProjectReference.Status.State == "" {
-		adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
-		err = r.client.Status().Update(context.TODO(), adapter.ProjectReference)
-		if err != nil {
-			err = operrors.Wrap(err, "error updating ProjectReference status")
-			return r.requeueOnErr(err)
+		if result.CancelRequest {
+			return r.doNotRequeue()
 		}
 	}
-
-	if adapter.ProjectReference.Spec.GCPProjectID == "" {
-		reqLogger.V(int(logtypes.ProjectReference)).Info("Creating ProjectID in ProjectReference CR")
-		err := adapter.UpdateProjectID()
-		if err != nil {
-			err = operrors.Wrap(err, "could not update ProjectID in Project Reference CR")
-			return r.requeueOnErr(err)
-		}
-		return r.requeue()
-	}
-
-	reqLogger.V(int(logtypes.ProjectReference)).Info("Adding a Finalizer")
-	err = adapter.EnsureFinalizerAdded()
-	if err != nil {
-		err = operrors.Wrap(err, "error adding the finalizer")
-		return r.requeueOnErr(err)
-	}
-
-	reqLogger.V(int(logtypes.ProjectReference)).Info("Configuring Project")
-	err = adapter.EnsureProjectConfigured()
-	if err != nil {
-		return r.requeueAfter(5*time.Second, err)
-	}
-
-	err = adapter.EnsureStateReady()
-	return r.requeueOnErr(err)
+	return r.doNotRequeue()
 }
 
 func (r *ReconcileProjectReference) getGcpClient(projectID string, logger logr.Logger) (gcpclient.Client, error) {
@@ -209,10 +229,6 @@ func (r *ReconcileProjectReference) requeueOnErr(err error) (reconcile.Result, e
 	return reconcile.Result{}, err
 }
 
-func (r *ReconcileProjectReference) requeue() (reconcile.Result, error) {
-	return reconcile.Result{Requeue: true}, nil
-}
-
 func (r *ReconcileProjectReference) requeueAfter(duration time.Duration, err error) (reconcile.Result, error) {
-	return reconcile.Result{RequeueAfter: duration}, err
+	return reconcile.Result{Requeue: true, RequeueAfter: duration}, err
 }

@@ -65,11 +65,12 @@ func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimInitialized()
 }
 
 // EnsureProjectClaimState mocks base method
-func (m *MockCustomResourceAdapter) EnsureProjectClaimState(arg0 v1alpha1.ClaimStatus) error {
+func (m *MockCustomResourceAdapter) EnsureProjectClaimState(arg0 v1alpha1.ClaimStatus) (projectclaim.ObjectState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EnsureProjectClaimState", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(projectclaim.ObjectState)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // EnsureProjectClaimState indicates an expected call of EnsureProjectClaimState

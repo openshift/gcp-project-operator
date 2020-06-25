@@ -90,9 +90,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 			It("returns without altering ProjectClaim", func() {
 				oldClaim := projectClaim.DeepCopy()
-				state, err := adapter.EnsureProjectClaimReady()
+				_, err := EnsureProjectClaimReady(adapter)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(state).To(Equal(projectClaim.Status.State))
 				Expect(adapter.ProjectClaim).To(Equal(oldClaim))
 			})
 		})
@@ -108,9 +107,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 				It("returns without altering ProjectClaim", func() {
 					oldClaim := projectClaim.DeepCopy()
-					state, err := adapter.EnsureProjectClaimReady()
+					_, err := EnsureProjectClaimReady(adapter)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(state).To(Equal(projectClaim.Status.State))
 					Expect(adapter.ProjectClaim).To(Equal(oldClaim))
 				})
 			})
@@ -122,19 +120,36 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						projectClaim.Spec.GCPProjectID = ""
 						projectReference.Spec.GCPProjectID = "fake-gcp-project"
 
-						mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones").Times(1)
-						mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
-						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
-						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
-						mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 					})
 
-					It("updates the ProjectClaim, sets GCPProjectID and the state to Ready", func() {
-						state, err := adapter.EnsureProjectClaimReady()
-						Expect(err).NotTo(HaveOccurred())
-						Expect(state).To(Equal(api.ClaimStatusReady))
-						Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal(adapter.ProjectReference.Spec.GCPProjectID))
-						Expect(adapter.ProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
+					Context("When availability zones are not set", func() {
+						BeforeEach(func() {
+							mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
+							mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones").Times(1)
+						})
+						It("updates the ProjectClaim with availability zones and sets GCPProjectID", func() {
+							_, err := EnsureProjectClaimReady(adapter)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(adapter.ProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
+							Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal(adapter.ProjectReference.Spec.GCPProjectID))
+						})
+
+					})
+					Context("When availability zones are set already", func() {
+						BeforeEach(func() {
+							mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+							mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
+							projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
+							projectClaim.Spec.GCPProjectID = "fake-id"
+						})
+
+						It("sets state to Ready", func() {
+							_, err := EnsureProjectClaimReady(adapter)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(adapter.ProjectClaim.Status.State).To(Equal(api.ClaimStatusReady))
+
+						})
 					})
 				})
 				Context("When compute API is not ready", func() {
@@ -162,9 +177,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
 						})
 						It("does not return an error", func() {
-							state, err := adapter.EnsureProjectClaimReady()
+							_, err := EnsureProjectClaimReady(adapter)
 							Expect(err).NotTo(HaveOccurred())
-							Expect(state).NotTo(Equal(api.ClaimStatusReady))
+							Expect(adapter.ProjectClaim.Status.State).NotTo(Equal(api.ClaimStatusReady))
 						})
 					})
 					Context("When compute API is not ready after 8 minutes", func() {
@@ -182,9 +197,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 						})
 						It("does not return an error", func() {
-							state, err := adapter.EnsureProjectClaimReady()
+							_, err := EnsureProjectClaimReady(adapter)
 							Expect(err).NotTo(HaveOccurred())
-							Expect(state).NotTo(Equal(api.ClaimStatusReady))
+							Expect(adapter.ProjectClaim.Status.State).NotTo(Equal(api.ClaimStatusReady))
 						})
 					})
 					Context("When compute API is not ready after 11 minutes", func() {
@@ -201,9 +216,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 						})
 						It("returns an error", func() {
-							state, err := adapter.EnsureProjectClaimReady()
+							_, err := EnsureProjectClaimReady(adapter)
 							Expect(err).To(HaveOccurred())
-							Expect(state).NotTo(Equal(api.ClaimStatusReady))
+							Expect(adapter.ProjectClaim.Status.State).NotTo(Equal(api.ClaimStatusReady))
 						})
 					})
 				})
@@ -227,7 +242,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 						mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error()).Times(1)
-						adapter.SetProjectReferenceCondition(reason, err)
+						_ = adapter.SetProjectReferenceCondition(reason, err)
 					})
 				})
 				Context("when the err has been resolved", func() {
@@ -237,7 +252,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 						mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "ReconcileErrorResolved", "").Times(1)
-						adapter.SetProjectReferenceCondition(reason, nil)
+						_ = adapter.SetProjectReferenceCondition(reason, nil)
 					})
 				})
 			})
@@ -268,7 +283,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 					Data: map[string]string{},
 				})
-				err := adapter.EnsureProjectConfigured()
+				_, err := EnsureProjectConfigured(adapter)
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -280,7 +295,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					err := adapter.EnsureProjectConfigured()
+					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -290,7 +305,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					err := adapter.EnsureProjectConfigured()
+					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -300,7 +315,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					err := adapter.EnsureProjectConfigured()
+					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -310,7 +325,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					err := adapter.EnsureProjectConfigured()
+					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -320,7 +335,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
-					err := adapter.EnsureProjectConfigured()
+					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -331,7 +346,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
 					})
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
-					err := adapter.EnsureProjectConfigured()
+					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -340,14 +355,16 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				It("It requeues with error", func() {
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).AnyTimes()
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
 					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Ooops not found")).Times(1)
 					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(errors.New("Fake Create Error"))
-					err := adapter.EnsureProjectConfigured()
+					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -356,14 +373,16 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				It("It does not requeue", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any())
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
 					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Ooops not found")).Times(1)
 					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-					err := adapter.EnsureProjectConfigured()
+					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -411,7 +430,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				It("adds the finalizer and updates the instance", func() {
 					projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), FinalizerName))
 					mockKubeClient.EXPECT().Update(gomock.Any(), projectReference)
-					err := adapter.EnsureFinalizerAdded()
+					_, err := EnsureFinalizerAdded(adapter)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(projectReference.Finalizers).To(ContainElement(FinalizerName))
 				})
@@ -419,7 +438,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Context("When the finalizer exists", func() {
 				It("does nothing", func() {
 					adapter.ProjectReference.SetFinalizers([]string{FinalizerName})
-					err := adapter.EnsureFinalizerAdded()
+					_, err := EnsureFinalizerAdded(adapter)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(projectReference.Finalizers).To(ContainElement(FinalizerName))
 				})
