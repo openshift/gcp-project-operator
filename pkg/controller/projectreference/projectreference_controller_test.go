@@ -208,7 +208,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			})
 		})
 
-		Context("When Reference State is empty and it failes to update", func() {
+		Context("When Reference State is empty and it fails to update", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = ""
 				projectClaim.Spec.GCPProjectID = "fake-id"

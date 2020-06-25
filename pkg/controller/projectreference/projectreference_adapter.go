@@ -148,29 +148,29 @@ func VerifyProjectClaimPending(r *ReferenceAdapter) (OperationResult, error) {
 }
 
 func EnsureProjectReferenceStatusCreating(adapter *ReferenceAdapter) (OperationResult, error) {
-	if adapter.ProjectReference.Status.State == "" {
-		adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
-		err := adapter.kubeClient.Status().Update(context.TODO(), adapter.ProjectReference)
-		if err != nil {
-			err = operrors.Wrap(err, "error updating ProjectReference status")
-			return RequeueWithError(err)
-		}
-		return StopProcessing()
+	if adapter.ProjectReference.Status.State != "" {
+		return ContinueProcessing()
 	}
-	return ContinueProcessing()
+	adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
+	err := adapter.kubeClient.Status().Update(context.TODO(), adapter.ProjectReference)
+	if err != nil {
+		err = operrors.Wrap(err, "error updating ProjectReference status")
+		return RequeueWithError(err)
+	}
+	return StopProcessing()
 }
 
 func EnsureProjectID(adapter *ReferenceAdapter) (OperationResult, error) {
-	if adapter.ProjectReference.Spec.GCPProjectID == "" {
-		adapter.logger.V(int(logtypes.ProjectReference)).Info("Creating ProjectID in ProjectReference CR")
-		err := adapter.UpdateProjectID()
-		if err != nil {
-			err = operrors.Wrap(err, "could not update ProjectID in Project Reference CR")
-			return RequeueWithError(err)
-		}
-		return StopProcessing()
+	if adapter.ProjectReference.Spec.GCPProjectID != "" {
+		return ContinueProcessing()
 	}
-	return ContinueProcessing()
+	adapter.logger.V(int(logtypes.ProjectReference)).Info("Creating ProjectID in ProjectReference CR")
+	err := adapter.UpdateProjectID()
+	if err != nil {
+		err = operrors.Wrap(err, "could not update ProjectID in Project Reference CR")
+		return RequeueWithError(err)
+	}
+	return StopProcessing()
 }
 
 func EnsureProjectConfigured(r *ReferenceAdapter) (OperationResult, error) {
@@ -217,7 +217,7 @@ func EnsureStateReady(r *ReferenceAdapter) (OperationResult, error) {
 	if r.ProjectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
 		r.logger.V(int(logtypes.ProjectReference)).Info("Setting Status on projectReference")
 		r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
-		return RequeueOnError(r.kubeClient.Status().Update(context.TODO(), r.ProjectReference))
+		return RequeueOnErrorOrStop(r.kubeClient.Status().Update(context.TODO(), r.ProjectReference))
 	}
 	return ContinueProcessing()
 }
@@ -264,7 +264,7 @@ func (r *ReferenceAdapter) IsDeletionRequested() bool {
 func EnsureFinalizerAdded(r *ReferenceAdapter) (OperationResult, error) {
 	if !clusterapi.Contains(r.ProjectReference.GetFinalizers(), FinalizerName) {
 		r.ProjectReference.SetFinalizers(append(r.ProjectReference.GetFinalizers(), FinalizerName))
-		return RequeueOnError(r.kubeClient.Update(context.TODO(), r.ProjectReference))
+		return RequeueOnErrorOrStop(r.kubeClient.Update(context.TODO(), r.ProjectReference))
 	}
 	return ContinueProcessing()
 }
@@ -392,13 +392,13 @@ func (r *ReferenceAdapter) getProject(projectId string) (*cloudresourcemanager.P
 }
 
 func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) error {
-	apis, err := r.gcpClient.ListAPIs(r.ProjectReference.Spec.GCPProjectID)
+	enabledAPIs, err := r.gcpClient.ListAPIs(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
 		return err
 	}
 
 	r.logger.V(int(logtypes.ProjectReference)).Info("Enabling Billing API")
-	if !util.Contains(apis, "cloudbilling.googleapis.com") {
+	if !util.Contains(enabledAPIs, "cloudbilling.googleapis.com") {
 		err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
 		if err != nil {
 			return operrors.Wrap(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
@@ -411,11 +411,11 @@ func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) err
 		return operrors.Wrap(err, "error creating CloudBilling")
 	}
 
-	for _, a := range OSDRequiredAPIS {
-		if !util.Contains(apis, a) {
-			err = r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, a)
+	for _, api := range OSDRequiredAPIS {
+		if !util.Contains(enabledAPIs, api) {
+			err = r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, api)
 			if err != nil {
-				return operrors.Wrap(err, fmt.Sprintf("error enabling %s api for project %s", a, r.ProjectReference.Spec.GCPProjectID))
+				return operrors.Wrap(err, fmt.Sprintf("error enabling %s api for project %s", api, r.ProjectReference.Spec.GCPProjectID))
 			}
 		}
 	}
@@ -463,10 +463,6 @@ func (r *ReferenceAdapter) configureServiceAccount() (OperationResult, error) {
 	return ContinueProcessing()
 }
 
-func matchesAlreadyExistsError(err error) bool {
-	return strings.HasPrefix(err.Error(), "googleapi: Error 409:")
-}
-
 func (r *ReferenceAdapter) createCredentials() (OperationResult, error) {
 	if gcputil.SecretExists(r.kubeClient, r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace) {
 		return ContinueProcessing()
@@ -505,10 +501,6 @@ func (r *ReferenceAdapter) createCredentials() (OperationResult, error) {
 	}
 
 	return ContinueProcessing()
-}
-
-func matchesNotFoundError(err error) bool {
-	return strings.HasPrefix(err.Error(), "googleapi: Error 404:")
 }
 
 func (r *ReferenceAdapter) deleteCredentials() error {
@@ -571,9 +563,6 @@ func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (ensureAzResu
 	return ensureAzResultNoChange, err
 }
 
-func matchesComputeApiNotReadyError(err error) bool {
-	return strings.HasPrefix(err.Error(), "googleapi: Error 403: Access Not Configured. Compute Engine API has not been used in project")
-}
 func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
 	if r.ProjectClaim.Spec.GCPProjectID == "" {
 		r.ProjectClaim.Spec.GCPProjectID = r.ProjectReference.Spec.GCPProjectID
@@ -693,4 +682,16 @@ func convertProjectsToMap(projects []*cloudresourcemanager.Project) map[string]*
 	}
 
 	return projectMap
+}
+
+func matchesAlreadyExistsError(err error) bool {
+	return strings.HasPrefix(err.Error(), "googleapi: Error 409:")
+}
+
+func matchesNotFoundError(err error) bool {
+	return strings.HasPrefix(err.Error(), "googleapi: Error 404:")
+}
+
+func matchesComputeApiNotReadyError(err error) bool {
+	return strings.HasPrefix(err.Error(), "googleapi: Error 403: Access Not Configured. Compute Engine API has not been used in project")
 }

@@ -129,24 +129,52 @@ type OperationResult struct {
 	CancelRequest  bool
 }
 
-func StopProcessing() (OperationResult, error) {
-	return OperationResult{0 * time.Second, false, true}, nil
+func StopProcessing() (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   0,
+		RequeueRequest: false,
+		CancelRequest:  true,
+	}
+	return
 }
 
-func RequeueWithError(err error) (OperationResult, error) {
-	return OperationResult{0 * time.Second, true, false}, err
+func RequeueWithError(errIn error) (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   0,
+		RequeueRequest: true,
+		CancelRequest:  false,
+	}
+	err = errIn
+	return
 }
 
-func RequeueOnError(err error) (OperationResult, error) {
-	return OperationResult{0 * time.Second, false, false}, err
+func RequeueOnErrorOrStop(errIn error) (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   0,
+		RequeueRequest: false,
+		CancelRequest:  true,
+	}
+	err = errIn
+	return
 }
 
-func RequeueAfter(delay time.Duration, err error) (OperationResult, error) {
-	return OperationResult{delay, true, false}, err
+func RequeueAfter(delay time.Duration, errIn error) (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   delay,
+		RequeueRequest: true,
+		CancelRequest:  false,
+	}
+	err = errIn
+	return
 }
 
-func ContinueProcessing() (OperationResult, error) {
-	return OperationResult{0 * time.Second, false, false}, nil
+func ContinueProcessing() (result OperationResult, err error) {
+	result = OperationResult{
+		RequeueDelay:   0,
+		RequeueRequest: false,
+		CancelRequest:  false,
+	}
+	return
 }
 
 type ReconcileOperation func(*ReferenceAdapter) (OperationResult, error)
