@@ -6,8 +6,8 @@ package projectclaim
 
 import (
 	gomock "github.com/golang/mock/gomock"
-	v1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	projectclaim "github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
+	util "github.com/openshift/gcp-project-operator/pkg/util"
 	reflect "reflect"
 )
 
@@ -35,10 +35,10 @@ func (m *MockCustomResourceAdapter) EXPECT() *MockCustomResourceAdapterMockRecor
 }
 
 // EnsureFinalizer mocks base method
-func (m *MockCustomResourceAdapter) EnsureFinalizer() (projectclaim.ObjectState, error) {
+func (m *MockCustomResourceAdapter) EnsureFinalizer() (util.OperationResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EnsureFinalizer")
-	ret0, _ := ret[0].(projectclaim.ObjectState)
+	ret0, _ := ret[0].(util.OperationResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -49,11 +49,26 @@ func (mr *MockCustomResourceAdapterMockRecorder) EnsureFinalizer() *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureFinalizer", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureFinalizer))
 }
 
+// EnsureProjectClaimDeletionProcessed mocks base method
+func (m *MockCustomResourceAdapter) EnsureProjectClaimDeletionProcessed() (util.OperationResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnsureProjectClaimDeletionProcessed")
+	ret0, _ := ret[0].(util.OperationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EnsureProjectClaimDeletionProcessed indicates an expected call of EnsureProjectClaimDeletionProcessed
+func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimDeletionProcessed() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimDeletionProcessed", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimDeletionProcessed))
+}
+
 // EnsureProjectClaimInitialized mocks base method
-func (m *MockCustomResourceAdapter) EnsureProjectClaimInitialized() (projectclaim.ObjectState, error) {
+func (m *MockCustomResourceAdapter) EnsureProjectClaimInitialized() (util.OperationResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EnsureProjectClaimInitialized")
-	ret0, _ := ret[0].(projectclaim.ObjectState)
+	ret0, _ := ret[0].(util.OperationResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -64,27 +79,43 @@ func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimInitialized()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimInitialized", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimInitialized))
 }
 
-// EnsureProjectClaimState mocks base method
-func (m *MockCustomResourceAdapter) EnsureProjectClaimState(arg0 v1alpha1.ClaimStatus) (projectclaim.ObjectState, error) {
+// EnsureProjectClaimStatePending mocks base method
+func (m *MockCustomResourceAdapter) EnsureProjectClaimStatePending() (util.OperationResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnsureProjectClaimState", arg0)
-	ret0, _ := ret[0].(projectclaim.ObjectState)
+	ret := m.ctrl.Call(m, "EnsureProjectClaimStatePending")
+	ret0, _ := ret[0].(util.OperationResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// EnsureProjectClaimState indicates an expected call of EnsureProjectClaimState
-func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimState(arg0 interface{}) *gomock.Call {
+// EnsureProjectClaimStatePending indicates an expected call of EnsureProjectClaimStatePending
+func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimStatePending() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimState", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimState), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimStatePending", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimStatePending))
+}
+
+// EnsureProjectClaimStatePendingProject mocks base method
+func (m *MockCustomResourceAdapter) EnsureProjectClaimStatePendingProject() (util.OperationResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnsureProjectClaimStatePendingProject")
+	ret0, _ := ret[0].(util.OperationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EnsureProjectClaimStatePendingProject indicates an expected call of EnsureProjectClaimStatePendingProject
+func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimStatePendingProject() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimStatePendingProject", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimStatePendingProject))
 }
 
 // EnsureProjectReferenceExists mocks base method
-func (m *MockCustomResourceAdapter) EnsureProjectReferenceExists() error {
+func (m *MockCustomResourceAdapter) EnsureProjectReferenceExists() (util.OperationResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EnsureProjectReferenceExists")
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(util.OperationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // EnsureProjectReferenceExists indicates an expected call of EnsureProjectReferenceExists
@@ -94,10 +125,10 @@ func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectReferenceExists() 
 }
 
 // EnsureProjectReferenceLink mocks base method
-func (m *MockCustomResourceAdapter) EnsureProjectReferenceLink() (projectclaim.ObjectState, error) {
+func (m *MockCustomResourceAdapter) EnsureProjectReferenceLink() (util.OperationResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EnsureProjectReferenceLink")
-	ret0, _ := ret[0].(projectclaim.ObjectState)
+	ret0, _ := ret[0].(util.OperationResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -109,11 +140,12 @@ func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectReferenceLink() *g
 }
 
 // EnsureRegionSupported mocks base method
-func (m *MockCustomResourceAdapter) EnsureRegionSupported() error {
+func (m *MockCustomResourceAdapter) EnsureRegionSupported() (util.OperationResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "EnsureRegionSupported")
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(util.OperationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // EnsureRegionSupported indicates an expected call of EnsureRegionSupported
@@ -135,20 +167,6 @@ func (m *MockCustomResourceAdapter) FinalizeProjectClaim() (projectclaim.ObjectS
 func (mr *MockCustomResourceAdapterMockRecorder) FinalizeProjectClaim() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalizeProjectClaim", reflect.TypeOf((*MockCustomResourceAdapter)(nil).FinalizeProjectClaim))
-}
-
-// IsProjectClaimDeletion mocks base method
-func (m *MockCustomResourceAdapter) IsProjectClaimDeletion() bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsProjectClaimDeletion")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// IsProjectClaimDeletion indicates an expected call of IsProjectClaimDeletion
-func (mr *MockCustomResourceAdapterMockRecorder) IsProjectClaimDeletion() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsProjectClaimDeletion", reflect.TypeOf((*MockCustomResourceAdapter)(nil).IsProjectClaimDeletion))
 }
 
 // ProjectReferenceExists mocks base method

@@ -3,6 +3,7 @@ package projectclaim
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/openshift/cluster-api/pkg/util"
@@ -10,6 +11,7 @@ import (
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
+	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 
 	corev1 "k8s.io/api/core/v1"
@@ -102,6 +104,17 @@ func (c *ProjectClaimAdapter) ProjectReferenceExists() (bool, error) {
 	return true, nil
 }
 
+func (adapter *ProjectClaimAdapter) EnsureProjectClaimDeletionProcessed() (gcputil.OperationResult, error) {
+	if adapter.IsProjectClaimDeletion() {
+		crState, err := adapter.FinalizeProjectClaim()
+		if crState == ObjectUnchanged || err != nil {
+			return gcputil.RequeueAfter(5*time.Second, err)
+		}
+		return gcputil.StopProcessing()
+	}
+	return gcputil.ContinueProcessing()
+}
+
 func (c *ProjectClaimAdapter) IsProjectClaimDeletion() bool {
 	return c.projectClaim.DeletionTimestamp != nil
 }
@@ -146,84 +159,92 @@ func (c *ProjectClaimAdapter) FinalizeProjectClaim() (ObjectState, error) {
 	return ObjectUnchanged, nil
 }
 
-func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (ObjectState, error) {
+func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (gcputil.OperationResult, error) {
 	if c.projectClaim.Status.Conditions == nil {
 		c.projectClaim.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := c.client.Status().Update(context.TODO(), c.projectClaim)
 		if err != nil {
-			return ObjectUnchanged, operrors.Wrap(err, "failed to initalize projectclaim")
+			gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize projectclaim"))
 		}
-		return ObjectModified, nil
+		return gcputil.StopProcessing()
 	}
-	return ObjectUnchanged, nil
+	return gcputil.ContinueProcessing()
 }
 
-func (c *ProjectClaimAdapter) EnsureProjectReferenceLink() (ObjectState, error) {
+func (c *ProjectClaimAdapter) EnsureProjectReferenceLink() (gcputil.OperationResult, error) {
 	expectedLink := gcpv1alpha1.NamespacedName{
 		Name:      c.projectReference.GetName(),
 		Namespace: c.projectReference.GetNamespace(),
 	}
 	if c.projectClaim.Spec.ProjectReferenceCRLink == expectedLink {
-		return ObjectUnchanged, nil
+		return gcputil.ContinueProcessing()
 	}
 	c.projectClaim.Spec.ProjectReferenceCRLink = expectedLink
 	err := c.client.Update(context.TODO(), c.projectClaim)
 	if err != nil {
-		return ObjectUnchanged, err
+		return gcputil.RequeueWithError(err)
 	}
-	return ObjectModified, nil
+	return gcputil.StopProcessing()
 }
 
-func (c *ProjectClaimAdapter) EnsureFinalizer() (ObjectState, error) {
+func (c *ProjectClaimAdapter) EnsureFinalizer() (gcputil.OperationResult, error) {
 	if !util.Contains(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer) {
 		c.logger.V(int(logtypes.ProjectClaim)).Info("Adding Finalizer to the ProjectClaim")
 		c.projectClaim.SetFinalizers(append(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer))
 
 		err := c.client.Update(context.TODO(), c.projectClaim)
 		if err != nil {
-			return ObjectUnchanged, operrors.Wrap(err, "failed to initalize projectclaim with finalizer")
+			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize projectclaim with finalizer"))
 		}
-		return ObjectModified, nil
+		return gcputil.StopProcessing()
 	}
-	return ObjectUnchanged, nil
+	return gcputil.ContinueProcessing()
 }
 
-func (c *ProjectClaimAdapter) EnsureProjectReferenceExists() error {
+func (c *ProjectClaimAdapter) EnsureProjectReferenceExists() (gcputil.OperationResult, error) {
 	projectReferenceExists, err := c.ProjectReferenceExists()
 	if err != nil {
-		return err
+		return gcputil.RequeueWithError(err)
 	}
 
 	if !projectReferenceExists {
-		return c.client.Create(context.TODO(), c.projectReference)
+		return gcputil.RequeueOnErrorOrContinue(c.client.Create(context.TODO(), c.projectReference))
 	}
-	return nil
+	return gcputil.ContinueProcessing()
 }
 
-func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimStatus) (ObjectState, error) {
+func (c *ProjectClaimAdapter) EnsureProjectClaimStatePending() (gcputil.OperationResult, error) {
+	return c.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPending)
+}
+
+func (c *ProjectClaimAdapter) EnsureProjectClaimStatePendingProject() (gcputil.OperationResult, error) {
+	return c.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPendingProject)
+}
+
+func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimStatus) (gcputil.OperationResult, error) {
 	if c.projectClaim.Status.State == state {
-		return ObjectUnchanged, nil
+		return gcputil.ContinueProcessing()
 	}
 
 	if state == gcpv1alpha1.ClaimStatusPending && c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusError {
 		if c.projectClaim.Status.State != "" {
-			return ObjectUnchanged, nil
+			return gcputil.ContinueProcessing()
 		}
 	}
 
 	if state == gcpv1alpha1.ClaimStatusPendingProject {
 		if c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPending {
-			return ObjectUnchanged, nil
+			return gcputil.ContinueProcessing()
 		}
 	}
 
 	c.projectClaim.Status.State = state
 	err := c.StatusUpdate()
 	if err != nil {
-		return ObjectUnchanged, err
+		return gcputil.RequeueWithError(err)
 	}
 
-	return ObjectModified, nil
+	return gcputil.StopProcessing()
 }
 
 // SetProjectClaimCondition calls SetCondition() with project claim conditions
@@ -255,13 +276,13 @@ func (c *ProjectClaimAdapter) IsRegionSupported() error {
 
 // EnsureRegionSupported modifies projectClaim.Status.State with result from IsRegionSupported.
 // If a region is not supported it returns an error and sets projectClaim.Status.State to ClaimStatusError.
-func (c *ProjectClaimAdapter) EnsureRegionSupported() error {
+func (c *ProjectClaimAdapter) EnsureRegionSupported() (gcputil.OperationResult, error) {
 	if err := c.IsRegionSupported(); err != nil {
 		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
 		c.StatusUpdate()
-		return operrors.Wrap(err, "")
+		return gcputil.RequeueWithError(operrors.Wrap(err, ""))
 	}
-	return nil
+	return gcputil.ContinueProcessing()
 }
 
 // StatusUpdate updates the project claim status
