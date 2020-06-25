@@ -34,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/pkg/version"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/client-go/transport"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/klog"
@@ -94,22 +93,15 @@ type Config struct {
 	// UserAgent is an optional field that specifies the caller of this request.
 	UserAgent string
 
-	// DisableCompression bypasses automatic GZip compression requests to the
-	// server.
-	DisableCompression bool
-
 	// Transport may be used for custom HTTP behavior. This attribute may not
 	// be specified with the TLS client certificate options. Use WrapTransport
-	// to provide additional per-server middleware behavior.
+	// for most client level operations.
 	Transport http.RoundTripper
 	// WrapTransport will be invoked for custom HTTP behavior after the underlying
 	// transport is initialized (either the transport created from TLSClientConfig,
 	// Transport, or http.DefaultTransport). The config may layer other RoundTrippers
 	// on top of the returned RoundTripper.
-	//
-	// A future release will change this field to an array. Use config.Wrap()
-	// instead of setting this value directly.
-	WrapTransport transport.WrapperFunc
+	WrapTransport func(rt http.RoundTripper) http.RoundTripper
 
 	// QPS indicates the maximum QPS to the master from this client.
 	// If it's zero, the created RESTClient will use DefaultQPS: 5
@@ -131,47 +123,6 @@ type Config struct {
 	// Version forces a specific version to be used (if registered)
 	// Do we need this?
 	// Version string
-}
-
-var _ fmt.Stringer = new(Config)
-var _ fmt.GoStringer = new(Config)
-
-type sanitizedConfig *Config
-
-type sanitizedAuthConfigPersister struct{ AuthProviderConfigPersister }
-
-func (sanitizedAuthConfigPersister) GoString() string {
-	return "rest.AuthProviderConfigPersister(--- REDACTED ---)"
-}
-func (sanitizedAuthConfigPersister) String() string {
-	return "rest.AuthProviderConfigPersister(--- REDACTED ---)"
-}
-
-// GoString implements fmt.GoStringer and sanitizes sensitive fields of Config
-// to prevent accidental leaking via logs.
-func (c *Config) GoString() string {
-	return c.String()
-}
-
-// String implements fmt.Stringer and sanitizes sensitive fields of Config to
-// prevent accidental leaking via logs.
-func (c *Config) String() string {
-	if c == nil {
-		return "<nil>"
-	}
-	cc := sanitizedConfig(CopyConfig(c))
-	// Explicitly mark non-empty credential fields as redacted.
-	if cc.Password != "" {
-		cc.Password = "--- REDACTED ---"
-	}
-	if cc.BearerToken != "" {
-		cc.BearerToken = "--- REDACTED ---"
-	}
-	if cc.AuthConfigPersister != nil {
-		cc.AuthConfigPersister = sanitizedAuthConfigPersister{cc.AuthConfigPersister}
-	}
-
-	return fmt.Sprintf("%#v", cc)
 }
 
 // ImpersonationConfig has all the available impersonation options
@@ -211,47 +162,6 @@ type TLSClientConfig struct {
 	// CAData holds PEM-encoded bytes (typically read from a root certificates bundle).
 	// CAData takes precedence over CAFile
 	CAData []byte
-
-	// NextProtos is a list of supported application level protocols, in order of preference.
-	// Used to populate tls.Config.NextProtos.
-	// To indicate to the server http/1.1 is preferred over http/2, set to ["http/1.1", "h2"] (though the server is free to ignore that preference).
-	// To use only http/1.1, set to ["http/1.1"].
-	NextProtos []string
-}
-
-var _ fmt.Stringer = TLSClientConfig{}
-var _ fmt.GoStringer = TLSClientConfig{}
-
-type sanitizedTLSClientConfig TLSClientConfig
-
-// GoString implements fmt.GoStringer and sanitizes sensitive fields of
-// TLSClientConfig to prevent accidental leaking via logs.
-func (c TLSClientConfig) GoString() string {
-	return c.String()
-}
-
-// String implements fmt.Stringer and sanitizes sensitive fields of
-// TLSClientConfig to prevent accidental leaking via logs.
-func (c TLSClientConfig) String() string {
-	cc := sanitizedTLSClientConfig{
-		Insecure:   c.Insecure,
-		ServerName: c.ServerName,
-		CertFile:   c.CertFile,
-		KeyFile:    c.KeyFile,
-		CAFile:     c.CAFile,
-		CertData:   c.CertData,
-		KeyData:    c.KeyData,
-		CAData:     c.CAData,
-		NextProtos: c.NextProtos,
-	}
-	// Explicitly mark non-empty credential fields as redacted.
-	if len(cc.CertData) != 0 {
-		cc.CertData = []byte("--- TRUNCATED ---")
-	}
-	if len(cc.KeyData) != 0 {
-		cc.KeyData = []byte("--- REDACTED ---")
-	}
-	return fmt.Sprintf("%#v", cc)
 }
 
 type ContentConfig struct {
@@ -269,9 +179,6 @@ type ContentConfig struct {
 	GroupVersion *schema.GroupVersion
 	// NegotiatedSerializer is used for obtaining encoders and decoders for multiple
 	// supported media types.
-	//
-	// TODO: NegotiatedSerializer will be phased out as internal clients are removed
-	//   from Kubernetes.
 	NegotiatedSerializer runtime.NegotiatedSerializer
 }
 
@@ -285,6 +192,14 @@ func RESTClientFor(config *Config) (*RESTClient, error) {
 	}
 	if config.NegotiatedSerializer == nil {
 		return nil, fmt.Errorf("NegotiatedSerializer is required when initializing a RESTClient")
+	}
+	qps := config.QPS
+	if config.QPS == 0.0 {
+		qps = DefaultQPS
+	}
+	burst := config.Burst
+	if config.Burst == 0 {
+		burst = DefaultBurst
 	}
 
 	baseURL, versionedAPIPath, err := defaultServerUrlFor(config)
@@ -305,33 +220,7 @@ func RESTClientFor(config *Config) (*RESTClient, error) {
 		}
 	}
 
-	rateLimiter := config.RateLimiter
-	if rateLimiter == nil {
-		qps := config.QPS
-		if config.QPS == 0.0 {
-			qps = DefaultQPS
-		}
-		burst := config.Burst
-		if config.Burst == 0 {
-			burst = DefaultBurst
-		}
-		if qps > 0 {
-			rateLimiter = flowcontrol.NewTokenBucketRateLimiter(qps, burst)
-		}
-	}
-
-	var gv schema.GroupVersion
-	if config.GroupVersion != nil {
-		gv = *config.GroupVersion
-	}
-	clientContent := ClientContentConfig{
-		AcceptContentTypes: config.AcceptContentTypes,
-		ContentType:        config.ContentType,
-		GroupVersion:       gv,
-		Negotiator:         runtime.NewClientNegotiator(config.NegotiatedSerializer, gv),
-	}
-
-	return NewRESTClient(baseURL, versionedAPIPath, clientContent, rateLimiter, httpClient)
+	return NewRESTClient(baseURL, versionedAPIPath, config.ContentConfig, qps, burst, config.RateLimiter, httpClient)
 }
 
 // UnversionedRESTClientFor is the same as RESTClientFor, except that it allows
@@ -359,33 +248,13 @@ func UnversionedRESTClientFor(config *Config) (*RESTClient, error) {
 		}
 	}
 
-	rateLimiter := config.RateLimiter
-	if rateLimiter == nil {
-		qps := config.QPS
-		if config.QPS == 0.0 {
-			qps = DefaultQPS
-		}
-		burst := config.Burst
-		if config.Burst == 0 {
-			burst = DefaultBurst
-		}
-		if qps > 0 {
-			rateLimiter = flowcontrol.NewTokenBucketRateLimiter(qps, burst)
-		}
+	versionConfig := config.ContentConfig
+	if versionConfig.GroupVersion == nil {
+		v := metav1.SchemeGroupVersion
+		versionConfig.GroupVersion = &v
 	}
 
-	gv := metav1.SchemeGroupVersion
-	if config.GroupVersion != nil {
-		gv = *config.GroupVersion
-	}
-	clientContent := ClientContentConfig{
-		AcceptContentTypes: config.AcceptContentTypes,
-		ContentType:        config.ContentType,
-		GroupVersion:       gv,
-		Negotiator:         runtime.NewClientNegotiator(config.NegotiatedSerializer, gv),
-	}
-
-	return NewRESTClient(baseURL, versionedAPIPath, clientContent, rateLimiter, httpClient)
+	return NewRESTClient(baseURL, versionedAPIPath, versionConfig, config.QPS, config.Burst, config.RateLimiter, httpClient)
 }
 
 // SetKubernetesDefaults sets default values on the provided client config for accessing the
@@ -539,7 +408,7 @@ func AddUserAgent(config *Config, userAgent string) *Config {
 	return config
 }
 
-// AnonymousClientConfig returns a copy of the given config with all user credentials (cert/key, bearer token, and username/password) and custom transports (WrapTransport, Transport) removed
+// AnonymousClientConfig returns a copy of the given config with all user credentials (cert/key, bearer token, and username/password) removed
 func AnonymousClientConfig(config *Config) *Config {
 	// copy only known safe fields
 	return &Config{
@@ -551,15 +420,15 @@ func AnonymousClientConfig(config *Config) *Config {
 			ServerName: config.ServerName,
 			CAFile:     config.TLSClientConfig.CAFile,
 			CAData:     config.TLSClientConfig.CAData,
-			NextProtos: config.TLSClientConfig.NextProtos,
 		},
-		RateLimiter:        config.RateLimiter,
-		UserAgent:          config.UserAgent,
-		DisableCompression: config.DisableCompression,
-		QPS:                config.QPS,
-		Burst:              config.Burst,
-		Timeout:            config.Timeout,
-		Dial:               config.Dial,
+		RateLimiter:   config.RateLimiter,
+		UserAgent:     config.UserAgent,
+		Transport:     config.Transport,
+		WrapTransport: config.WrapTransport,
+		QPS:           config.QPS,
+		Burst:         config.Burst,
+		Timeout:       config.Timeout,
+		Dial:          config.Dial,
 	}
 }
 
@@ -590,16 +459,14 @@ func CopyConfig(config *Config) *Config {
 			CertData:   config.TLSClientConfig.CertData,
 			KeyData:    config.TLSClientConfig.KeyData,
 			CAData:     config.TLSClientConfig.CAData,
-			NextProtos: config.TLSClientConfig.NextProtos,
 		},
-		UserAgent:          config.UserAgent,
-		DisableCompression: config.DisableCompression,
-		Transport:          config.Transport,
-		WrapTransport:      config.WrapTransport,
-		QPS:                config.QPS,
-		Burst:              config.Burst,
-		RateLimiter:        config.RateLimiter,
-		Timeout:            config.Timeout,
-		Dial:               config.Dial,
+		UserAgent:     config.UserAgent,
+		Transport:     config.Transport,
+		WrapTransport: config.WrapTransport,
+		QPS:           config.QPS,
+		Burst:         config.Burst,
+		RateLimiter:   config.RateLimiter,
+		Timeout:       config.Timeout,
+		Dial:          config.Dial,
 	}
 }

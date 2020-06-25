@@ -14,9 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package apiutil contains utilities for working with raw Kubernetes
-// API machinery, such as creating RESTMappers and raw REST clients,
-// and extracting the GVK of an object.
 package apiutil
 
 import (
@@ -35,10 +32,7 @@ import (
 // information fetched by a new client with the given config.
 func NewDiscoveryRESTMapper(c *rest.Config) (meta.RESTMapper, error) {
 	// Get a mapper
-	dc, err := discovery.NewDiscoveryClientForConfig(c)
-	if err != nil {
-		return nil, err
-	}
+	dc := discovery.NewDiscoveryClientForConfigOrDie(c)
 	gr, err := restmapper.GetAPIGroupResources(dc)
 	if err != nil {
 		return nil, err
@@ -69,13 +63,10 @@ func GVKForObject(obj runtime.Object, scheme *runtime.Scheme) (schema.GroupVersi
 }
 
 // RESTClientForGVK constructs a new rest.Interface capable of accessing the resource associated
-// with the given GroupVersionKind. The REST client will be configured to use the negotiated serializer from
-// baseConfig, if set, otherwise a default serializer will be set.
+// with the given GroupVersionKind.
 func RESTClientForGVK(gvk schema.GroupVersionKind, baseConfig *rest.Config, codecs serializer.CodecFactory) (rest.Interface, error) {
 	cfg := createRestConfig(gvk, baseConfig)
-	if cfg.NegotiatedSerializer == nil {
-		cfg.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: codecs}
-	}
+	cfg.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: codecs}
 	return rest.RESTClientFor(cfg)
 }
 

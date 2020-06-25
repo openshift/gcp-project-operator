@@ -1,8 +1,8 @@
 package gcpclient
 
-//go:generate mockgen -destination=../util/mocks/$GOPACKAGE/$GOFILE -package=$GOPACKAGE -source $GOFILE
-//go:generate gofmt -s -l -w ../util/mocks/$GOPACKAGE/$GOFILE
-//go:generate goimports -local=github.com/openshift/gcp-account-operator -e -w ../util/mocks/$GOPACKAGE/$GOFILE
+//go:generate mockgen -destination=../util/mocks/$GOPACKAGE/client.go -package=$GOPACKAGE -source client.go
+//go:generate gofmt -s -l -w ../util/mocks/$GOPACKAGE/client.go
+//go:generate goimports -local=github.com/openshift/gcp-account-operator -e -w ../util/mocks/$GOPACKAGE/client.go
 
 import (
 	"context"

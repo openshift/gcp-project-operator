@@ -21,13 +21,13 @@
     run: .zuul/playbooks/gophercloud-acceptance-test-ironic/run.yaml
 
 - job:
-    name: gophercloud-acceptance-test-stein
+    name: gophercloud-acceptance-test-queens
     parent: gophercloud-acceptance-test
     description: |
-      Run gophercloud acceptance test on stein branch
+      Run gophercloud acceptance test on queens branch
     vars:
       global_env:
-        OS_BRANCH: stable/stein
+        OS_BRANCH: stable/queens
 
 - job:
     name: gophercloud-acceptance-test-rocky
@@ -37,15 +37,6 @@
     vars:
       global_env:
         OS_BRANCH: stable/rocky
-
-- job:
-    name: gophercloud-acceptance-test-queens
-    parent: gophercloud-acceptance-test
-    description: |
-      Run gophercloud acceptance test on queens branch
-    vars:
-      global_env:
-        OS_BRANCH: stable/queens
 
 - job:
     name: gophercloud-acceptance-test-pike
@@ -109,6 +100,7 @@
     recheck-rocky:
       jobs:
         - gophercloud-acceptance-test-rocky
-    recheck-stein:
+    periodic:
       jobs:
-        - gophercloud-acceptance-test-stein
+        - gophercloud-unittest
+        - gophercloud-acceptance-test
