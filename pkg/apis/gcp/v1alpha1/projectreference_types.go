@@ -52,7 +52,7 @@ type ProjectReference struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   ProjectReferenceSpec   `json:"spec,omitempty"`
-	Status ProjectReferenceStatus `json:"status,omitempty"`
+	Status ProjectReferenceStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

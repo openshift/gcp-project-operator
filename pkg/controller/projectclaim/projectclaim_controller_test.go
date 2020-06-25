@@ -15,19 +15,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
-	"github.com/openshift/gcp-project-operator/pkg/util/mocks/k8sclient"
+	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockclaim "github.com/openshift/gcp-project-operator/pkg/util/mocks/projectclaim"
 )
 
 var _ = Describe("ProjectclaimController", func() {
 	var (
 		reconciler *ReconcileProjectClaim
-		mockClient *k8sclient.MockClient
+		mockClient *mocks.MockClient
 		mockCtrl   *gomock.Controller
 	)
 	BeforeEach(func() {
 		mockCtrl = gomock.NewController(GinkgoT())
-		mockClient = k8sclient.NewMockClient(mockCtrl)
+		mockClient = mocks.NewMockClient(mockCtrl)
 
 		reconciler = NewReconcileProjectClaim(
 			mockClient,
