@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
+	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -14,7 +15,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockclaim "github.com/openshift/gcp-project-operator/pkg/util/mocks/projectclaim"
 )
@@ -72,16 +72,16 @@ var _ = Describe("ProjectclaimController", func() {
 		Context("When the ProjectClaim is newly created", func() {
 			BeforeEach(func() {
 				mockAdapter = mockclaim.NewMockCustomResourceAdapter(mockCtrl)
-				mockAdapter.EXPECT().EnsureRegionSupported().Return(nil)
-				mockAdapter.EXPECT().EnsureProjectReferenceExists().Return(nil)
-				mockAdapter.EXPECT().IsProjectClaimDeletion().Return(false)
-				mockAdapter.EXPECT().EnsureProjectClaimInitialized().Return(ObjectUnchanged, nil)
-				mockAdapter.EXPECT().EnsureProjectClaimState(api.ClaimStatusPending).Return(ObjectUnchanged, nil)
+				mockAdapter.EXPECT().EnsureProjectClaimDeletionProcessed().Return(gcputil.ContinueProcessing())
+				mockAdapter.EXPECT().EnsureRegionSupported().Return(gcputil.ContinueProcessing())
+				mockAdapter.EXPECT().EnsureProjectReferenceExists().Return(gcputil.ContinueProcessing())
+				mockAdapter.EXPECT().EnsureProjectClaimInitialized().Return(gcputil.ContinueProcessing())
+				mockAdapter.EXPECT().EnsureProjectClaimStatePending().Return(gcputil.ContinueProcessing())
 			})
 
 			Context("When the ProjectReferenceLink does not exist", func() {
 				It("Creates a ProjectReference, Links reference, sets status to Pending, and does not requeue", func() {
-					mockAdapter.EXPECT().EnsureProjectReferenceLink().Return(ObjectModified, nil)
+					mockAdapter.EXPECT().EnsureProjectReferenceLink().Return(gcputil.StopProcessing())
 					res, err := reconciler.ReconcileHandler(mockAdapter)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res.Requeue).To(Equal(false))
@@ -91,12 +91,12 @@ var _ = Describe("ProjectclaimController", func() {
 
 			Context("When the ProjectReferenceLink exists", func() {
 				BeforeEach(func() {
-					mockAdapter.EXPECT().EnsureProjectReferenceLink().Return(ObjectUnchanged, nil)
+					mockAdapter.EXPECT().EnsureProjectReferenceLink().Return(gcputil.ContinueProcessing())
 
 				})
 				Context("When the Finalizer does not exist", func() {
 					It("Adds the finalizer and does not requeue", func() {
-						mockAdapter.EXPECT().EnsureFinalizer().Return(ObjectModified, nil)
+						mockAdapter.EXPECT().EnsureFinalizer().Return(gcputil.StopProcessing())
 						res, err := reconciler.ReconcileHandler(mockAdapter)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(res.Requeue).To(Equal(false))
@@ -106,11 +106,11 @@ var _ = Describe("ProjectclaimController", func() {
 
 				Context("When the finalizer exists", func() {
 					BeforeEach(func() {
-						mockAdapter.EXPECT().EnsureFinalizer().Return(ObjectUnchanged, nil)
+						mockAdapter.EXPECT().EnsureFinalizer().Return(gcputil.ContinueProcessing())
 					})
 
 					It("Sets the state to PendingProject", func() {
-						mockAdapter.EXPECT().EnsureProjectClaimState(api.ClaimStatusPendingProject)
+						mockAdapter.EXPECT().EnsureProjectClaimStatePendingProject()
 						res, err := reconciler.ReconcileHandler(mockAdapter)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(res.Requeue).To(Equal(false))
@@ -121,12 +121,9 @@ var _ = Describe("ProjectclaimController", func() {
 		})
 
 		Context("When the ProjectClaim gets deleted", func() {
-			BeforeEach(func() {
-				mockAdapter.EXPECT().IsProjectClaimDeletion().Return(true)
-			})
 
 			It("finalizes the projectclaim", func() {
-				mockAdapter.EXPECT().FinalizeProjectClaim().Return(ObjectModified, nil)
+				mockAdapter.EXPECT().EnsureProjectClaimDeletionProcessed().Return(gcputil.StopProcessing())
 				_, err := reconciler.ReconcileHandler(mockAdapter)
 				Expect(err).ToNot(HaveOccurred())
 			})

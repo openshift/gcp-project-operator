@@ -25,7 +25,7 @@ import (
 
 var _ = Describe("Customresourceadapter", func() {
 	var (
-		adapter          CustomResourceAdapter
+		adapter          *ProjectClaimAdapter
 		mockCtrl         *gomock.Controller
 		mockClient       *mocks.MockClient
 		mockStatusWriter *mocks.MockStatusWriter
@@ -88,7 +88,7 @@ var _ = Describe("Customresourceadapter", func() {
 				projectClaim.Spec.Region = "us-east1"
 			})
 			It("should return nil", func() {
-				err := adapter.EnsureRegionSupported()
+				_, err := adapter.EnsureRegionSupported()
 				Expect(err).To(BeNil())
 			})
 		})
@@ -100,7 +100,7 @@ var _ = Describe("Customresourceadapter", func() {
 				projectClaim.Spec.Region = "fake-region"
 			})
 			It("should return err", func() {
-				err := adapter.EnsureRegionSupported()
+				_, err := adapter.EnsureRegionSupported()
 				Expect(err.Error()).Should(ContainSubstring("gcp-project-operator/pkg/controller/projectclaim/projectclaimadapter.go"))
 				Expect(err.Error()).Should(ContainSubstring("Line:"))
 				Expect(err.Error()).Should(ContainSubstring("gcp-project-operator/pkg/controller/projectclaim.(*ProjectClaimAdapter).EnsureRegionSupported"))
@@ -137,7 +137,7 @@ var _ = Describe("Customresourceadapter", func() {
 			It("there is no error and claim object is not deleted", func() {
 				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectReferenceBuilder().GetProjectReference()).Times(2)
 				mockClient.EXPECT().Delete(gomock.Any(), &testStructs.ProjectReferenceMatcher{}).Times(1)
-				err := adapter.EnsureProjectReferenceExists()
+				_, err := adapter.EnsureProjectReferenceExists()
 				Expect(err).ToNot(HaveOccurred())
 				crStatus, err := adapter.FinalizeProjectClaim()
 				Expect(err).ToNot(HaveOccurred())
@@ -153,9 +153,9 @@ var _ = Describe("Customresourceadapter", func() {
 			})
 
 			It("doesn't update ProjectClaim status", func() {
-				crState, err := adapter.EnsureProjectClaimInitialized()
+				result, err := adapter.EnsureProjectClaimInitialized()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(crState).To(Equal(projectclaim.ObjectUnchanged))
+				Expect(result.CancelRequest).To(Equal(false))
 			})
 		})
 		Context("When conditions are not set", func() {
@@ -166,9 +166,9 @@ var _ = Describe("Customresourceadapter", func() {
 				matcher := testStructs.NewProjectClaimMatcher()
 				mockClient.EXPECT().Status().Return(mockStatusWriter)
 				mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
-				crState, err := adapter.EnsureProjectClaimInitialized()
+				result, err := adapter.EnsureProjectClaimInitialized()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(crState).To(Equal(projectclaim.ObjectModified))
+				Expect(result.CancelRequest).To(Equal(true))
 				Expect(matcher.ActualProjectClaim.Status.Conditions).NotTo(Equal(nil))
 				Expect(len(matcher.ActualProjectClaim.Status.Conditions)).To(Equal(0))
 			})
@@ -180,11 +180,11 @@ var _ = Describe("Customresourceadapter", func() {
 			It("sets the ProjectReferenceCRLink and returns ObjectModified", func() {
 				matcher := testStructs.NewProjectClaimMatcher()
 				mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
-				crState, err := adapter.EnsureProjectReferenceLink()
+				result, err := adapter.EnsureProjectReferenceLink()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(matcher.ActualProjectClaim.Spec.ProjectReferenceCRLink.Name).To(Equal(projectClaim.GetNamespace() + "-" + projectClaim.GetName()))
 				Expect(matcher.ActualProjectClaim.Spec.ProjectReferenceCRLink.Namespace).To(Equal(gcpv1alpha1.ProjectReferenceNamespace))
-				Expect(crState).To(Equal(projectclaim.ObjectModified))
+				Expect(result.CancelRequest).To(Equal(true))
 			})
 		})
 
@@ -195,9 +195,9 @@ var _ = Describe("Customresourceadapter", func() {
 			})
 
 			It("doesn't update the ProjectClaim", func() {
-				crState, err := adapter.EnsureProjectReferenceLink()
+				result, err := adapter.EnsureProjectReferenceLink()
 				Expect(err).ToNot(HaveOccurred())
-				Expect(crState).To(Equal(projectclaim.ObjectUnchanged))
+				Expect(result.CancelRequest).To(Equal(false))
 			})
 		})
 	})
@@ -210,9 +210,9 @@ var _ = Describe("Customresourceadapter", func() {
 			It("sets the finalizer", func() {
 				matcher := testStructs.NewProjectClaimMatcher()
 				mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
-				crState, err := adapter.EnsureFinalizer()
+				result, err := adapter.EnsureFinalizer()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(crState).To(Equal(projectclaim.ObjectModified))
+				Expect(result.CancelRequest).To(Equal(true))
 				Expect(projectClaim.Finalizers).To(ContainElement(projectclaim.ProjectClaimFinalizer))
 			})
 		})
@@ -222,9 +222,9 @@ var _ = Describe("Customresourceadapter", func() {
 				projectClaim.Finalizers = []string{projectclaim.ProjectClaimFinalizer}
 			})
 			It("doesn't change the ProjectClaim", func() {
-				crState, err := adapter.EnsureFinalizer()
+				result, err := adapter.EnsureFinalizer()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(crState).To(Equal(projectclaim.ObjectUnchanged))
+				Expect(result.CancelRequest).To(Equal(false))
 			})
 		})
 	})
@@ -238,7 +238,7 @@ var _ = Describe("Customresourceadapter", func() {
 			It("creates a ProjectReference", func() {
 				matcher := testStructs.NewProjectReferenceMatcher()
 				mockClient.EXPECT().Create(gomock.Any(), matcher)
-				err := adapter.EnsureProjectReferenceExists()
+				_, err := adapter.EnsureProjectReferenceExists()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(matcher.ActualProjectReference.Name).To(Equal(projectClaim.GetNamespace() + "-" + projectClaim.GetName()))
 				Expect(matcher.ActualProjectReference.Namespace).To(Equal(gcpv1alpha1.ProjectReferenceNamespace))
@@ -253,7 +253,7 @@ var _ = Describe("Customresourceadapter", func() {
 				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectReferenceBuilder().GetProjectReference())
 			})
 			It("doesn't return an error", func() {
-				err := adapter.EnsureProjectReferenceExists()
+				_, err := adapter.EnsureProjectReferenceExists()
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})

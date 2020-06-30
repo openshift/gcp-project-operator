@@ -117,68 +117,13 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	return result, err
 }
 
+type ReconcileOperation func(*ReferenceAdapter) (util.OperationResult, error)
+
 // ReconcileHandler reads that state of the cluster for a ProjectReference object and makes changes based on the state read
 // and what is in the ProjectReference.Spec
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-
-type OperationResult struct {
-	RequeueDelay   time.Duration
-	RequeueRequest bool
-	CancelRequest  bool
-}
-
-func StopProcessing() (result OperationResult, err error) {
-	result = OperationResult{
-		RequeueDelay:   0,
-		RequeueRequest: false,
-		CancelRequest:  true,
-	}
-	return
-}
-
-func RequeueWithError(errIn error) (result OperationResult, err error) {
-	result = OperationResult{
-		RequeueDelay:   0,
-		RequeueRequest: true,
-		CancelRequest:  false,
-	}
-	err = errIn
-	return
-}
-
-func RequeueOnErrorOrStop(errIn error) (result OperationResult, err error) {
-	result = OperationResult{
-		RequeueDelay:   0,
-		RequeueRequest: false,
-		CancelRequest:  true,
-	}
-	err = errIn
-	return
-}
-
-func RequeueAfter(delay time.Duration, errIn error) (result OperationResult, err error) {
-	result = OperationResult{
-		RequeueDelay:   delay,
-		RequeueRequest: true,
-		CancelRequest:  false,
-	}
-	err = errIn
-	return
-}
-
-func ContinueProcessing() (result OperationResult, err error) {
-	result = OperationResult{
-		RequeueDelay:   0,
-		RequeueRequest: false,
-		CancelRequest:  false,
-	}
-	return
-}
-
-type ReconcileOperation func(*ReferenceAdapter) (OperationResult, error)
-
 func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, reqLogger logr.Logger) (reconcile.Result, error) {
 	operations := []ReconcileOperation{
 		EnsureProjectReferenceInitialized, //Set conditions

@@ -6,6 +6,8 @@ import (
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
+	"github.com/openshift/gcp-project-operator/pkg/util"
+	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,14 +23,15 @@ var log = logf.Log.WithName("controller_projectclaim")
 
 //go:generate mockgen -destination=../../util/mocks/$GOPACKAGE/customeresourceadapter.go -package=$GOPACKAGE github.com/openshift/gcp-project-operator/pkg/controller/projectclaim CustomResourceAdapter
 type CustomResourceAdapter interface {
-	IsProjectClaimDeletion() bool
+	EnsureProjectClaimDeletionProcessed() (gcputil.OperationResult, error)
 	ProjectReferenceExists() (bool, error)
-	EnsureProjectClaimInitialized() (ObjectState, error)
-	EnsureProjectClaimState(gcpv1alpha1.ClaimStatus) (ObjectState, error)
-	EnsureRegionSupported() error
-	EnsureProjectReferenceExists() error
-	EnsureProjectReferenceLink() (ObjectState, error)
-	EnsureFinalizer() (ObjectState, error)
+	EnsureProjectClaimInitialized() (gcputil.OperationResult, error)
+	EnsureProjectClaimStatePending() (gcputil.OperationResult, error)
+	EnsureProjectClaimStatePendingProject() (gcputil.OperationResult, error)
+	EnsureRegionSupported() (gcputil.OperationResult, error)
+	EnsureProjectReferenceExists() (gcputil.OperationResult, error)
+	EnsureProjectReferenceLink() (gcputil.OperationResult, error)
+	EnsureFinalizer() (gcputil.OperationResult, error)
 	FinalizeProjectClaim() (ObjectState, error)
 	SetProjectClaimCondition(reason string, err error) error
 }
@@ -101,55 +104,33 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 	return result, err
 }
 
+type ReconcileOperation func() (util.OperationResult, error)
+
 // ReconcileHandler reads that state of the cluster for a ProjectClaim object and makes changes based on the state read
 // and what is in the ProjectClaim.Spec
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileProjectClaim) ReconcileHandler(adapter CustomResourceAdapter) (reconcile.Result, error) {
-	if adapter.IsProjectClaimDeletion() {
-		crState, err := adapter.FinalizeProjectClaim()
-		if crState == ObjectUnchanged || err != nil {
-			return r.requeueAfter(5*time.Second, err)
+	operations := []ReconcileOperation{
+		adapter.EnsureProjectClaimDeletionProcessed,
+		adapter.EnsureProjectClaimInitialized,
+		adapter.EnsureRegionSupported,
+		adapter.EnsureProjectClaimStatePending,
+		adapter.EnsureProjectReferenceExists,
+		adapter.EnsureProjectReferenceLink,
+		adapter.EnsureFinalizer,
+		adapter.EnsureProjectClaimStatePendingProject,
+	}
+	for _, operation := range operations {
+		result, err := operation()
+		if err != nil || result.RequeueRequest {
+			return r.requeueAfter(result.RequeueDelay, err)
 		}
-		return r.doNotRequeue()
+		if result.CancelRequest {
+			return r.doNotRequeue()
+		}
 	}
-
-	crState, err := adapter.EnsureProjectClaimInitialized()
-	if crState == ObjectModified || err != nil {
-		return r.requeueOnErr(err)
-	}
-
-	err = adapter.EnsureRegionSupported()
-	if err != nil {
-		return r.requeueOnErr(err)
-	}
-
-	crState, err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPending)
-	if crState == ObjectModified || err != nil {
-		return r.requeueOnErr(err)
-	}
-
-	err = adapter.EnsureProjectReferenceExists()
-	if err != nil {
-		return r.requeueOnErr(err)
-	}
-
-	crState, err = adapter.EnsureProjectReferenceLink()
-	if crState == ObjectModified || err != nil {
-		return r.requeueOnErr(err)
-	}
-
-	crState, err = adapter.EnsureFinalizer()
-	if crState == ObjectModified || err != nil {
-		return r.requeueOnErr(err)
-	}
-
-	crState, err = adapter.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPendingProject)
-	if crState == ObjectModified || err != nil {
-		return r.requeueOnErr(err)
-	}
-
 	return r.doNotRequeue()
 }
 
