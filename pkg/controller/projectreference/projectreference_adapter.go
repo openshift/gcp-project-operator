@@ -19,7 +19,6 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
-	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"

@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/openshift/cluster-api/pkg/util"
-	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"

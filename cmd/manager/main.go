@@ -11,7 +11,6 @@ import (
 
 	"github.com/openshift/gcp-project-operator/pkg/apis"
 	"github.com/openshift/gcp-project-operator/pkg/controller"
-	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"

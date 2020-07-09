@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 	"golang.org/x/oauth2/google"
 	cloudbilling "google.golang.org/api/cloudbilling/v1"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
@@ -24,9 +23,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.Log.WithName("gcpclient").
+var log = logf.Log.WithName("gcpclient")
 
-const gcpAPIRetriesCount int = 3
+const gcpAPIRetriesCount = 3
 
 // Client is a wrapper object for actual GCP libraries to allow for easier mocking/testing.
 type Client interface {
@@ -338,15 +337,15 @@ func (c *gcpClient) CreateCloudBillingAccount(projectID, billingAccountID string
 	if len(info.BillingAccountName) == 0 {
 		info.BillingAccountName = billingAccount
 		info.BillingEnabled = true
-		r.logger.V(1).Info("Linking Cloud Billing Account")
+		log.V(1).Info("Linking Cloud Billing Account")
 		_, err := c.cloudBillingClient.Projects.UpdateBillingInfo(project, info).Do()
 		if err != nil {
 			return err
 		}
 	}
 	if len(info.BillingAccountName) > 0 && info.BillingAccountName != billingAccount {
-		r.logger.V(1).Info("Removing And Relinking Billing Account")
-		r.logger.V(2).Info("Removing part")
+		log.V(1).Info("Removing And Relinking Billing Account")
+		log.V(2).Info("Removing part")
 		info.BillingAccountName = billingAccount
 		projectBillingDisable := &cloudbilling.ProjectBillingInfo{
 			BillingAccountName: "",
@@ -356,7 +355,7 @@ func (c *gcpClient) CreateCloudBillingAccount(projectID, billingAccountID string
 		if err != nil {
 			return err
 		}
-		r.logger.V(2).Info("Relinking part")
+		log.V(2).Info("Relinking part")
 		_, err = c.cloudBillingClient.Projects.UpdateBillingInfo(project, info).Do()
 		if err != nil {
 			return err
