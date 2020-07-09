@@ -6,14 +6,7 @@ Some useful commands:
 
 You can modify the verbosity by adding `args:`to the [operator.yaml](../deploy/operator.yaml)
 
-If you want to see `info` logs coming from the `ProjectReference` use `--zap-level=X`, where X can be:
-
-1. ProjectReference logs
-2. ProjectClaim logs
-3. gcp client logs
-4. operator-sdk logs (golang version, etc)
-
-as described in the type [ComponentLogLevel](../pkg/util/types/comonentloglevel.go)
+if you want to see more logs, set a number inside  `--zap-level=X`, where as X goes up you can see more messages
 
 e.g. if you are interested only in error messages, you can do it like this:
 
@@ -27,6 +20,10 @@ e.g. if you are interested only in error messages, you can do it like this:
           - '--zap-level=error'
           imagePullPolicy: Always
 ```
+
+
+documentation for `--zap-level` can be found [on operator framework](https://sdk.operatorframework.io/docs/golang/references/logging/)
+
 
 ### ProjectClaim
 

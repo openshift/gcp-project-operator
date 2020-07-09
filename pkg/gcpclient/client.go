@@ -24,9 +24,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.Log.WithName("gcpclient")
+var log = logf.Log.WithName("gcpclient").
 
-const gcpAPIRetriesCount = 3
+const gcpAPIRetriesCount int = 3
 
 // Client is a wrapper object for actual GCP libraries to allow for easier mocking/testing.
 type Client interface {
@@ -157,7 +157,7 @@ func (c *gcpClient) GetProject(projectID string) (*cloudresourcemanager.Project,
 
 // CreateProject creates a project in a given folder.
 func (c *gcpClient) CreateProject(parentFolderID string) (*cloudresourcemanager.Operation, error) {
-	log.V(logtypes.GCPClient).Info("gcpClient.CreateProject")
+	log.V(2).Info("Started gcpClient.CreateProject")
 	project := cloudresourcemanager.Project{
 		//Labels:          nil,
 		Name: c.projectName,
@@ -294,7 +294,7 @@ func (c *gcpClient) ListAPIs(projectID string) ([]string, error) {
 }
 
 func (c *gcpClient) EnableAPI(projectID, api string) error {
-	log.V(logtypes.GCPClient).Info(fmt.Sprintf("enable %s api", api))
+	log.V(1).Info(fmt.Sprintf("enable %s api", api))
 	enableServicerequest := &serviceManagment.EnableServiceRequest{
 		ConsumerId: fmt.Sprintf("project:%s", projectID),
 	}
@@ -315,7 +315,7 @@ func (c *gcpClient) EnableAPI(projectID, api string) error {
 			// creation is completed and marked as Done.
 			// Something is not propagating in the backend.
 			if ok && ae.Code == http.StatusForbidden && retry <= gcpAPIRetriesCount {
-				log.V(logtypes.GCPClient).Info(fmt.Sprintf("retry %d for enable %s api", retry, api))
+				log.V(2).Info(fmt.Sprintf("retry %d for enable %s api", retry, api))
 				continue
 			}
 			return err
@@ -338,12 +338,15 @@ func (c *gcpClient) CreateCloudBillingAccount(projectID, billingAccountID string
 	if len(info.BillingAccountName) == 0 {
 		info.BillingAccountName = billingAccount
 		info.BillingEnabled = true
+		r.logger.V(1).Info("Linking Cloud Billing Account")
 		_, err := c.cloudBillingClient.Projects.UpdateBillingInfo(project, info).Do()
 		if err != nil {
 			return err
 		}
 	}
 	if len(info.BillingAccountName) > 0 && info.BillingAccountName != billingAccount {
+		r.logger.V(1).Info("Removing And Relinking Billing Account")
+		r.logger.V(2).Info("Removing part")
 		info.BillingAccountName = billingAccount
 		projectBillingDisable := &cloudbilling.ProjectBillingInfo{
 			BillingAccountName: "",
@@ -353,6 +356,7 @@ func (c *gcpClient) CreateCloudBillingAccount(projectID, billingAccountID string
 		if err != nil {
 			return err
 		}
+		r.logger.V(2).Info("Relinking part")
 		_, err = c.cloudBillingClient.Projects.UpdateBillingInfo(project, info).Do()
 		if err != nil {
 			return err

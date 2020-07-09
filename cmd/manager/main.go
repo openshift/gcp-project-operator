@@ -33,9 +33,9 @@ var (
 var log = logf.Log.WithName("cmd")
 
 func printVersion() {
-	log.V(logtypes.OperatorSDK).Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	log.V(logtypes.OperatorSDK).Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
-	log.V(logtypes.OperatorSDK).Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
+	log.V(1).Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
+	log.V(1).Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
+	log.V(1).Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
 }
 
 func main() {
@@ -96,33 +96,29 @@ func run() error {
 		return err
 	}
 
-	log.V(logtypes.OperatorSDK).Info("Registering Components.")
-
-	// Setup Scheme for all resources
+	log.V(2).Info("Add api scheme to Manager")
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		return err
 	}
 
-	// Setup all Controllers
+	log.V(2).Info("Add controllers to Manager")
 	if err := controller.AddToManager(mgr); err != nil {
 		log.Error(err, "")
 		return err
 	}
 
-	// Create Service object to expose the metrics port.
+	log.V(2).Info("Expose metrics")
 	_, err = metrics.ExposeMetricsPort(ctx, metricsPort)
 	if err != nil {
-		log.V(logtypes.OperatorSDK).Info(err.Error())
+		log.V(2).Info(err.Error())
 	}
 
-	// start cache and wait for sync
-	log.V(logtypes.OperatorSDK).Info("init chache")
+	log.V(2).Info("Initalize and start cache")
 	cache := mgr.GetCache()
 	go cache.Start(stopCh)
 	cache.WaitForCacheSync(stopCh)
-	log.V(logtypes.OperatorSDK).Info("Starting the Cmd.")
 
-	// Start the Cmd
+	log.Info("Starting the 'gcp-project-operator' Reconcile loop")
 	return mgr.Start(stopCh)
 }

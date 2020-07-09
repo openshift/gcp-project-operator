@@ -127,11 +127,11 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, erro
 	}
 
 	if azResult == ensureAzResultNotReady {
-		r.logger.V(int(logtypes.ProjectReference)).Info("Compute API not yet fully initialized. Retrying in 30 seconds.")
+		r.logger.V(2).Info("Compute API not yet fully initialized. Retrying in 30 seconds.")
 		return gcputil.RequeueAfter(30*time.Second, nil)
 	}
 
-	//Project Ready update matchingClaim to ready
+	r.logger.V(2).Info("Project Ready update matchingClaim to ready")
 	r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
 	err = r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim)
 	if err != nil {
@@ -164,7 +164,7 @@ func EnsureProjectID(adapter *ReferenceAdapter) (gcputil.OperationResult, error)
 	if adapter.ProjectReference.Spec.GCPProjectID != "" {
 		return gcputil.ContinueProcessing()
 	}
-	adapter.logger.V(int(logtypes.ProjectReference)).Info("Creating ProjectID in ProjectReference CR")
+	adapter.logger.V(1).Info("Creating ProjectID in ProjectReference CR")
 	err := adapter.UpdateProjectID()
 	if err != nil {
 		err = operrors.Wrap(err, "could not update ProjectID in Project Reference CR")
@@ -192,19 +192,19 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 		return gcputil.RequeueWithError(operrors.Wrap(err, "could not create project"))
 	}
 
-	r.logger.V(int(logtypes.ProjectReference)).Info("Configuring APIS")
+	r.logger.V(1).Info("Configuring APIS")
 	err = r.configureAPIS(configMap)
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring APIS"))
 	}
 
-	r.logger.V(int(logtypes.ProjectReference)).Info("Configuring Service Account")
+	r.logger.V(1).Info("Configuring Service Account")
 	result, err := r.configureServiceAccount()
 	if err != nil || result.RequeueRequest {
 		return result, err
 	}
 
-	r.logger.V(int(logtypes.ProjectReference)).Info("Creating Credentials")
+	r.logger.V(1).Info("Creating Credentials")
 	result, err = r.createCredentials()
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, "error creating credentials"))
@@ -215,7 +215,7 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 
 func EnsureStateReady(r *ReferenceAdapter) (gcputil.OperationResult, error) {
 	if r.ProjectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
-		r.logger.V(int(logtypes.ProjectReference)).Info("Setting Status on projectReference")
+		r.logger.V(1).Info("Setting Status on projectReference")
 		r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
 		return gcputil.RequeueOnErrorOrStop(r.kubeClient.Status().Update(context.TODO(), r.ProjectReference))
 	}
@@ -331,7 +331,7 @@ func (r *ReferenceAdapter) deleteProject() error {
 
 	switch project.LifecycleState {
 	case "DELETE_REQUESTED":
-		r.logger.Info("Project lifecycleState == DELETE_REQUESTED")
+		r.logger.Info("Project lifecycleState == DELETE_REQUESTED") //TODO: change message to be more consice
 		return nil
 	case "LIFECYCLE_STATE_UNSPECIFIED":
 		return operrors.Wrap(operrors.ErrUnexpectedLifecycleState, fmt.Sprintf("unexpected lifecycleState for %s", project.LifecycleState))
@@ -353,7 +353,7 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 	if projectExists {
 		switch project.LifecycleState {
 		case "ACTIVE":
-			r.logger.V(int(logtypes.ProjectReference)).Info("Project lifecycleState == ACTIVE")
+			r.logger.V(1).Info("Project lifecycleState == ACTIVE") //TODO: change message to be more consice
 			return nil
 		case "DELETE_REQUESTED":
 			return operrors.ErrInactiveProject
@@ -362,11 +362,11 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 		}
 	}
 
-	r.logger.V(int(logtypes.ProjectReference)).Info("Creating Project")
+	r.logger.Info("Creating Project")
 	// If we cannot create the project clear the projectID from spec so we can try again with another unique key
 	_, creationFailed := r.gcpClient.CreateProject(parentFolderID)
 	if creationFailed != nil {
-		r.logger.V(int(logtypes.ProjectReference)).Info("Clearing gcpProjectID from ProjectReferenceSpec")
+		r.logger.V(1).Info("Clearing gcpProjectID from ProjectReferenceSpec")
 		//Todo() We need to requeue here ot it will continue to the next step.
 		if err = r.clearProjectID(); err != nil {
 			return operrors.Wrap(creationFailed, fmt.Sprintf("could not clear project ID: %v", err))
@@ -397,15 +397,14 @@ func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) err
 		return err
 	}
 
-	r.logger.V(int(logtypes.ProjectReference)).Info("Enabling Billing API")
 	if !util.Contains(enabledAPIs, "cloudbilling.googleapis.com") {
+		r.logger.Info("Enabling Billing API")
 		err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
 		if err != nil {
 			return operrors.Wrap(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
 		}
 	}
 
-	r.logger.V(int(logtypes.ProjectReference)).Info("Linking Cloud Billing Account")
 	err = r.gcpClient.CreateCloudBillingAccount(r.ProjectReference.Spec.GCPProjectID, config.BillingAccount)
 	if err != nil {
 		return operrors.Wrap(err, "error creating CloudBilling")
@@ -442,11 +441,11 @@ func (r *ReferenceAdapter) configureServiceAccount() (gcputil.OperationResult, e
 	serviceAccount, err := r.gcpClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
 		// Create OSDManged Service account
-		r.logger.V(int(logtypes.ProjectReference)).Info("Creating Service Account")
+		r.logger.Info("Creating Service Account")
 		account, err := r.gcpClient.CreateServiceAccount(osdServiceAccountName, osdServiceAccountName)
 		if err != nil {
 			if matchesAlreadyExistsError(err) {
-				r.logger.V(int(logtypes.ProjectReference)).Info("Service Account not yet fully initialized. Retrying in 30 seconds.")
+				r.logger.V(2).Info("Service Account not yet fully initialized. Retrying in 30 seconds.")
 				return gcputil.RequeueAfter(30*time.Second, nil)
 			}
 			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not create service account for %s", osdServiceAccountName)))
@@ -454,7 +453,7 @@ func (r *ReferenceAdapter) configureServiceAccount() (gcputil.OperationResult, e
 		serviceAccount = account
 	}
 
-	r.logger.V(int(logtypes.ProjectReference)).Info("Setting Service Account Policies")
+	r.logger.V(1).Info("Setting Service Account Policies")
 	err = r.SetIAMPolicy(serviceAccount.Email)
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not update policy on project for %s", r.ProjectReference.Spec.GCPProjectID)))
@@ -468,22 +467,22 @@ func (r *ReferenceAdapter) createCredentials() (gcputil.OperationResult, error) 
 		return gcputil.ContinueProcessing()
 	}
 
+	r.logger.Info("Creating credentials")
 	serviceAccount, err := r.gcpClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
 		if matchesNotFoundError(err) {
-			r.logger.V(int(logtypes.ProjectReference)).Info("Service Account not yet fully initialized. Retrying in 30 seconds.")
+			r.logger.V(2).Info("Service Account not yet fully initialized. Retrying in 30 seconds.")
 			return gcputil.RequeueAfter(30*time.Second, nil)
 		}
 		return gcputil.RequeueWithError(operrors.Wrap(err, "could not get service account"))
 	}
-
-	r.logger.V(int(logtypes.ProjectReference)).Info("Creating Service AccountKey")
+	r.logger.V(1).Info("Creating Service AccountKey")
 	key, err := r.gcpClient.CreateServiceAccountKey(serviceAccount.Email)
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not create service account key for %s", serviceAccount.Email)))
 	}
 
-	// Create secret for the key and store it
+	r.logger.V(2).Info("Create secret for the key and store it")
 	privateKeyString, err := base64.StdEncoding.DecodeString(key.PrivateKeyData)
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, "could not decode secret"))
@@ -494,7 +493,7 @@ func (r *ReferenceAdapter) createCredentials() (gcputil.OperationResult, error) 
 		Name:      r.ProjectClaim.Spec.GCPCredentialSecret.Name,
 	})
 
-	r.logger.V(int(logtypes.ProjectReference)).Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace))
+	r.logger.V(1).Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace))
 	createErr := r.kubeClient.Create(context.TODO(), secret)
 	if createErr != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(createErr, fmt.Sprintf("could not create service account secret for %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name)))
@@ -504,21 +503,21 @@ func (r *ReferenceAdapter) createCredentials() (gcputil.OperationResult, error) 
 }
 
 func (r *ReferenceAdapter) deleteCredentials() error {
-	r.logger.Info("Deleting Credentials")
 	secret := types.NamespacedName{
 		Namespace: r.ProjectClaim.Spec.GCPCredentialSecret.Namespace,
 		Name:      r.ProjectClaim.Spec.GCPCredentialSecret.Name,
 	}
+	r.logger.Info("Deleting Credentials")
 
-	// Check if the Secret exists
+	r.logger.V(2).Info("Check if the Secret exists")
 	if gcputil.SecretExists(r.kubeClient, secret.Name, secret.Namespace) {
-		// Get the secret key
+		r.logger.V(2).Info("Getting Secret")
 		key, err := gcputil.GetSecret(r.kubeClient, secret.Name, secret.Namespace)
 		if err != nil {
 			return operrors.Wrap(err, fmt.Sprintf("could not get the service account secret for %s", secret.Name))
 		}
 
-		// Delete the secret
+		r.logger.V(2).Info("Deleting secret")
 		err = r.kubeClient.Delete(context.TODO(), key)
 		if err != nil {
 			return operrors.Wrap(err, fmt.Sprintf("could not delete service account secret for %s", secret.Name))

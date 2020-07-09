@@ -124,7 +124,7 @@ func (c *ProjectClaimAdapter) IsProjectReferenceDeletion() bool {
 }
 
 func (c *ProjectClaimAdapter) EnsureFinalizerDeleted() error {
-	c.logger.Info("Deleting Finalizer")
+	c.logger.Info("Deleting ProjectClaim Finalizer")
 	finalizers := c.projectClaim.GetFinalizers()
 	if util.Contains(finalizers, ProjectClaimFinalizer) {
 		c.projectClaim.SetFinalizers(util.Filter(finalizers, ProjectClaimFinalizer))
@@ -189,7 +189,7 @@ func (c *ProjectClaimAdapter) EnsureProjectReferenceLink() (gcputil.OperationRes
 
 func (c *ProjectClaimAdapter) EnsureFinalizer() (gcputil.OperationResult, error) {
 	if !util.Contains(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer) {
-		c.logger.V(int(logtypes.ProjectClaim)).Info("Adding Finalizer to the ProjectClaim")
+		c.logger.Info("Adding Finalizer to the ProjectClaim")
 		c.projectClaim.SetFinalizers(append(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer))
 
 		err := c.client.Update(context.TODO(), c.projectClaim)
