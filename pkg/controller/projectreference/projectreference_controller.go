@@ -11,7 +11,6 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
-	logtypes "github.com/openshift/gcp-project-operator/pkg/util/types"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -113,7 +112,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 	reason := "ReconcileError"
 	_ = adapter.SetProjectReferenceCondition(reason, err)
 
-	reqLogger.V(int(logtypes.ProjectReference)).Info(fmt.Sprintf("Finished Reconcile. Error occured: %t, Requeing: %t, Delay: %d", err != nil, result.Requeue, result.RequeueAfter))
+	reqLogger.V(1).Info(fmt.Sprintf("Finished Reconcile. Error occured: %t, Requeing: %t, Delay: %d", err != nil, result.Requeue, result.RequeueAfter))
 	return result, err
 }
 
