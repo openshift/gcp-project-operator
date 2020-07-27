@@ -107,8 +107,10 @@ oc new-project gcp-project-operator
 oc apply -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
 oc apply -f deploy/crds/gcp_v1alpha1_projectreference_crd.yaml
 
-operator-sdk run --local --namespace gcp-project-operator
+operator-sdk run local --watch-namespace gcp-project-operator
 ```
+
+NOTE: If it fails to run, try the old using the command: `operator-sdk run --local --namespace gcp-project-operator`.
 
 If everything went ok, you should see some startup logs from the operator in your terminal window.
 
