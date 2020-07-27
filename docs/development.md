@@ -47,7 +47,7 @@ kubectl create -f deploy/crds/gcp_v1alpha1_projectreference_crd.yaml
 Make sure you have the [operator-sdk](https://github.com/operator-framework/operator-sdk/releases) binary in your `$PATH` and run it locally:
 
 ```shell
-$ operator-sdk run --local --namespace gcp-project-operator
+$ operator-sdk run local --watch-namespace gcp-project-operator
 ```
 
 You will see some initialization logs.

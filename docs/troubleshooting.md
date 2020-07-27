@@ -7,7 +7,7 @@ This document provides useful information for common errors and their remedies:
 ### Command
 
 ```zsh
-$ operator-sdk run --local --namespace gcp-project-operator
+$ operator-sdk run local --watch-namespace gcp-project-operator
 ```
 
 ### Error Message
