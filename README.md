@@ -25,7 +25,6 @@ If you like to contribute to GCP Project Operator, please be so kind to read our
       * [For Developers](#for-developers)
    * [Workflow - ProjectClaim](#workflow---projectclaim)
       * [Example CR](#example-cr)
-   * [Workflow - ClusterDeployment (deprecated)](#workflow---clusterdeployment-deprecated)
    * [Requirements](#requirements)
 * [Deployment](#deployment)
    * [Building](#building)
