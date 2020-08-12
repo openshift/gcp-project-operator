@@ -23,10 +23,9 @@ git clone \
 REMOVED_VERSIONS=""
 if [[ "$REMOVE_UNDEPLOYED" == true ]]; then
     DEPLOYED_HASH=$(
-        curl -s 'https://gitlab.cee.redhat.com/service/saas-osd-operators/raw/master/gcp-project-operator-services/gcp-project-operator.yaml' | \
-            docker run --rm -i evns/yq -r '.services[]|select(.name="gcp-project-operator").hash'
+        curl -s "https://gitlab.cee.redhat.com/service/app-interface/raw/master/data/services/osd-operators/cicd/saas/saas-gcp-project-operator.yaml" | \
+            docker run --rm -i evns/yq -r '.resourceTemplates[]|select(.name="gcp-project-operator").targets[]|select(.namespace["$ref"]=="/services/osd-operators/namespaces/gcp-project-operator-production.yml")|.ref'
     )
-
     delete=false
     # Sort based on commit number
     for version in $(ls $BUNDLE_DIR | sort -t . -k 3 -g); do
