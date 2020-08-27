@@ -93,11 +93,11 @@ func AddOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requir
 	var result []*cloudresourcemanager.Binding
 
 	for i, eBinding := range existingBindings {
+		result = append(result, &cloudresourcemanager.Binding{
+			Members: eBinding.Members,
+			Role:    eBinding.Role,
+		})
 		if rBinding, ok := requiredBindingMap[eBinding.Role]; ok {
-			result = append(result, &cloudresourcemanager.Binding{
-				Members: eBinding.Members,
-				Role:    eBinding.Role,
-			})
 			// check if members list contains from existing contains members from required
 			for _, rMember := range rBinding.Members {
 				exist, _ := InArray(rMember, eBinding.Members)
