@@ -81,7 +81,7 @@ func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1a
 			Namespace: gcpv1alpha1.ProjectReferenceNamespace,
 		},
 		Spec: gcpv1alpha1.ProjectReferenceSpec{
-			GCPProjectID: "",
+			GCPProjectID: "osd-test-1", // for testing adding mwoodsons account here
 			ProjectClaimCRLink: gcpv1alpha1.NamespacedName{
 				Name:      projectClaim.GetName(),
 				Namespace: projectClaim.GetNamespace(),

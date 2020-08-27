@@ -178,18 +178,18 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not get ConfigMap: %s Operator Namespace: %s", orgGcpConfigMap, operatorNamespace)))
 	}
 
-	err = r.createProject(configMap.ParentFolderID)
-	if err != nil {
-		if err == operrors.ErrInactiveProject {
-			r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
-			if err != nil {
-				return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectReference status"))
-			}
-			return gcputil.StopProcessing()
-		}
-		return gcputil.RequeueWithError(operrors.Wrap(err, "could not create project"))
-	}
+	// err = r.createProject(configMap.ParentFolderID)
+	// if err != nil {
+	// 	if err == operrors.ErrInactiveProject {
+	// 		r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
+	// 		err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
+	// 		if err != nil {
+	// 			return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectReference status"))
+	// 		}
+	// 		return gcputil.StopProcessing()
+	// 	}
+	// 	return gcputil.RequeueWithError(operrors.Wrap(err, "could not create project"))
+	// }
 
 	r.logger.V(1).Info("Configuring APIS")
 	err = r.configureAPIS(configMap)
@@ -396,18 +396,18 @@ func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) err
 		return err
 	}
 
-	if !util.Contains(enabledAPIs, "cloudbilling.googleapis.com") {
-		r.logger.Info("Enabling Billing API")
-		err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
-		if err != nil {
-			return operrors.Wrap(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
-		}
-	}
+	// if !util.Contains(enabledAPIs, "cloudbilling.googleapis.com") {
+	// 	r.logger.Info("Enabling Billing API")
+	// 	err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
+	// 	if err != nil {
+	// 		return operrors.Wrap(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
+	// 	}
+	// }
 
-	err = r.gcpClient.CreateCloudBillingAccount(r.ProjectReference.Spec.GCPProjectID, config.BillingAccount)
-	if err != nil {
-		return operrors.Wrap(err, "error creating CloudBilling")
-	}
+	// err = r.gcpClient.CreateCloudBillingAccount(r.ProjectReference.Spec.GCPProjectID, config.BillingAccount)
+	// if err != nil {
+	// 	return operrors.Wrap(err, "error creating CloudBilling")
+	// }
 
 	for _, api := range OSDRequiredAPIS {
 		if !util.Contains(enabledAPIs, api) {
