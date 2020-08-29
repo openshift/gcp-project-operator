@@ -74,6 +74,10 @@ func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.
 }
 
 func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1alpha1.ProjectReference {
+	gcpProjectID := ""
+	if projectClaim.Spec.CCS {
+		gcpProjectID = projectClaim.Spec.CCSProjectID
+	}
 
 	return &gcpv1alpha1.ProjectReference{
 		ObjectMeta: metav1.ObjectMeta{
@@ -81,12 +85,13 @@ func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1a
 			Namespace: gcpv1alpha1.ProjectReferenceNamespace,
 		},
 		Spec: gcpv1alpha1.ProjectReferenceSpec{
-			GCPProjectID: "",
+			GCPProjectID: gcpProjectID,
 			ProjectClaimCRLink: gcpv1alpha1.NamespacedName{
 				Name:      projectClaim.GetName(),
 				Namespace: projectClaim.GetNamespace(),
 			},
 			LegalEntity: *projectClaim.Spec.LegalEntity.DeepCopy(),
+			CCS:         projectClaim.Spec.CCS,
 		},
 	}
 }
