@@ -10,6 +10,7 @@ type ProjectReferenceSpec struct {
 	GCPProjectID       string         `json:"gcpProjectID,omitempty"`
 	ProjectClaimCRLink NamespacedName `json:"projectClaimCRLink"`
 	LegalEntity        LegalEntity    `json:"legalEntity"`
+	CCS                bool           `json:"ccs,omitempty"`
 }
 
 // ProjectReferenceStatus defines the observed state of Project

@@ -130,6 +130,7 @@ func (in *ProjectClaimSpec) DeepCopyInto(out *ProjectClaimSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	out.CCSSecretRef = in.CCSSecretRef
 	return
 }
 
