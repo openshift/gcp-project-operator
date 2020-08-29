@@ -10,13 +10,15 @@ type ProjectReferenceSpec struct {
 	GCPProjectID       string         `json:"gcpProjectID,omitempty"`
 	ProjectClaimCRLink NamespacedName `json:"projectClaimCRLink"`
 	LegalEntity        LegalEntity    `json:"legalEntity"`
+	CCS                bool           `json:"ccs,omitempty"`
+	CCSSecretRef       NamespacedName `json:"ccsSecretRef,omitempty"`
 }
 
 // ProjectReferenceStatus defines the observed state of Project
 // +k8s:openapi-gen=true
 type ProjectReferenceStatus struct {
 	Conditions []Condition           `json:"conditions"`
-	State      ProjectReferenceState `json:"state,omitempty"`
+	State      ProjectReferenceState `json:"state"`
 }
 
 // ProjectReferenceState is a valid value from ProjectReference.Status
@@ -52,7 +54,7 @@ type ProjectReference struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   ProjectReferenceSpec   `json:"spec,omitempty"`
-	Status ProjectReferenceStatus `json:"status"`
+	Status ProjectReferenceStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -11,6 +11,7 @@ import (
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectreference"
+	"github.com/openshift/gcp-project-operator/pkg/util"
 	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockconditions "github.com/openshift/gcp-project-operator/pkg/util/mocks/condition"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
@@ -22,6 +23,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+)
+
+var (
+	fakeError                   = errors.New("fakeError")
+	stopProcessingResult, _     = util.StopProcessing()
+	continueProcessingResult, _ = util.ContinueProcessing()
 )
 
 var _ = Describe("ProjectreferenceAdapter", func() {
