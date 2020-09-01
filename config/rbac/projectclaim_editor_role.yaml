@@ -1,0 +1,24 @@
+# permissions for end users to edit projectclaims.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: projectclaim-editor-role
+rules:
+- apiGroups:
+  - gcp.managed.openshift.io.my.domain
+  resources:
+  - projectclaims
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - gcp.managed.openshift.io.my.domain
+  resources:
+  - projectclaims/status
+  verbs:
+  - get
