@@ -1,0 +1,7 @@
+domain: my.domain
+layout: go.kubebuilder.io/v2
+projectName: gcp-project-operator
+repo: github.com/openshift/gcp-project-operator
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}
