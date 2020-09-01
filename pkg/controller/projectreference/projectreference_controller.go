@@ -96,48 +96,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
-	var gcpCredSecretNamespace, gcpCredSecretName string
-	var operations []ReconcileOperation
-
-	// If CCS, get the creds from the projectClaim.CCSSecretRef
-	if projectReference.Spec.CCS {
-		projectClaim, err := getMatchingClaimLink(projectReference, r.client)
-		if err != nil {
-			return r.requeueOnErr(err)
-		}
-		gcpCredSecretNamespace = projectClaim.Spec.CCSSecretRef.Namespace
-		gcpCredSecretName = projectClaim.Spec.CCSSecretRef.Name
-
-		operations = []ReconcileOperation{
-			EnsureProjectReferenceInitialized, //Set conditions
-			EnsureDeletionProcessed,           // Cleanup
-			EnsureProjectClaimReady,           // Make projectReference  be processed based on state of ProjectClaim and Project Reference
-			VerifyProjectClaimPending,         //only make changes to ProjectReference if ProjectClaim is pending
-			EnsureProjectReferenceStatusCreating,
-			EnsureFinalizerAdded,
-			EnsureProjectConfigured,
-			EnsureStateReady,
-		}
-	} else {
-		// Non-CCS
-		gcpCredSecretNamespace = operatorNamespace
-		gcpCredSecretName = orgGcpSecretName
-
-		operations = []ReconcileOperation{
-			EnsureProjectReferenceInitialized, //Set conditions
-			EnsureDeletionProcessed,           // Cleanup
-			EnsureProjectClaimReady,           // Make projectReference  be processed based on state of ProjectClaim and Project Reference
-			VerifyProjectClaimPending,         //only make changes to ProjectReference if ProjectClaim is pending
-			EnsureProjectReferenceStatusCreating,
-			EnsureProjectID,
-			EnsureFinalizerAdded,
-			EnsureProjectCreated,
-			EnsureProjectConfigured,
-			EnsureStateReady,
-		}
-	}
-
-	gcpClient, err := r.getGcpClient(projectReference.Spec.GCPProjectID, gcpCredSecretNamespace, gcpCredSecretName, reqLogger)
+	gcpClient, err := r.getGcpClient(projectReference, reqLogger)
 	if err != nil {
 		return r.requeueOnErr(err)
 	}
@@ -149,7 +108,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
-	result, err := r.ReconcileHandler(adapter, operations, reqLogger)
+	result, err := r.ReconcileHandler(adapter, reqLogger)
 	reason := "ReconcileError"
 	_ = adapter.SetProjectReferenceCondition(reason, err)
 
@@ -164,7 +123,19 @@ type ReconcileOperation func(*ReferenceAdapter) (util.OperationResult, error)
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, operations []ReconcileOperation, reqLogger logr.Logger) (reconcile.Result, error) {
+func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, reqLogger logr.Logger) (reconcile.Result, error) {
+	operations := []ReconcileOperation{
+		EnsureProjectReferenceInitialized, //Set conditions
+		EnsureDeletionProcessed,           // Cleanup
+		EnsureProjectClaimReady,           // Make projectReference  be processed based on state of ProjectClaim and Project Reference
+		VerifyProjectClaimPending,         //only make changes to ProjectReference if ProjectClaim is pending
+		EnsureProjectReferenceStatusCreating,
+		EnsureProjectID,
+		EnsureFinalizerAdded,
+		EnsureProjectCreated,
+		EnsureProjectConfigured,
+		EnsureStateReady,
+	}
 	for _, operation := range operations {
 		result, err := operation(adapter)
 		if err != nil || result.RequeueRequest {
@@ -177,7 +148,13 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 	return r.doNotRequeue()
 }
 
-func (r *ReconcileProjectReference) getGcpClient(projectID string, credSecretNamespace string, credSecretName string, logger logr.Logger) (gcpclient.Client, error) {
+func (r *ReconcileProjectReference) getGcpClient(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger) (gcpclient.Client, error) {
+	credSecretNamespace := operatorNamespace
+	credSecretName := orgGcpSecretName
+	if projectReference.Spec.CCS {
+		credSecretNamespace = projectReference.Spec.CCSSecretRef.Namespace
+		credSecretName = projectReference.Spec.CCSSecretRef.Name
+	}
 	// Get org creds from secret
 	creds, err := util.GetGCPCredentialsFromSecret(r.client, credSecretNamespace, credSecretName)
 	if err != nil {
@@ -186,7 +163,7 @@ func (r *ReconcileProjectReference) getGcpClient(projectID string, credSecretNam
 	}
 
 	// Get gcpclient with creds
-	gcpClient, err := r.gcpClientBuilder(projectID, creds)
+	gcpClient, err := r.gcpClientBuilder(projectReference.Spec.GCPProjectID, creds)
 	if err != nil {
 		return nil, operrors.Wrap(err, fmt.Sprintf("could not get gcp client with secret: %s, for namespace %s", orgGcpSecretName, operatorNamespace))
 	}

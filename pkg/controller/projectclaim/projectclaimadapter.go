@@ -90,8 +90,9 @@ func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1a
 				Name:      projectClaim.GetName(),
 				Namespace: projectClaim.GetNamespace(),
 			},
-			LegalEntity: *projectClaim.Spec.LegalEntity.DeepCopy(),
-			CCS:         projectClaim.Spec.CCS,
+			LegalEntity:  *projectClaim.Spec.LegalEntity.DeepCopy(),
+			CCS:          projectClaim.Spec.CCS,
+			CCSSecretRef: *projectClaim.Spec.CCSSecretRef.DeepCopy(),
 		},
 	}
 }
