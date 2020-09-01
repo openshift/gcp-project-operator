@@ -24,24 +24,50 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // ProjectClaimSpec defines the desired state of ProjectClaim
+// +k8s:openapi-gen=true
 type ProjectClaimSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ProjectClaim. Edit ProjectClaim_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	LegalEntity            LegalEntity    `json:"legalEntity"`
+	GCPCredentialSecret    NamespacedName `json:"gcpCredentialSecret"`
+	Region                 string         `json:"region"`
+	GCPProjectID           string         `json:"gcpProjectID,omitempty"`
+	ProjectReferenceCRLink NamespacedName `json:"projectReferenceCRLink,omitempty"`
+	AvailabilityZones      []string       `json:"availabilityZones,omitempty"`
 }
 
 // ProjectClaimStatus defines the observed state of ProjectClaim
+// +k8s:openapi-gen=true
 type ProjectClaimStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Conditions []Condition `json:"conditions"`
+	State      ClaimStatus `json:"state"`
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
+// ClaimStatus is a valid value from ProjectClaim.Status
+type ClaimStatus string
+
+const (
+	// ClaimStatusPending pending status for a claim
+	ClaimStatusPending ClaimStatus = "Pending"
+	// ClaimStatusPendingProject pending project status for a claim
+	ClaimStatusPendingProject ClaimStatus = "PendingProject"
+	// ClaimStatusReady ready status for a claim
+	ClaimStatusReady ClaimStatus = "Ready"
+	// ClaimStatusError error status for a claim
+	ClaimStatusError ClaimStatus = "Error"
+	// ClaimStatusVerification pending verification status for a claim
+	ClaimStatusVerification ClaimStatus = "Verification"
+)
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // ProjectClaim is the Schema for the projectclaims API
+// +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state",description="Status of the project claim"
+// +kubebuilder:printcolumn:name="GCPProjectID",type="string",JSONPath=".spec.gcpProjectID",description="ID of the GCP Project that has been created"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Age since the project claim was created"
 type ProjectClaim struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -51,6 +77,7 @@ type ProjectClaim struct {
 }
 
 // +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ProjectClaimList contains a list of ProjectClaim
 type ProjectClaimList struct {

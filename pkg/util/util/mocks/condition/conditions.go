@@ -6,6 +6,7 @@ package condition
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	v1alpha1 "github.com/openshift/gcp-project-operator/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	reflect "reflect"
 )

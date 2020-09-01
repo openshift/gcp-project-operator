@@ -20,37 +20,62 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// ProjectReferenceSpec defines the desired state of ProjectReference
+// ProjectReferenceSpec defines the desired state of Project
+// +k8s:openapi-gen=true
 type ProjectReferenceSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of ProjectReference. Edit ProjectReference_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	GCPProjectID       string         `json:"gcpProjectID,omitempty"`
+	ProjectClaimCRLink NamespacedName `json:"projectClaimCRLink"`
+	LegalEntity        LegalEntity    `json:"legalEntity"`
 }
 
-// ProjectReferenceStatus defines the observed state of ProjectReference
+// ProjectReferenceStatus defines the observed state of Project
+// +k8s:openapi-gen=true
 type ProjectReferenceStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Conditions []Condition           `json:"conditions"`
+	State      ProjectReferenceState `json:"state,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
 
+// PrpojectReferenceState is a valid value from ProjectReference.Status
+type ProjectReferenceState string
+
+// ProjectReferenceNamespace namespace, where ProjectReference CRs will be created
+const (
+	ProjectReferenceNamespace string = "gcp-project-operator"
+)
+
+const (
+	// ProjectReferenceStatusCreating creating status for a ProjectReference CR
+	ProjectReferenceStatusCreating ProjectReferenceState = "Creating"
+	// ProjectReferenceStatusReady ready status for a ProjectReference CR
+	ProjectReferenceStatusReady ProjectReferenceState = "Ready"
+	// ProjectReferenceStatusError error status for a ProjectReference CR
+	ProjectReferenceStatusError ProjectReferenceState = "Error"
+	// ProjectReferenceStatusVerification pending verification status for a ProjectReference CR
+	ProjectReferenceStatusVerification ProjectReferenceState = "Verification"
+)
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ProjectReference is the Schema for the ProjectReferences API
+// +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state",description="Status of the ProjectReference"
+// +kubebuilder:printcolumn:name="ClaimName",type="string",JSONPath=".spec.projectClaimCRLink.name",description="Name of corresponding project claim CR"
+// +kubebuilder:printcolumn:name="ClaimNameSpace",type="string",JSONPath=".spec.projectClaimCRLink.namespace",description="Namesspace of corresponding project claim CR"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Age since the ProjectReference was created"
 // ProjectReference is the Schema for the projectreferences API
 type ProjectReference struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   ProjectReferenceSpec   `json:"spec,omitempty"`
-	Status ProjectReferenceStatus `json:"status,omitempty"`
+	Status ProjectReferenceStatus `json:"status"`
 }
 
 // +kubebuilder:object:root=true
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ProjectReferenceList contains a list of ProjectReference
 type ProjectReferenceList struct {

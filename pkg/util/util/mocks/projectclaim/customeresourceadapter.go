@@ -6,6 +6,7 @@ package projectclaim
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	projectclaim "github.com/openshift/gcp-project-operator/controllers"
 	util "github.com/openshift/gcp-project-operator/pkg/util"
 	reflect "reflect"
 )
