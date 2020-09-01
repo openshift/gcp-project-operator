@@ -173,6 +173,9 @@ func EnsureProjectID(adapter *ReferenceAdapter) (gcputil.OperationResult, error)
 }
 
 func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) {
+	if r.isCCS() {
+		return gcputil.ContinueProcessing()
+	}
 	configMap, err := r.getConfigMap()
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not get ConfigMap: %s Operator Namespace: %s", orgGcpConfigMap, operatorNamespace)))
@@ -199,6 +202,10 @@ func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) 
 	}
 
 	return gcputil.ContinueProcessing()
+}
+
+func (r *ReferenceAdapter) isCCS() bool {
+	return r.ProjectReference.Spec.CCS
 }
 
 func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, error) {
