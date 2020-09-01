@@ -1,0 +1,7 @@
+apiVersion: gcp.managed.openshift.io.my.domain/v1alpha1
+kind: ProjectReference
+metadata:
+  name: projectreference-sample
+spec:
+  # Add fields here
+  foo: bar

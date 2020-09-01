@@ -1,0 +1,24 @@
+# permissions for end users to edit projectreferences.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: projectreference-editor-role
+rules:
+- apiGroups:
+  - gcp.managed.openshift.io.my.domain
+  resources:
+  - projectreferences
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - gcp.managed.openshift.io.my.domain
+  resources:
+  - projectreferences/status
+  verbs:
+  - get

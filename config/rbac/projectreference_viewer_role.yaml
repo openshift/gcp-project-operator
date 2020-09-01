@@ -1,0 +1,20 @@
+# permissions for end users to view projectreferences.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: projectreference-viewer-role
+rules:
+- apiGroups:
+  - gcp.managed.openshift.io.my.domain
+  resources:
+  - projectreferences
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - gcp.managed.openshift.io.my.domain
+  resources:
+  - projectreferences/status
+  verbs:
+  - get

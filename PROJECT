@@ -6,6 +6,9 @@ resources:
 - group: gcp.managed.openshift.io
   kind: ProjectClaim
   version: v1alpha1
+- group: gcp.managed.openshift.io
+  kind: ProjectReference
+  version: v1alpha1
 version: 3-alpha
 plugins:
   go.sdk.operatorframework.io/v2-alpha: {}
