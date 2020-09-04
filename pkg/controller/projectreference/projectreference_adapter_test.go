@@ -27,18 +27,9 @@ import (
 )
 
 var (
-	fakeError            = errors.New("fakeError")
-	stopProcessingResult = util.OperationResult{
-		RequeueDelay:   0,
-		RequeueRequest: false,
-		CancelRequest:  true,
-	}
-
-	continueProcessingResult = util.OperationResult{
-		RequeueDelay:   0,
-		RequeueRequest: false,
-		CancelRequest:  false,
-	}
+	fakeError               = errors.New("fakeError")
+	stopProcessingResult, _ = util.StopProcessing()
+	continueProcessingResult, _ = util.ContinueProcessing()
 )
 
 var _ = Describe("ProjectreferenceAdapter", func() {
