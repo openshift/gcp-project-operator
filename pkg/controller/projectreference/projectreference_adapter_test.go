@@ -27,8 +27,8 @@ import (
 )
 
 var (
-	fakeError               = errors.New("fakeError")
-	stopProcessingResult, _ = util.StopProcessing()
+	fakeError                   = errors.New("fakeError")
+	stopProcessingResult, _     = util.StopProcessing()
 	continueProcessingResult, _ = util.ContinueProcessing()
 )
 
