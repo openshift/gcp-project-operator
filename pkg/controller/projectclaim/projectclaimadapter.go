@@ -51,7 +51,6 @@ var supportedRegions = map[string]bool{
 
 	// Regions below don't have enough quota configured by default, but our org has sufficient quota
 	"asia-east2":   true,
-	"asia-south1":  true,
 	"europe-west2": true,
 	"us-west2":     true,
 
@@ -66,6 +65,7 @@ var supportedRegions = map[string]bool{
 	// "europe-west6":            true,
 	// "europe-north1":           true,
 	// "asia-northeast2":         true,
+	// "asia-south1":             true,
 }
 
 func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, manager condition.Conditions) *ProjectClaimAdapter {
