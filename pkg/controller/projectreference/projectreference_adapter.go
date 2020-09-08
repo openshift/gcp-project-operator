@@ -198,7 +198,7 @@ func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) 
 	r.logger.V(1).Info("Configuring Billing APIS")
 	err = r.configureBillingAPI(configMap)
 	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring APIS"))
+		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring Billing APIS"))
 	}
 
 	return gcputil.ContinueProcessing()
@@ -418,7 +418,7 @@ func (r *ReferenceAdapter) configureBillingAPI(config configmap.OperatorConfigMa
 		r.logger.Info("Enabling Billing API")
 		err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
 		if err != nil {
-			return operrors.Wrap(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
+			return operrors.Wrap(err, fmt.Sprintf("Error enabling cloudbilling.googleapis.com api for project %s", r.ProjectReference.Spec.GCPProjectID))
 		}
 	}
 
