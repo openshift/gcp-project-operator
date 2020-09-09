@@ -163,7 +163,7 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (gcputil.Operation
 		c.projectClaim.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := c.client.Status().Update(context.TODO(), c.projectClaim)
 		if err != nil {
-			gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize projectclaim"))
+			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize projectclaim"))
 		}
 		return gcputil.StopProcessing()
 	}
@@ -278,7 +278,8 @@ func (c *ProjectClaimAdapter) IsRegionSupported() error {
 func (c *ProjectClaimAdapter) EnsureRegionSupported() (gcputil.OperationResult, error) {
 	if err := c.IsRegionSupported(); err != nil {
 		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
-		c.StatusUpdate()
+		// TODO: error check
+		_ = c.StatusUpdate()
 		return gcputil.RequeueWithError(operrors.Wrap(err, ""))
 	}
 	return gcputil.ContinueProcessing()

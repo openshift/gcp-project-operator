@@ -278,7 +278,7 @@ var _ = Describe("Customresourceadapter", func() {
 					currentState = gcpv1alpha1.ClaimStatusReady
 				})
 				It("doesn't change the ProjectClaim state", func() {
-					adapter.EnsureProjectClaimState(requestedState)
+					_, _ = adapter.EnsureProjectClaimState(requestedState)
 					Expect(projectClaim.Status.State).To(Equal(currentState))
 				})
 			})
@@ -289,7 +289,7 @@ var _ = Describe("Customresourceadapter", func() {
 				})
 				It("updates the state to Pending", func() {
 					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
-					adapter.EnsureProjectClaimState(requestedState)
+					_, _ = adapter.EnsureProjectClaimState(requestedState)
 					Expect(projectClaim.Status.State).To(Equal(requestedState))
 				})
 			})
@@ -305,7 +305,7 @@ var _ = Describe("Customresourceadapter", func() {
 					currentState = gcpv1alpha1.ClaimStatusReady
 				})
 				It("doesn't change the ProjectClaim state", func() {
-					adapter.EnsureProjectClaimState(requestedState)
+					_, _ = adapter.EnsureProjectClaimState(requestedState)
 					Expect(projectClaim.Status.State).To(Equal(currentState))
 				})
 			})
@@ -316,7 +316,7 @@ var _ = Describe("Customresourceadapter", func() {
 				})
 				It("updates the state to PendingProject", func() {
 					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
-					adapter.EnsureProjectClaimState(requestedState)
+					_, _ = adapter.EnsureProjectClaimState(requestedState)
 					Expect(projectClaim.Status.State).To(Equal(requestedState))
 				})
 			})
@@ -340,7 +340,8 @@ var _ = Describe("Customresourceadapter", func() {
 					mockClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
 					mockConditions.EXPECT().SetCondition(gomock.Any(), conditionType, corev1.ConditionTrue, reason, err.Error()).Times(1)
-					adapter.SetProjectClaimCondition(reason, err)
+					errTemp := adapter.SetProjectClaimCondition(reason, err)
+					Expect(errTemp).To(BeNil())
 				})
 			})
 			Context("when the err has been resolved", func() {
@@ -351,7 +352,8 @@ var _ = Describe("Customresourceadapter", func() {
 					mockClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
 					mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "ReconcileErrorResolved", "").Times(1)
-					adapter.SetProjectClaimCondition(reason, nil)
+					errTemp := adapter.SetProjectClaimCondition(reason, nil)
+					Expect(errTemp).To(BeNil())
 				})
 			})
 		})

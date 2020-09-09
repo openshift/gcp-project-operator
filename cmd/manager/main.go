@@ -115,7 +115,8 @@ func run() error {
 
 	log.V(2).Info("Initalize and start cache")
 	cache := mgr.GetCache()
-	go cache.Start(stopCh)
+	// TODO: Error check?
+	go func() { _ = cache.Start(stopCh) }()
 	cache.WaitForCacheSync(stopCh)
 
 	log.Info("Starting the 'gcp-project-operator' Reconcile loop")

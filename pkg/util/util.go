@@ -13,11 +13,6 @@ import (
 	kubeclientpkg "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	// secret information
-	gcpSecretName = "gcp"
-)
-
 // SecretExists returns a boolean to the caller based on the secretName and namespace args.
 func SecretExists(kubeClient client.Client, secretName, namespace string) bool {
 	s := &corev1.Secret{}
