@@ -25,8 +25,8 @@ go get -u github.com/onsi/gomega/...     # fetches the matcher library
 ## How to run the tests
 
 * You can run the tests using `make gotest` or `go test ./...`
-* You can generate the mocks using `make generate`
-* You can generate the new testing coverage badge using `make coverage` (created the badge and `coverage.out` report)
+* You can generate the mocks using `make gogenerate`
+* You can generate the new testing coverage badge using `make gopherbadger` (created the badge and `coverage.out` report)
 
 To see more details about the testing coverage, use `go tool cover -html=coverage.out` in your local machine.
 

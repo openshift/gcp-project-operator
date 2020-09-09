@@ -13,4 +13,4 @@ _Fixes #_
 
 ### Pre-checks:
 - [ ] manually tested latest changes against crc/k8s
-- [ ] run the `make coverage` command to generate new calculated coverage
+- [ ] run the `make gopherbadger` command to generate new calculated coverage

@@ -1,0 +1,27 @@
+#!/bin/bash -e
+
+source $CONVENTION_ROOT/_lib/common.sh
+
+# No PRE
+[[ "$1" == "PRE" ]] && exit 0
+
+# Expect POST
+[[ "$1" == "POST" ]] || err "Got a parameter I don't understand: '$1'. Did the infrastructure change?"
+
+echo "Copying .codecov.yml to your repository root."
+cp ${HERE}/.codecov.yml $REPO_ROOT
+
+cat <<EOF
+=====================
+THINGS YOU NEED TO DO
+=====================
+- Make sure the following line is in your base Makefile:
+
+include boilerplate/generated-includes.mk
+
+- Remove any other 'include' lines, unless they're for things truly
+  unique to your repository. (Otherwise, consider proposing them to
+  boilerplate.)
+
+- Delete any obsolete files you're no longer including.
+EOF

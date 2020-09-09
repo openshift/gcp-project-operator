@@ -1,24 +1,10 @@
-SHELL := /usr/bin/env bash
+# Include boilerplate's generated Makefile libraries
+include boilerplate/generated-includes.mk
 
-OPERATOR_DOCKERFILE = ./build/Dockerfile
+.PHONY: update-boilerplate
+update-boilerplate:
+	@boilerplate/update
 
-# Include shared Makefiles
-include project.mk
-include standard.mk
-
-default: gobuild
-
-# Extend Makefile after here
-
-.PHONY: docker-build
-docker-build: build
-
-generate:
-	go get github.com/golang/mock/mockgen
-	go get golang.org/x/tools/cmd/goimports
-	go generate pkg/gcpclient/client.go
-	go generate pkg/controller/projectclaim/projectclaim_controller.go
-	go generate pkg/condition/conditions.go
-coverage:
+gopherbadger:
 	go get github.com/jpoles1/gopherbadger
 	gopherbadger
