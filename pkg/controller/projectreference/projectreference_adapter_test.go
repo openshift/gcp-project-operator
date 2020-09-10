@@ -2,34 +2,26 @@ package projectreference_test
 
 import (
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	clusterapi "github.com/openshift/cluster-api/pkg/util"
-	"google.golang.org/api/cloudresourcemanager/v1"
-	"google.golang.org/api/iam/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectreference"
-	"github.com/openshift/gcp-project-operator/pkg/util"
-	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
+	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockconditions "github.com/openshift/gcp-project-operator/pkg/util/mocks/condition"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
-)
-
-var (
-	fakeError                   = errors.New("fakeError")
-	stopProcessingResult, _     = util.StopProcessing()
-	continueProcessingResult, _ = util.ContinueProcessing()
+	"google.golang.org/api/cloudresourcemanager/v1"
+	"google.golang.org/api/iam/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var _ = Describe("ProjectreferenceAdapter", func() {
@@ -267,436 +259,263 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		})
 	})
 
-	Context("EnsureProjectCreated", func() {
-
-		Context("When CCS project", func() {
-			JustBeforeEach(func() {
-				projectReference.Spec.CCS = true
-			})
-
-			It("it continues processing", func() {
-				result, err := EnsureProjectCreated(adapter)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(continueProcessingResult))
-			})
-		})
-
-		Context("When non-CCS project", func() {
-			var (
-				configMap corev1.ConfigMap
-			)
-
-			BeforeEach(func() {
-				configMap = corev1.ConfigMap{
-					Data: map[string]string{
-						"billingAccount": "fake-account",
-						"parentFolderId": "fake-folder",
-					},
-				}
-			})
-
-			Context("When it fails to validate operator configmap", func() {
-				It("requeues with error", func() {
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
-						Data: map[string]string{},
-					})
-					_, err := EnsureProjectCreated(adapter)
-					Expect(err).To(HaveOccurred())
-				})
-			})
-
-			Context("When it fails to create Project", func() {
-
-				Context("When it fails to get project", func() {
-					It("It requeues with error", func() {
-						mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
-						mockGCPClient.EXPECT().ListProjects().Return(nil, fakeError)
-						_, err := EnsureProjectCreated(adapter)
-						Expect(err).To(HaveOccurred())
-					})
-				})
-
-				Context("When the lifecycleStatus is LIFECYCLE_STATE_UNSPECIFIED", func() {
-					It("It requeues with error", func() {
-						mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
-						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "foo", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-						_, err := EnsureProjectCreated(adapter)
-						Expect(err).To(HaveOccurred())
-					})
-				})
-
-				Context("When the lifecycleStatus is DELETE_REQUESTED and fails to update projectReference status", func() {
-					It("It requeues with error", func() {
-						mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
-						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "DELETE_REQUESTED", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
-						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError)
-						_, err := EnsureProjectCreated(adapter)
-						Expect(err).To(HaveOccurred())
-					})
-				})
-
-				Context("When the project is inactive and update projectReference status successfully", func() {
-					It("It requeues with error", func() {
-						mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
-						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "DELETE_REQUESTED", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
-						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-						result, err := EnsureProjectCreated(adapter)
-						// No error returned in this case.
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal(stopProcessingResult))
-					})
-				})
-
-				Context("When the project doesn't exist and fails to create one", func() {
-
-					Context("When fails to clear projectID", func() {
-						It("It requeues with error", func() {
-							mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
-							mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: "foo"}}, nil)
-							mockGCPClient.EXPECT().CreateProject(gomock.Any()).Return(nil, fakeError)
-							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError)
-							_, err := EnsureProjectCreated(adapter)
-							Expect(err).To(HaveOccurred())
-							Expect(strings.Contains(err.Error(), "could not clear project ID")).To(BeTrue())
-						})
-					})
-
-					Context("When it clears projectID successfully", func() {
-						It("It requeues with error", func() {
-							mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
-							mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: "foo"}}, nil)
-							mockGCPClient.EXPECT().CreateProject(gomock.Any()).Return(nil, fakeError)
-							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-							_, err := EnsureProjectCreated(adapter)
-							Expect(err).To(HaveOccurred())
-							Expect(strings.Contains(err.Error(), "could not clear project ID")).To(BeFalse())
-							Expect(strings.Contains(err.Error(), "could not create project. Parent Folder ID")).To(BeTrue())
-						})
-					})
-				})
-			})
-
-			Context("When it fails to configure Billing API", func() {
-				Context("When it fails to list APIs", func() {
-					It("It requeues with error", func() {
-						mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
-						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(nil, fakeError)
-						_, err := EnsureProjectCreated(adapter)
-						Expect(err).To(HaveOccurred())
-					})
-				})
-
-				Context("When it fails to enable Billing API", func() {
-					It("It requeues with error", func() {
-						mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
-						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return([]string{"foo"}, nil)
-						mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).Return(fakeError)
-						_, err := EnsureProjectCreated(adapter)
-						Expect(err).To(HaveOccurred())
-						Expect(strings.Contains(err.Error(), "Error enabling cloudbilling.googleapis.com api for project")).To(BeTrue())
-					})
-				})
-
-				Context("When it fails to create Cloud Billing account", func() {
-					It("It requeues with error", func() {
-						mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
-						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return([]string{"cloudbilling.googleapis.com"}, nil)
-						mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(fakeError)
-						_, err := EnsureProjectCreated(adapter)
-						Expect(err).To(HaveOccurred())
-						Expect(strings.Contains(err.Error(), "error creating CloudBilling")).To(BeTrue())
-					})
-				})
-
-			})
-		})
-
-	})
-
 	Context("EnsureProjectConfigured", func() {
+		var (
+			configMap corev1.ConfigMap
+		)
+
+		BeforeEach(func() {
+			configMap = corev1.ConfigMap{
+				Data: map[string]string{
+					"billingAccount": "fake-account",
+					"parentFolderId": "fake-folder",
+				},
+			}
+		})
+
 		JustBeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "Some fake id"
 			projectReference.Status.State = api.ProjectReferenceStatusCreating
 		})
 
-		Context("When it fails to configure APIS", func() {
-			Context("When it fails to list APIs", func() {
-				It("It requeues with error", func() {
-					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return([]string{}, fakeError)
-					_, err := EnsureProjectConfigured(adapter)
-					Expect(err).To(HaveOccurred())
+		Context("When it fails to get Parent Folder ID", func() {
+			It("requeues with error", func() {
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
+					Data: map[string]string{},
 				})
-			})
-
-			Context("When it fails to enable APIs", func() {
-				It("It requeues with error", func() {
-					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return([]string{}, nil)
-					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).Return(fakeError)
-					_, err := EnsureProjectConfigured(adapter)
-					Expect(err).To(HaveOccurred())
-				})
+				_, err := EnsureProjectConfigured(adapter)
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
-		Context("When it fails to configure Service Accounts", func() {
-			Context("When it fails to get Service Accounts", func() {
-				Context("When it fails to create Service Account", func() {
-					Context("When it fails to create Service Account with fakeError", func() {
-						It("It requeues with error", func() {
-							mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-							mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(nil, fakeError)
-							mockGCPClient.EXPECT().CreateServiceAccount(gomock.Any(), gomock.Any()).Return(nil, fakeError)
-							_, err := EnsureProjectConfigured(adapter)
-							Expect(err).To(HaveOccurred())
-						})
-					})
+		Context("When it fails to create Project", func() {
 
-					Context("When it fails to create Service Account with matchesAlreadyExistsError", func() {
-						It("It requeues with delay", func() {
-							mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-							mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(nil, fakeError)
-							mockGCPClient.EXPECT().CreateServiceAccount(gomock.Any(), gomock.Any()).Return(nil, errors.New("googleapi: Error 409:foo"))
-							result, err := EnsureProjectConfigured(adapter)
-							Expect(err).ToNot(HaveOccurred())
-							Expect(result).To(Equal(util.OperationResult{
-								RequeueDelay:   30 * time.Second,
-								RequeueRequest: true,
-								CancelRequest:  false,
-							}))
-						})
-					})
-				})
-			})
-
-			Context("When it fails to configure IAM policy", func() {
-				Context("When it fails to get IAM Policy", func() {
-					It("It requeues with error", func() {
-						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-						mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(nil, fakeError)
-						_, err := EnsureProjectConfigured(adapter)
-						Expect(err).To(HaveOccurred())
-					})
-				})
-
-				Context("When it fails to set IAM Policy", func() {
-					It("It requeues with error", func() {
-						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-						mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, fakeError)
-						_, err := EnsureProjectConfigured(adapter)
-						Expect(err).To(HaveOccurred())
-					})
-				})
-			})
-		})
-
-		Context("When it fails to create credentials", func() {
-			Context("When it fails to get Service Account", func() {
+			Context("When the project is Inactive", func() {
 				It("It requeues with error", func() {
-					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(nil, fakeError)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
+						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
+					})
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
 
-			Context("When it fails to create Service Account Key", func() {
+			Context("When the project is Inactive and fails to update", func() {
 				It("It requeues with error", func() {
-					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(nil, fakeError)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
+						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
+					})
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
 
-			Context("When it fails to create secret", func() {
+			Context("When the project is Inactive and fails to update", func() {
 				It("It requeues with error", func() {
-					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
-					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(fakeError)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
+						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
+					})
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
 			})
-		})
 
-		Context("When it create credentials successfully", func() {
-			Context("Credential Secret already exists", func() {
-				It("Continue execute", func() {
-					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			Context("When the project is Inactive and fails to update", func() {
+				It("It requeues with error", func() {
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
+						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
+					})
 					_, err := EnsureProjectConfigured(adapter)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 
-			Context("Create a secret successfully", func() {
-				It("Continue execute", func() {
-					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
+			Context("When failing to configure APIS", func() {
+				It("It requeues with error", func() {
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
+						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
+					})
+					_, err := EnsureProjectConfigured(adapter)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+			Context("When the failing to configure Service Accounts", func() {
+				It("It requeues with error", func() {
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
+						Data: map[string]string{"orgParentFolderID": "Fake Folder ID"},
+					})
+					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
+					_, err := EnsureProjectConfigured(adapter)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+			Context("When the failing to create credentials", func() {
+				It("It requeues with error", func() {
+					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).AnyTimes()
+					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
+					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
+					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Ooops not found")).Times(1)
+					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
+					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(errors.New("Fake Create Error"))
+					_, err := EnsureProjectConfigured(adapter)
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+			Context("When processes the project reference correctly", func() {
+				It("It does not requeue", func() {
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
+					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any())
+					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
+					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
+					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Ooops not found")).Times(1)
+					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
-		})
-	})
 
-	Context("IsDeletionRequested", func() {
-		Context("If there is a deletionTimestamp", func() {
-			It("returns true", func() {
-				deletionTime := metav1.NewTime(time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC))
-				projectReference.SetDeletionTimestamp(&deletionTime)
-				Expect(adapter.IsDeletionRequested()).To(BeTrue())
-			})
 		})
-		Context("If there is no deletionTimestamp", func() {
-			It("returns false", func() {
-				projectReference.SetDeletionTimestamp(nil)
-				Expect(adapter.IsDeletionRequested()).NotTo(BeTrue())
-			})
-		})
-	})
 
-	Context("EnsureFinalizerDeleted", func() {
-		Context("When the finalizer exists", func() {
-			It("removes the finalizer and updates the instance", func() {
-				adapter.ProjectReference.SetFinalizers([]string{FinalizerName})
-				mockKubeClient.EXPECT().Update(gomock.Any(), projectReference)
-				err := adapter.EnsureFinalizerDeleted()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(projectReference.Finalizers).ToNot(ContainElement(FinalizerName))
+		Context("IsDeletionRequested", func() {
+			Context("If there is a deletionTimestamp", func() {
+				It("returns true", func() {
+					deletionTime := metav1.NewTime(time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC))
+					projectReference.SetDeletionTimestamp(&deletionTime)
+					Expect(adapter.IsDeletionRequested()).To(BeTrue())
+				})
+			})
+			Context("If there is no deletionTimestamp", func() {
+				It("returns false", func() {
+					projectReference.SetDeletionTimestamp(nil)
+					Expect(adapter.IsDeletionRequested()).NotTo(BeTrue())
+				})
 			})
 		})
-		Context("When the finalizer does not exist", func() {
-			It("does nothing", func() {
-				projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), FinalizerName))
-				err := adapter.EnsureFinalizerDeleted()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(projectReference.Finalizers).ToNot(ContainElement(FinalizerName))
-			})
-		})
-	})
 
-	Context("EnsureFinalizerAdded", func() {
-		Context("When the finalizer does not exist", func() {
-			It("adds the finalizer and updates the instance", func() {
-				projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), FinalizerName))
-				mockKubeClient.EXPECT().Update(gomock.Any(), projectReference)
-				_, err := EnsureFinalizerAdded(adapter)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(projectReference.Finalizers).To(ContainElement(FinalizerName))
+		Context("EnsureFinalizerDeleted", func() {
+			Context("When the finalizer exists", func() {
+				It("removes the finalizer and updates the instance", func() {
+					adapter.ProjectReference.SetFinalizers([]string{FinalizerName})
+					mockKubeClient.EXPECT().Update(gomock.Any(), projectReference)
+					err := adapter.EnsureFinalizerDeleted()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(projectReference.Finalizers).ToNot(ContainElement(FinalizerName))
+				})
+			})
+			Context("When the finalizer does not exist", func() {
+				It("does nothing", func() {
+					projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), FinalizerName))
+					err := adapter.EnsureFinalizerDeleted()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(projectReference.Finalizers).ToNot(ContainElement(FinalizerName))
+				})
 			})
 		})
-		Context("When the finalizer exists", func() {
-			It("does nothing", func() {
-				adapter.ProjectReference.SetFinalizers([]string{FinalizerName})
-				_, err := EnsureFinalizerAdded(adapter)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(projectReference.Finalizers).To(ContainElement(FinalizerName))
-			})
-		})
-	})
 
-	Context("EnsureProjectCleanedUp", func() {
-		var (
-			projectState string
-		)
-		JustBeforeEach(func() {
-			mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: projectState, ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+		Context("EnsureFinalizerAdded", func() {
+			Context("When the finalizer does not exist", func() {
+				It("adds the finalizer and updates the instance", func() {
+					projectReference.SetFinalizers(clusterapi.Filter(projectReference.GetFinalizers(), FinalizerName))
+					mockKubeClient.EXPECT().Update(gomock.Any(), projectReference)
+					_, err := EnsureFinalizerAdded(adapter)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(projectReference.Finalizers).To(ContainElement(FinalizerName))
+				})
+			})
+			Context("When the finalizer exists", func() {
+				It("does nothing", func() {
+					adapter.ProjectReference.SetFinalizers([]string{FinalizerName})
+					_, err := EnsureFinalizerAdded(adapter)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(projectReference.Finalizers).To(ContainElement(FinalizerName))
+				})
+			})
 		})
-		BeforeEach(func() {
-			projectReference.Spec.GCPProjectID = "fake-id"
-			projectState = "ACTIVE"
-		})
-		Context("When the lifecycleStatus is unknown", func() {
+
+		Context("EnsureProjectCleanedUp", func() {
+			var (
+				projectState string
+			)
+			JustBeforeEach(func() {
+				mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: projectState, ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+			})
 			BeforeEach(func() {
-				projectState = "UNKNOWN"
+				projectReference.Spec.GCPProjectID = "fake-id"
+				projectState = "ACTIVE"
 			})
-			It("returns an error", func() {
-				err := adapter.EnsureProjectCleanedUp()
-				Expect(err).To(HaveOccurred())
+			Context("When the lifecycleStatus is unknown", func() {
+				BeforeEach(func() {
+					projectState = "UNKNOWN"
+				})
+				It("returns an error", func() {
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+			Context("When the lifecycleStatus is LIFECYCLE_STATE_UNSPECIFIED", func() {
+				BeforeEach(func() {
+					projectState = "LIFECYCLE_STATE_UNSPECIFIED"
+				})
+				It("returns an error", func() {
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+			Context("When the lifecycleStatus is DELETE_REQUESTED", func() {
+				BeforeEach(func() {
+					projectState = "DELETE_REQUESTED"
+				})
+				It("deletes the project", func() {
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("When the lifecycleStatus is ACTIVE", func() {
+				It("deletes the project", func() {
+					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("When it cannot delete the project", func() {
+				It("returns an error", func() {
+					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).To(HaveOccurred())
+				})
 			})
 		})
-		Context("When the lifecycleStatus is LIFECYCLE_STATE_UNSPECIFIED", func() {
+
+		Context("UpdateProjectID", func() {
 			BeforeEach(func() {
-				projectState = "LIFECYCLE_STATE_UNSPECIFIED"
+				mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
 			})
-			It("returns an error", func() {
-				err := adapter.EnsureProjectCleanedUp()
-				Expect(err).To(HaveOccurred())
-			})
-		})
-		Context("When the lifecycleStatus is DELETE_REQUESTED", func() {
-			BeforeEach(func() {
-				projectState = "DELETE_REQUESTED"
-			})
-			It("deletes the project", func() {
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
-				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
-				err := adapter.EnsureProjectCleanedUp()
+			It("Sets a new projectid", func() {
+				projectIDBefore := projectReference.Spec.GCPProjectID
+				err := adapter.UpdateProjectID()
 				Expect(err).NotTo(HaveOccurred())
+				Expect(projectReference.Spec.GCPProjectID).NotTo(Equal(projectIDBefore))
 			})
-		})
-		Context("When the lifecycleStatus is ACTIVE", func() {
-			It("deletes the project", func() {
-				mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
-				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
-				err := adapter.EnsureProjectCleanedUp()
-				Expect(err).NotTo(HaveOccurred())
-			})
-		})
-		Context("When it cannot delete the project", func() {
-			It("returns an error", func() {
-				mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
-				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
-				err := adapter.EnsureProjectCleanedUp()
-				Expect(err).To(HaveOccurred())
-			})
-		})
-	})
 
-	Context("UpdateProjectID", func() {
-		BeforeEach(func() {
-			mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
 		})
-		It("Sets a new projectid", func() {
-			projectIDBefore := projectReference.Spec.GCPProjectID
-			err := adapter.UpdateProjectID()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(projectReference.Spec.GCPProjectID).NotTo(Equal(projectIDBefore))
-		})
-
 	})
 })

@@ -13,9 +13,6 @@ type ProjectClaimSpec struct {
 	GCPProjectID           string         `json:"gcpProjectID,omitempty"`
 	ProjectReferenceCRLink NamespacedName `json:"projectReferenceCRLink,omitempty"`
 	AvailabilityZones      []string       `json:"availabilityZones,omitempty"`
-	CCS                    bool           `json:"ccs,omitempty"`
-	CCSSecretRef           NamespacedName `json:"ccsSecretRef,omitempty"`
-	CCSProjectID           string         `json:"ccsProjectID,omitempty"`
 }
 
 // ProjectClaimStatus defines the observed state of ProjectClaim
