@@ -17,8 +17,8 @@ type ProjectReferenceSpec struct {
 // ProjectReferenceStatus defines the observed state of Project
 // +k8s:openapi-gen=true
 type ProjectReferenceStatus struct {
-	Conditions []Condition           `json:"conditions,omitempty"`
-	State      ProjectReferenceState `json:"state,omitempty"`
+	Conditions []Condition           `json:"conditions"`
+	State      ProjectReferenceState `json:"state"`
 }
 
 // ProjectReferenceState is a valid value from ProjectReference.Status

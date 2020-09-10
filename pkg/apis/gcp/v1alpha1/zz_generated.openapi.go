@@ -280,6 +280,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceStatus(ref common.ReferenceCal
 						},
 					},
 				},
+				Required: []string{"conditions", "state"},
 			},
 		},
 		Dependencies: []string{
