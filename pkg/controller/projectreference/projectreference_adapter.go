@@ -298,9 +298,11 @@ func (r *ReferenceAdapter) EnsureFinalizerDeleted() error {
 
 // EnsureProjectCleanedUp deletes the project, the secret and the finalizer if they still exist
 func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
-	err := r.deleteProject()
-	if err != nil {
-		return err
+	if !r.isCCS() {
+		err := r.deleteProject()
+		if err != nil {
+			return err
+		}
 	}
 
 	err = r.deleteCredentials()
