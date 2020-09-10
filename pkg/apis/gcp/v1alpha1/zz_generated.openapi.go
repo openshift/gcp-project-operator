@@ -206,7 +206,6 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReference(ref common.ReferenceCallback)
 						},
 					},
 				},
-				Required: []string{"status"},
 			},
 		},
 		Dependencies: []string{
@@ -281,7 +280,6 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceStatus(ref common.ReferenceCal
 						},
 					},
 				},
-				Required: []string{"conditions"},
 			},
 		},
 		Dependencies: []string{

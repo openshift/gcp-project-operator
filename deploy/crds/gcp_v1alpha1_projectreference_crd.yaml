@@ -119,11 +119,7 @@ spec:
               type: array
             state:
               type: string
-          required:
-          - conditions
           type: object
-      required:
-      - status
   version: v1alpha1
   versions:
   - name: v1alpha1
