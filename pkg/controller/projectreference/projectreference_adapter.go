@@ -67,6 +67,19 @@ var OSDRequiredRoles = []string{
 	"roles/compute.admin",
 }
 
+// CCSConsoleAccessRequiredRoles is a list of Roles that a service account
+// required to get console access of CCS Accounts
+var CCSConsoleAccessRequiredRoles = []string{
+	"roles/storage.admin",
+	"roles/dns.admin",
+	"roles/iam.securityAdmin",
+	"roles/iam.roleAdmin",
+	"roles/iam.serviceAccountAdmin",
+	"roles/iam.serviceAccountKeyAdmin",
+	"roles/iam.serviceAccountUser",
+	"roles/compute.admin",
+}
+
 //ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
 type ReferenceAdapter struct {
 	ProjectClaim     *gcpv1alpha1.ProjectClaim
@@ -75,6 +88,7 @@ type ReferenceAdapter struct {
 	kubeClient       client.Client
 	gcpClient        gcpclient.Client
 	conditionManager condition.Conditions
+	OperatorConfig   configmap.OperatorConfigMap
 }
 
 type ensureAzResult int
@@ -86,19 +100,28 @@ const (
 )
 
 // NewReferenceAdapter creates an adapter to turn what is requested in a ProjectReference into a GCP project and write the output back.
-func NewReferenceAdapter(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger, client client.Client, gcpClient gcpclient.Client, manager condition.Conditions) (*ReferenceAdapter, error) {
+func NewReferenceAdapter(
+	projectReference *gcpv1alpha1.ProjectReference,
+	logger logr.Logger, client client.Client,
+	gcpClient gcpclient.Client,
+	manager condition.Conditions,
+	cm configmap.OperatorConfigMap,
+) (*ReferenceAdapter, error) {
 	projectClaim, err := getMatchingClaimLink(projectReference, client)
 	if err != nil {
 		return &ReferenceAdapter{}, err
 	}
-	return &ReferenceAdapter{
+
+	r := &ReferenceAdapter{
 		ProjectClaim:     projectClaim,
 		ProjectReference: projectReference,
 		logger:           logger,
 		kubeClient:       client,
 		gcpClient:        gcpClient,
 		conditionManager: manager,
-	}, nil
+		OperatorConfig:   cm,
+	}
+	return r, nil
 }
 
 func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, error) {
@@ -176,12 +199,8 @@ func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) 
 	if r.isCCS() {
 		return gcputil.ContinueProcessing()
 	}
-	configMap, err := r.getConfigMap()
-	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not get ConfigMap: %s Operator Namespace: %s", orgGcpConfigMap, operatorNamespace)))
-	}
 
-	err = r.createProject(configMap.ParentFolderID)
+	err := r.createProject(r.OperatorConfig.ParentFolderID)
 	if err != nil {
 		if err == operrors.ErrInactiveProject {
 			r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
@@ -194,8 +213,9 @@ func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) 
 		return gcputil.RequeueWithError(operrors.Wrap(err, "could not create project"))
 	}
 
+	// should this be it's own function?
 	r.logger.V(1).Info("Configuring Billing APIS")
-	err = r.configureBillingAPI(configMap)
+	err = r.configureBillingAPI()
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring Billing APIS"))
 	}
@@ -214,8 +234,8 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring APIS"))
 	}
 
-	r.logger.V(1).Info("Configuring Service Account")
-	result, err := r.configureServiceAccount()
+	r.logger.V(1).Info("Configuring Service Account " + osdServiceAccountName)
+	result, err := r.configureServiceAccount(OSDRequiredRoles)
 	if err != nil || result.RequeueRequest {
 		return result, err
 	}
@@ -224,6 +244,17 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 	result, err = r.createCredentials()
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, "error creating credentials"))
+	}
+
+	if r.isCCS() {
+		r.logger.V(1).Info("Configuring Service Account Permissions for Console Access")
+		for _, email := range r.OperatorConfig.CCSConsoleAccess {
+			// TODO(yeya24): Use google API to check whether this email is
+			// for a group or a service account.
+			if err := r.SetIAMPolicy(email, CCSConsoleAccessRequiredRoles, true); err != nil {
+				return result, err
+			}
+		}
 	}
 
 	return result, nil
@@ -409,7 +440,7 @@ func (r *ReferenceAdapter) getProject(projectId string) (*cloudresourcemanager.P
 	return project, exists, err
 }
 
-func (r *ReferenceAdapter) configureBillingAPI(config configmap.OperatorConfigMap) error {
+func (r *ReferenceAdapter) configureBillingAPI() error {
 	enabledAPIs, err := r.gcpClient.ListAPIs(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
 		return err
@@ -423,7 +454,7 @@ func (r *ReferenceAdapter) configureBillingAPI(config configmap.OperatorConfigMa
 		}
 	}
 
-	err = r.gcpClient.CreateCloudBillingAccount(r.ProjectReference.Spec.GCPProjectID, config.BillingAccount)
+	err = r.gcpClient.CreateCloudBillingAccount(r.ProjectReference.Spec.GCPProjectID, r.OperatorConfig.BillingAccount)
 	if err != nil {
 		return operrors.Wrap(err, "error creating CloudBilling")
 	}
@@ -449,20 +480,7 @@ func (r *ReferenceAdapter) configureAPIS() error {
 	return nil
 }
 
-func (r *ReferenceAdapter) getConfigMap() (configmap.OperatorConfigMap, error) {
-	operatorConfigMap, err := configmap.GetOperatorConfigMap(r.kubeClient)
-	if err != nil {
-		return operatorConfigMap, operrors.Wrap(err, "could not find the OperatorConfigMap")
-	}
-
-	if err := configmap.ValidateOperatorConfigMap(operatorConfigMap); err != nil {
-		return operatorConfigMap, operrors.Wrap(err, "configmap didn't get filled properly")
-	}
-
-	return operatorConfigMap, err
-}
-
-func (r *ReferenceAdapter) configureServiceAccount() (gcputil.OperationResult, error) {
+func (r *ReferenceAdapter) configureServiceAccount(policies []string) (gcputil.OperationResult, error) {
 	// See if GCP service account exists if not create it
 	var serviceAccount *iam.ServiceAccount
 	serviceAccount, err := r.gcpClient.GetServiceAccount(osdServiceAccountName)
@@ -481,7 +499,7 @@ func (r *ReferenceAdapter) configureServiceAccount() (gcputil.OperationResult, e
 	}
 
 	r.logger.V(1).Info("Setting Service Account Policies")
-	err = r.SetIAMPolicy(serviceAccount.Email)
+	err = r.SetIAMPolicy(serviceAccount.Email, policies, false)
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not update policy on project for %s", r.ProjectReference.Spec.GCPProjectID)))
 	}
@@ -617,14 +635,14 @@ type AddorUpdateBindingResponse struct {
 }
 
 // AddOrUpdateBindings gets the policy and checks if the bindings match the required roles
-func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string) (AddorUpdateBindingResponse, error) {
+func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string, policies []string, group bool) (AddorUpdateBindingResponse, error) {
 	policy, err := r.gcpClient.GetIamPolicy(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
 		return AddorUpdateBindingResponse{}, err
 	}
 
 	//Checking if policy is modified
-	newBindings, modified := gcputil.AddOrUpdateBinding(policy.Bindings, OSDRequiredRoles, serviceAccountEmail)
+	newBindings, modified := gcputil.AddOrUpdateBinding(policy.Bindings, policies, serviceAccountEmail, group)
 
 	// add new bindings to policy
 	policy.Bindings = newBindings
@@ -635,13 +653,13 @@ func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string) (Addo
 }
 
 // SetIAMPolicy attempts to update policy if the policy needs to be modified
-func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string) error {
+func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []string, group bool) error {
 	// Checking if policy needs to be updated
 	var retry int
 	for {
 		retry++
 		time.Sleep(time.Second)
-		addorUpdateResponse, err := r.AddOrUpdateBindings(serviceAccountEmail)
+		addorUpdateResponse, err := r.AddOrUpdateBindings(serviceAccountEmail, policies, group)
 		if err != nil {
 			return err
 		}

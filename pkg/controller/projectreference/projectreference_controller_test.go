@@ -71,8 +71,10 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		}
 		configMap = corev1.ConfigMap{
 			Data: map[string]string{
-				"billingAccount": "fake-account",
-				"parentFolderId": "fake-folder",
+				"data": `
+billingAccount: fake-account
+parentFolderID: fake-folder
+`,
 			},
 		}
 	})
@@ -136,6 +138,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 					Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
 				}).Times(1),
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1),
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *projectClaim).Times(1),
 			)
 		})
@@ -234,12 +237,13 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 				Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
 			}).Times(1)
-			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *projectClaim).AnyTimes()
 		})
 
 		Context("When project id is not set", func() {
 			It("Updates the project id", func() {
 				matcher := testStructs.NewProjectReferenceMatcher()
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *projectClaim).AnyTimes()
 				mockKubeClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).NotTo(HaveOccurred())
@@ -260,6 +264,23 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			})
 		})
 
+		Context("When it fails to get operator configMap", func() {
+			It("Requeues with error", func() {
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
+				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				Expect(err).To(HaveOccurred())
+			})
+		})
+
+		Context("When it fails to validate operator configMap", func() {
+			It("Requeues with error", func() {
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
+					Data: map[string]string{},
+				})
+				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				Expect(err).To(HaveOccurred())
+			})
+		})
 	})
 
 	Context("When project claim CR is not PendingProject", func() {
@@ -270,6 +291,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 				Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
 			}).Times(1)
+			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
 			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *projectClaim).Times(1)
 		})
 		It("Gets requeued after 5 seconds", func() {
@@ -292,6 +314,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 						Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
 					}).Times(1),
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap),
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectClaimBuilder().GetProjectClaim()).Times(1),
 				)
 			})
@@ -341,25 +364,13 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 						Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
 					}).Times(1),
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap),
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectClaimBuilder().GetProjectClaim()).Times(1),
 				)
 			})
 
-			Context("When it fails to get Parent Folder ID", func() {
-				It("requeues with error", func() {
-					mockKubeClient.EXPECT().Status().Return(mockUpdater)
-					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
-						Data: map[string]string{},
-					})
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
-					Expect(err).To(HaveOccurred())
-				})
-			})
-
 			Context("When the failing to update Status to Ready", func() {
 				It("It requeues with error", func() {
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					mockGCPClient.EXPECT().ListAPIs(gomock.Any())
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
@@ -380,7 +391,6 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 
 			Context("When processes the project reference correctly", func() {
 				It("It does not requeue", func() {
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					mockGCPClient.EXPECT().ListAPIs(gomock.Any())
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
@@ -419,6 +429,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 				Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
 			}).Times(1)
+			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
 			mockGCPClient.EXPECT().ListProjects().Return(projects, nil)
 			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
