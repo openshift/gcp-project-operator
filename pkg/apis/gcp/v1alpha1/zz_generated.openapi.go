@@ -111,23 +111,6 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref common.ReferenceCallback)
 							},
 						},
 					},
-					"ccs": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
-						},
-					},
-					"ccsSecretRef": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
-						},
-					},
-					"ccsProjectID": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
-						},
-					},
 				},
 				Required: []string{"legalEntity", "gcpCredentialSecret", "region"},
 			},
@@ -149,7 +132,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimStatus(ref common.ReferenceCallbac
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.Condition"),
+										Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimCondition"),
 									},
 								},
 							},
@@ -166,7 +149,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimStatus(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.Condition"},
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimCondition"},
 	}
 }
 
@@ -235,17 +218,6 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceSpec(ref common.ReferenceCallb
 							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity"),
 						},
 					},
-					"ccs": {
-						SchemaProps: spec.SchemaProps{
-							Type:   []string{"boolean"},
-							Format: "",
-						},
-					},
-					"ccsSecretRef": {
-						SchemaProps: spec.SchemaProps{
-							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
-						},
-					},
 				},
 				Required: []string{"projectClaimCRLink", "legalEntity"},
 			},
@@ -267,7 +239,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceStatus(ref common.ReferenceCal
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.Condition"),
+										Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectReferenceCondition"),
 									},
 								},
 							},
@@ -283,6 +255,6 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceStatus(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.Condition"},
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectReferenceCondition"},
 	}
 }

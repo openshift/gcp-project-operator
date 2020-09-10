@@ -172,10 +172,7 @@ func EnsureProjectID(adapter *ReferenceAdapter) (gcputil.OperationResult, error)
 	return gcputil.StopProcessing()
 }
 
-func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) {
-	if r.isCCS() {
-		return gcputil.ContinueProcessing()
-	}
+func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, error) {
 	configMap, err := r.getConfigMap()
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not get ConfigMap: %s Operator Namespace: %s", orgGcpConfigMap, operatorNamespace)))
@@ -194,22 +191,8 @@ func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) 
 		return gcputil.RequeueWithError(operrors.Wrap(err, "could not create project"))
 	}
 
-	r.logger.V(1).Info("Configuring Billing APIS")
-	err = r.configureBillingAPI(configMap)
-	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring Billing APIS"))
-	}
-
-	return gcputil.ContinueProcessing()
-}
-
-func (r *ReferenceAdapter) isCCS() bool {
-	return r.ProjectReference.Spec.CCS
-}
-
-func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, error) {
 	r.logger.V(1).Info("Configuring APIS")
-	err := r.configureAPIS()
+	err = r.configureAPIS(configMap)
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring APIS"))
 	}
@@ -407,7 +390,7 @@ func (r *ReferenceAdapter) getProject(projectId string) (*cloudresourcemanager.P
 	return project, exists, err
 }
 
-func (r *ReferenceAdapter) configureBillingAPI(config configmap.OperatorConfigMap) error {
+func (r *ReferenceAdapter) configureAPIS(config configmap.OperatorConfigMap) error {
 	enabledAPIs, err := r.gcpClient.ListAPIs(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
 		return err
@@ -417,22 +400,13 @@ func (r *ReferenceAdapter) configureBillingAPI(config configmap.OperatorConfigMa
 		r.logger.Info("Enabling Billing API")
 		err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
 		if err != nil {
-			return operrors.Wrap(err, fmt.Sprintf("Error enabling cloudbilling.googleapis.com api for project %s", r.ProjectReference.Spec.GCPProjectID))
+			return operrors.Wrap(err, fmt.Sprintf("Error enabling %s api for project %s", "cloudbilling.googleapis.com", r.ProjectReference.Spec.GCPProjectID))
 		}
 	}
 
 	err = r.gcpClient.CreateCloudBillingAccount(r.ProjectReference.Spec.GCPProjectID, config.BillingAccount)
 	if err != nil {
 		return operrors.Wrap(err, "error creating CloudBilling")
-	}
-
-	return nil
-}
-
-func (r *ReferenceAdapter) configureAPIS() error {
-	enabledAPIs, err := r.gcpClient.ListAPIs(r.ProjectReference.Spec.GCPProjectID)
-	if err != nil {
-		return err
 	}
 
 	for _, api := range OSDRequiredAPIS {
