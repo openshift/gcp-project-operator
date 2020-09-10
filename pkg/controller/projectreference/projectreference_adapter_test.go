@@ -41,12 +41,6 @@ var (
 	}
 )
 
-var (
-	fakeError                   = errors.New("fakeError")
-	stopProcessingResult, _     = util.StopProcessing()
-	continueProcessingResult, _ = util.ContinueProcessing()
-)
-
 var _ = Describe("ProjectreferenceAdapter", func() {
 	var (
 		adapter          *ReferenceAdapter
