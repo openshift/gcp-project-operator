@@ -233,6 +233,7 @@ func (in *ProjectReferenceSpec) DeepCopyInto(out *ProjectReferenceSpec) {
 	*out = *in
 	out.ProjectClaimCRLink = in.ProjectClaimCRLink
 	out.LegalEntity = in.LegalEntity
+	out.CCSSecretRef = in.CCSSecretRef
 	return
 }
 

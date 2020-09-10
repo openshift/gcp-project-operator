@@ -194,7 +194,6 @@ func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) 
 		return gcputil.RequeueWithError(operrors.Wrap(err, "could not create project"))
 	}
 
-	// should this be it's own function?
 	r.logger.V(1).Info("Configuring Billing APIS")
 	err = r.configureBillingAPI(configMap)
 	if err != nil {
