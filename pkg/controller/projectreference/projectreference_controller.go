@@ -96,7 +96,7 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
-	gcpClient, err := r.getGcpClient(projectReference.Spec.GCPProjectID, reqLogger)
+	gcpClient, err := r.getGcpClient(projectReference, reqLogger)
 	if err != nil {
 		return r.requeueOnErr(err)
 	}
@@ -132,10 +132,10 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 		EnsureProjectReferenceStatusCreating,
 		EnsureProjectID,
 		EnsureFinalizerAdded,
+		EnsureProjectCreated,
 		EnsureProjectConfigured,
 		EnsureStateReady,
 	}
-
 	for _, operation := range operations {
 		result, err := operation(adapter)
 		if err != nil || result.RequeueRequest {
@@ -148,16 +148,22 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 	return r.doNotRequeue()
 }
 
-func (r *ReconcileProjectReference) getGcpClient(projectID string, logger logr.Logger) (gcpclient.Client, error) {
+func (r *ReconcileProjectReference) getGcpClient(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger) (gcpclient.Client, error) {
+	credSecretNamespace := operatorNamespace
+	credSecretName := orgGcpSecretName
+	if projectReference.Spec.CCS {
+		credSecretNamespace = projectReference.Spec.CCSSecretRef.Namespace
+		credSecretName = projectReference.Spec.CCSSecretRef.Name
+	}
 	// Get org creds from secret
-	creds, err := util.GetGCPCredentialsFromSecret(r.client, operatorNamespace, orgGcpSecretName)
+	creds, err := util.GetGCPCredentialsFromSecret(r.client, credSecretNamespace, credSecretName)
 	if err != nil {
 		err = operrors.Wrap(err, fmt.Sprintf("could not get org Creds from secret: %s, for namespace %s", orgGcpSecretName, operatorNamespace))
 		return nil, err
 	}
 
 	// Get gcpclient with creds
-	gcpClient, err := r.gcpClientBuilder(projectID, creds)
+	gcpClient, err := r.gcpClientBuilder(projectReference.Spec.GCPProjectID, creds)
 	if err != nil {
 		return nil, operrors.Wrap(err, fmt.Sprintf("could not get gcp client with secret: %s, for namespace %s", orgGcpSecretName, operatorNamespace))
 	}

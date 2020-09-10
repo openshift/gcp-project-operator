@@ -2,21 +2,14 @@ package projectreference
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
-	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
-	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
-	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
-	mocks "github.com/openshift/gcp-project-operator/pkg/util/mocks"
-	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
-	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iam/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	k8serrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -24,8 +17,17 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
+	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
+	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
+	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
+)
+
+var (
+	fakeError = errors.New("fakeError")
 )
 
 const (
@@ -91,7 +93,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 	Context("When project reference can not be fetched", func() {
 		var someError error
 		JustBeforeEach(func() {
-			someError = k8serrs.NewInternalError(fmt.Errorf("Fake err"))
+			someError = k8serrs.NewInternalError(fakeError)
 			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Return(someError)
 		})
 		It("Returns the error", func() {
@@ -100,7 +102,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		})
 	})
 
-	Context("When you cannot get credenitals", func() {
+	Context("When you cannot get credentials", func() {
 		It("Requeues with error", func() {
 			gomock.InOrder(
 				mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
@@ -118,7 +120,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 					Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
 				}).Times(1),
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Fake Error")).Times(1),
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError).Times(1),
 			)
 			_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 			Expect(err).To(HaveOccurred())
@@ -172,7 +174,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				It("Reconciles with error", func() {
 					mockKubeClient.EXPECT().Status().Return(mockUpdater)
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
-					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake Update Error"))
+					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError)
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).To(HaveOccurred())
 				})
@@ -202,7 +204,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 
 			It("It reconciles with error", func() {
 				mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error")).Times(2)
+				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError).Times(2)
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
@@ -217,7 +219,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 
 			It("It reconciles with error", func() {
 				mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error")).Times(2)
+				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError).Times(2)
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
@@ -248,7 +250,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		Context("When gcpBuilder Fails", func() {
 			JustBeforeEach(func() {
 				gcpBuilder := func(projectName string, authJSON []byte) (gcpclient.Client, error) {
-					return mockGCPClient, errors.New("Fakeerror")
+					return mockGCPClient, fakeError
 				}
 				reconciler.gcpClientBuilder = gcpBuilder
 			})
@@ -278,69 +280,123 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 	})
 
 	Context("When processing Project", func() {
-		JustBeforeEach(func() {
-			projectReference.Spec.GCPProjectID = "Some fake id"
-			projectReference.Status.State = api.ProjectReferenceStatusCreating
-			projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
-			projectReference.SetFinalizers([]string{FinalizerName})
-			gomock.InOrder(
-				mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
-					Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
-				}).Times(1),
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectClaimBuilder().GetProjectClaim()).Times(1),
-			)
-		})
+		Context("When it is a CCS project", func() {
+			JustBeforeEach(func() {
+				projectReference.Spec.CCS = true
+				projectReference.Spec.GCPProjectID = "Some fake id"
+				projectReference.Status.State = api.ProjectReferenceStatusCreating
+				projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
+				projectReference.SetFinalizers([]string{FinalizerName})
+				gomock.InOrder(
+					mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
+						Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
+					}).Times(1),
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectClaimBuilder().GetProjectClaim()).Times(1),
+				)
+			})
 
-		Context("When it fails to get Parent Folder ID", func() {
-			It("requeues with error", func() {
-				mockKubeClient.EXPECT().Status().Return(mockUpdater)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
-					Data: map[string]string{},
+			Context("When the failing to update Status to Ready", func() {
+				It("It requeues with error", func() {
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
+					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError).Times(1)
+					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+					mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
+					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError).Times(2)
+					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					Expect(err).To(HaveOccurred())
 				})
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
-				Expect(err).To(HaveOccurred())
+			})
+
+			Context("When processes the project reference correctly", func() {
+				It("It does not requeue", func() {
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
+					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError).Times(1)
+					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+					mockKubeClient.EXPECT().Status().Return(mockUpdater)
+					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					Expect(err).ToNot(HaveOccurred())
+				})
 			})
 		})
 
-		Context("When the failing to update Status to Ready", func() {
-			It("It requeues with error", func() {
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
-				mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-				mockGCPClient.EXPECT().ListAPIs(gomock.Any())
-				mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
-				mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
-				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
-				mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-				mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Ooops not found")).Times(1)
-				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-				mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errors.New("Fake update Error")).Times(2)
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
-				Expect(err).To(HaveOccurred())
-			})
-		})
+		Context("When it is a non-CCS project", func() {
 
-		Context("When processes the project reference correctly", func() {
-			It("It does not requeue", func() {
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
-				mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-				mockGCPClient.EXPECT().ListAPIs(gomock.Any())
-				mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
-				mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
-				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
-				mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-				mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Ooops not found")).Times(1)
-				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-				mockKubeClient.EXPECT().Status().Return(mockUpdater)
-				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
-				Expect(err).ToNot(HaveOccurred())
+			JustBeforeEach(func() {
+				projectReference.Spec.GCPProjectID = "Some fake id"
+				projectReference.Status.State = api.ProjectReferenceStatusCreating
+				projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
+				projectReference.SetFinalizers([]string{FinalizerName})
+				gomock.InOrder(
+					mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
+						Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
+					}).Times(1),
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectClaimBuilder().GetProjectClaim()).Times(1),
+				)
+			})
+
+			Context("When it fails to get Parent Folder ID", func() {
+				It("requeues with error", func() {
+					mockKubeClient.EXPECT().Status().Return(mockUpdater)
+					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
+						Data: map[string]string{},
+					})
+					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+			Context("When the failing to update Status to Ready", func() {
+				It("It requeues with error", func() {
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
+					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any())
+					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
+					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
+					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError).Times(1)
+					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+					mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
+					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError).Times(2)
+					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
+			Context("When processes the project reference correctly", func() {
+				It("It does not requeue", func() {
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).Times(1)
+					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any())
+					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
+					mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(nil)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
+					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError).Times(1)
+					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+					mockKubeClient.EXPECT().Status().Return(mockUpdater)
+					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					Expect(err).ToNot(HaveOccurred())
+				})
 			})
 		})
 
@@ -360,7 +416,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 
 		JustBeforeEach(func() {
 			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1)
-			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{
+			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
 				Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
 			}).Times(1)
 			mockGCPClient.EXPECT().ListProjects().Return(projects, nil)
@@ -376,7 +432,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			Context("When cleanup succeeds", func() {
 				It("does not requeue", func() {
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
@@ -390,7 +446,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 				})
 				It("Does not requeue", func() {
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
@@ -403,8 +459,8 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 					mockKubeClient.EXPECT().Status().Return(mockUpdater)
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
-					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(fakeError)
 					result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).To(HaveOccurred())
 					Expect(result.RequeueAfter).To(Equal(5 * time.Second))
@@ -419,7 +475,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 			})
 
 			It("Does not requeue", func() {
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, v1.Secret{}).Times(2)
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
 				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
