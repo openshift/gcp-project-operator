@@ -119,6 +119,9 @@ spec:
               type: array
             state:
               type: string
+          required:
+          - conditions
+          - state
           type: object
   version: v1alpha1
   versions:
