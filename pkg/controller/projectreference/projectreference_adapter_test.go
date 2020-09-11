@@ -640,58 +640,72 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		var (
 			projectState string
 		)
-		JustBeforeEach(func() {
-			mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: projectState, ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-		})
 		BeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "fake-id"
 			projectState = "ACTIVE"
 		})
-		Context("When the lifecycleStatus is unknown", func() {
-			BeforeEach(func() {
-				projectState = "UNKNOWN"
+		Context("When it's a non-CCS Project", func() {
+			JustBeforeEach(func() {
+				mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: projectState, ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 			})
-			It("returns an error", func() {
-				err := adapter.EnsureProjectCleanedUp()
-				Expect(err).To(HaveOccurred())
+			Context("When the lifecycleStatus is unknown", func() {
+				BeforeEach(func() {
+					projectState = "UNKNOWN"
+				})
+				It("returns an error", func() {
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).To(HaveOccurred())
+				})
 			})
+			Context("When the lifecycleStatus is LIFECYCLE_STATE_UNSPECIFIED", func() {
+				BeforeEach(func() {
+					projectState = "LIFECYCLE_STATE_UNSPECIFIED"
+				})
+				It("returns an error", func() {
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+			Context("When the lifecycleStatus is DELETE_REQUESTED", func() {
+				BeforeEach(func() {
+					projectState = "DELETE_REQUESTED"
+				})
+				It("deletes the project", func() {
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("When the lifecycleStatus is ACTIVE", func() {
+				It("deletes the project", func() {
+					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).NotTo(HaveOccurred())
+				})
+			})
+			Context("When it cannot delete the project", func() {
+				It("returns an error", func() {
+					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).To(HaveOccurred())
+				})
+			})
+
 		})
-		Context("When the lifecycleStatus is LIFECYCLE_STATE_UNSPECIFIED", func() {
+		Context("When it's a CCS project", func() {
 			BeforeEach(func() {
-				projectState = "LIFECYCLE_STATE_UNSPECIFIED"
+				projectReference.Spec.CCS = true
 			})
-			It("returns an error", func() {
-				err := adapter.EnsureProjectCleanedUp()
-				Expect(err).To(HaveOccurred())
-			})
-		})
-		Context("When the lifecycleStatus is DELETE_REQUESTED", func() {
-			BeforeEach(func() {
-				projectState = "DELETE_REQUESTED"
-			})
-			It("deletes the project", func() {
+			It("doesn't delete the project", func() {
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
-				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
+				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any())
 				err := adapter.EnsureProjectCleanedUp()
 				Expect(err).NotTo(HaveOccurred())
-			})
-		})
-		Context("When the lifecycleStatus is ACTIVE", func() {
-			It("deletes the project", func() {
-				mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
-				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
-				err := adapter.EnsureProjectCleanedUp()
-				Expect(err).NotTo(HaveOccurred())
-			})
-		})
-		Context("When it cannot delete the project", func() {
-			It("returns an error", func() {
-				mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
-				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
-				err := adapter.EnsureProjectCleanedUp()
-				Expect(err).To(HaveOccurred())
 			})
 		})
 	})
