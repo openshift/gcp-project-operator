@@ -46,6 +46,18 @@ spec:
           type: object
         spec:
           properties:
+            ccs:
+              type: boolean
+            ccsSecretRef:
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
             gcpProjectID:
               type: string
             legalEntity:
@@ -107,11 +119,10 @@ spec:
               type: array
             state:
               type: string
+          required:
+          - conditions
+          - state
           type: object
-#      type: object # This line causes the CRD to stop working on openshift (last checked on 3.11.154)
-                    # The reason for that is the v1beta1 CRD api changed upstread and the tool
-                    # which generates this file `operator-sdk` uses the upstream api.
-                    # see issue https://github.com/jetstack/cert-manager/issues/2200
   version: v1alpha1
   versions:
   - name: v1alpha1
