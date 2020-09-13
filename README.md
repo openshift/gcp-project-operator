@@ -135,16 +135,21 @@ Note: unless you're running this against your very own GCP org, **someone likely
 ### Configmap
 
 The controller expects to find a `ConfigMap` with the name `gcp-project-operator` inside the `gcp-project-operator` namespace.
-It will parse it and verify its contents, expecting to extract the values of two specific fields that should be already populated by you:
 
-* `billingAccount`
-* `parentFolderID`
+You can easily create one example `ConfigMap` using the following command.
 
-To fulfill this prerequisite, please type:
-
-```bash
-export PARENTFOLDERID="123456789123"         # Google Cloud organization Parent Folder ID
-export BILLINGACCOUNT="123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
-
-kubectl create -n gcp-project-operator configmap gcp-project-operator --from-literal parentFolderID=$PARENTFOLDERID --from-literal billingAccount=$BILLINGACCOUNT
+```zsh
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-project-operator
+  namespace: gcp-project-operator
+data:
+  data: |
+    billingAccount: "123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
+    parentFolderID: "123456789123"         # Google Cloud organization Parent Folder ID
+    ccsConsoleAccess:
+    - sd-sre-platform-gcp-access@redhat.com # A list of groups that you want to give CCS console access to
+EOF
 ```

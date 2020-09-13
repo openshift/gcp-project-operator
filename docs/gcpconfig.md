@@ -13,12 +13,22 @@ If you don't have one, please [create](https://cloud.google.com/billing/docs/how
 For parent folder you can use any folder you like.
 If you don't have one, feel free to [create](https://cloud.google.com/resource-manager/docs/creating-managing-folders) one.
 
-Add this information to your Kubernetes cluster by creating a `ConfigMap`:
+You can easily create one example `ConfigMap` using the following command.
 
 ```zsh
-$ export PARENTFOLDERID="123456789123"         # Google Cloud organization Parent Folder ID
-$ export BILLINGACCOUNT="123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
-$ kubectl create -n gcp-project-operator configmap gcp-project-operator --from-literal parentFolderID=$PARENTFOLDERID --from-literal billingAccount=$BILLINGACCOUNT
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-project-operator
+  namespace: gcp-project-operator
+data:
+  data: |
+    billingAccount: "123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
+    parentFolderID: "123456789123"         # Google Cloud organization Parent Folder ID
+    ccsConsoleAccess:
+    - sd-sre-platform-gcp-access@redhat.com # A list of groups that you want to give CCS console access to
+EOF
 ```
 
 ### Secret
