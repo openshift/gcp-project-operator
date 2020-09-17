@@ -565,7 +565,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
 				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
-				adapter.OperatorConfig.CCSConsoleAccess = []string{"sd-sre-platform-gcp-access"}
+				adapter.OperatorConfig.CCSConsoleAccess = []string{"example-group@xxx.com"}
 			})
 
 			Context("When it is a non CCS project", func() {

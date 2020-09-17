@@ -150,6 +150,6 @@ data:
     billingAccount: "123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
     parentFolderID: "123456789123"         # Google Cloud organization Parent Folder ID
     ccsConsoleAccess:
-    - sd-sre-platform-gcp-access@redhat.com # A list of groups that you want to give CCS console access to
+    - example-group@xxx.com # A list of groups that you want to give CCS console access to
 EOF
 ```

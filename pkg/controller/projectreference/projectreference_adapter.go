@@ -67,17 +67,18 @@ var OSDRequiredRoles = []string{
 	"roles/compute.admin",
 }
 
-// CCSConsoleAccessRequiredRoles is a list of Roles that a service account
-// required to get console access of CCS Accounts
-var CCSConsoleAccessRequiredRoles = []string{
-	"roles/storage.admin",
-	"roles/dns.admin",
-	"roles/iam.securityAdmin",
-	"roles/iam.roleAdmin",
-	"roles/iam.serviceAccountAdmin",
-	"roles/iam.serviceAccountKeyAdmin",
-	"roles/iam.serviceAccountUser",
+// OSDSREConsoleAccessRoles is a list of Roles that a service account
+// required to get console access.
+var OSDSREConsoleAccessRoles = []string{
 	"roles/compute.admin",
+	//"roles/iam.organizationRoleAdmin",
+	"roles/editor",
+	//"roles/resourcemanager.organizationViewer",
+	"roles/resourcemanager.projectIamAdmin",
+	"roles/servicemanagement.quotaAdmin",
+	"roles/iam.serviceAccountAdmin",
+	"roles/serviceusage.serviceUsageAdmin",
+	"roles/orgpolicy.policyViewer",
 }
 
 //ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
@@ -251,7 +252,7 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 		for _, email := range r.OperatorConfig.CCSConsoleAccess {
 			// TODO(yeya24): Use google API to check whether this email is
 			// for a group or a service account.
-			if err := r.SetIAMPolicy(email, CCSConsoleAccessRequiredRoles, true); err != nil {
+			if err := r.SetIAMPolicy(email, OSDSREConsoleAccessRoles, true); err != nil {
 				return result, err
 			}
 		}
