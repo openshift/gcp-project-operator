@@ -248,7 +248,7 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 	}
 
 	if r.isCCS() {
-		r.logger.V(1).Info("Configuring Service Account Permissions for Console Access")
+		r.logger.V(1).Info("Configuring IAM to allow console access")
 		for _, email := range r.OperatorConfig.CCSConsoleAccess {
 			// TODO(yeya24): Use google API to check whether this email is
 			// for a group or a service account.
