@@ -136,20 +136,4 @@ Note: unless you're running this against your very own GCP org, **someone likely
 
 The controller expects to find a `ConfigMap` with the name `gcp-project-operator` inside the `gcp-project-operator` namespace.
 
-You can easily create one example `ConfigMap` using the following command.
-
-```zsh
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: gcp-project-operator
-  namespace: gcp-project-operator
-data:
-  data: |
-    billingAccount: "123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
-    parentFolderID: "123456789123"         # Google Cloud organization Parent Folder ID
-    ccsConsoleAccess:
-    - example-group@xxx.com # A list of groups that you want to give CCS console access to
-EOF
-```
+For how to create a `ConfigMap`, please refer to the [doc](docs/gcpconfig.md).

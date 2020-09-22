@@ -13,7 +13,7 @@ If you don't have one, please [create](https://cloud.google.com/billing/docs/how
 For parent folder you can use any folder you like.
 If you don't have one, feel free to [create](https://cloud.google.com/resource-manager/docs/creating-managing-folders) one.
 
-You can easily create one example `ConfigMap` using the following command.
+You can create one example `ConfigMap` using the following command.
 
 ```zsh
 cat <<EOF | kubectl apply -f -
@@ -27,7 +27,7 @@ data:
     billingAccount: "123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
     parentFolderID: "123456789123"         # Google Cloud organization Parent Folder ID
     ccsConsoleAccess:
-    - example-group@xxx.com # A list of groups that you want to give CCS console access to
+    - example-group@xxx.com # A list of groups that will get access to CCS projects
 EOF
 ```
 

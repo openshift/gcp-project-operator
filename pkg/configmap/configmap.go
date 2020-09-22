@@ -39,19 +39,19 @@ func ValidateOperatorConfigMap(configmap OperatorConfigMap) error {
 
 // GetOperatorConfigMap returns a configmap defined in requested namespace and name
 func GetOperatorConfigMap(kubeClient client.Client) (OperatorConfigMap, error) {
-	var OperatorConfigMap OperatorConfigMap
+	var operatorConfigMap OperatorConfigMap
 	configmap := &corev1.ConfigMap{}
 	if err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: OperatorConfigMapName, Namespace: OperatorConfigMapNamespace}, configmap); err != nil {
-		return OperatorConfigMap, fmt.Errorf("unable to get configmap: %v", err)
+		return operatorConfigMap, fmt.Errorf("unable to get configmap: %v", err)
 	}
 
 	if data, ok := configmap.Data[OperatorConfigMapKey]; !ok {
-		return OperatorConfigMap, fmt.Errorf("unable to get config from key %s", OperatorConfigMapKey)
+		return operatorConfigMap, fmt.Errorf("unable to get config from key %s", OperatorConfigMapKey)
 	} else {
-		if err := yaml.Unmarshal([]byte(data), &OperatorConfigMap); err != nil {
-			return OperatorConfigMap, err
+		if err := yaml.Unmarshal([]byte(data), &operatorConfigMap); err != nil {
+			return operatorConfigMap, err
 		}
 	}
 
-	return OperatorConfigMap, nil
+	return operatorConfigMap, nil
 }

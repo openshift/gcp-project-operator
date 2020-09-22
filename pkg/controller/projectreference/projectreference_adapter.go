@@ -71,9 +71,7 @@ var OSDRequiredRoles = []string{
 // required to get console access.
 var OSDSREConsoleAccessRoles = []string{
 	"roles/compute.admin",
-	//"roles/iam.organizationRoleAdmin",
 	"roles/editor",
-	//"roles/resourcemanager.organizationViewer",
 	"roles/resourcemanager.projectIamAdmin",
 	"roles/servicemanagement.quotaAdmin",
 	"roles/iam.serviceAccountAdmin",

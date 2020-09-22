@@ -112,9 +112,7 @@ billingAccount: billing123
 						Namespace: "gcp-project-operator",
 					},
 					Data: map[string]string{
-						"data": `
-billingAccount: foo
-`,
+						"data": `billingAccount: foo`,
 					},
 				}
 				return []runtime.Object{sec}
@@ -145,9 +143,7 @@ billingAccount: foo
 						"data": `
 parentFolderID: 1234567
 billingAccount: billing123
-ccsConsoleAccess:
-- foo
-- bar
+ccsConsoleAccess: [foo, bar]
 `,
 					},
 				}
