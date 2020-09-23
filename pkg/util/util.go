@@ -13,6 +13,14 @@ import (
 	kubeclientpkg "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// IamMemberType represents different type of IAM members.
+type IamMemberType int
+
+const (
+	ServiceAccount IamMemberType = iota
+	GoogleGroup
+)
+
 const (
 	// secret information
 	gcpSecretName = "gcp"
@@ -86,10 +94,10 @@ func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 // If the required binding does not exist it creates a new binding for the role
 // it returns a []*cloudresourcemanager.Binding that contains all the previous bindings and the new ones if no new bindings are required it returns false
 // TODO(MJ): add tests
-func AddOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requiredBindings []string, serviceAccount string, group bool) ([]*cloudresourcemanager.Binding, bool) {
+func AddOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requiredBindings []string, serviceAccount string, memberType IamMemberType) ([]*cloudresourcemanager.Binding, bool) {
 	Modified := false
 	// get map of required rolebindings
-	requiredBindingMap := rolebindingMap(requiredBindings, serviceAccount, group)
+	requiredBindingMap := rolebindingMap(requiredBindings, serviceAccount, memberType)
 	var result []*cloudresourcemanager.Binding
 
 	for i, eBinding := range existingBindings {
@@ -125,9 +133,9 @@ func AddOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requir
 }
 
 // roleBindingMap returns a map of requiredBindings role bindings for the added members
-func rolebindingMap(roles []string, member string, group bool) map[string]cloudresourcemanager.Binding {
+func rolebindingMap(roles []string, member string, memberType IamMemberType) map[string]cloudresourcemanager.Binding {
 	prefix := "serviceAccount:"
-	if group {
+	if memberType == GoogleGroup {
 		prefix = "group:"
 	}
 	requiredBindings := make(map[string]cloudresourcemanager.Binding)

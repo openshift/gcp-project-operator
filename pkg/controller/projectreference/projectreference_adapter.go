@@ -250,7 +250,7 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 		for _, email := range r.OperatorConfig.CCSConsoleAccess {
 			// TODO(yeya24): Use google API to check whether this email is
 			// for a group or a service account.
-			if err := r.SetIAMPolicy(email, OSDSREConsoleAccessRoles, true); err != nil {
+			if err := r.SetIAMPolicy(email, OSDSREConsoleAccessRoles, gcputil.GoogleGroup); err != nil {
 				return result, err
 			}
 		}
@@ -498,7 +498,7 @@ func (r *ReferenceAdapter) configureServiceAccount(policies []string) (gcputil.O
 	}
 
 	r.logger.V(1).Info("Setting Service Account Policies")
-	err = r.SetIAMPolicy(serviceAccount.Email, policies, false)
+	err = r.SetIAMPolicy(serviceAccount.Email, policies, gcputil.ServiceAccount)
 	if err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not update policy on project for %s", r.ProjectReference.Spec.GCPProjectID)))
 	}
@@ -634,14 +634,14 @@ type AddorUpdateBindingResponse struct {
 }
 
 // AddOrUpdateBindings gets the policy and checks if the bindings match the required roles
-func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string, policies []string, group bool) (AddorUpdateBindingResponse, error) {
+func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string, policies []string, memberType gcputil.IamMemberType) (AddorUpdateBindingResponse, error) {
 	policy, err := r.gcpClient.GetIamPolicy(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
 		return AddorUpdateBindingResponse{}, err
 	}
 
 	//Checking if policy is modified
-	newBindings, modified := gcputil.AddOrUpdateBinding(policy.Bindings, policies, serviceAccountEmail, group)
+	newBindings, modified := gcputil.AddOrUpdateBinding(policy.Bindings, policies, serviceAccountEmail, memberType)
 
 	// add new bindings to policy
 	policy.Bindings = newBindings
@@ -652,13 +652,13 @@ func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string, polic
 }
 
 // SetIAMPolicy attempts to update policy if the policy needs to be modified
-func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []string, group bool) error {
+func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []string, memberType gcputil.IamMemberType) error {
 	// Checking if policy needs to be updated
 	var retry int
 	for {
 		retry++
 		time.Sleep(time.Second)
-		addorUpdateResponse, err := r.AddOrUpdateBindings(serviceAccountEmail, policies, group)
+		addorUpdateResponse, err := r.AddOrUpdateBindings(serviceAccountEmail, policies, memberType)
 		if err != nil {
 			return err
 		}
