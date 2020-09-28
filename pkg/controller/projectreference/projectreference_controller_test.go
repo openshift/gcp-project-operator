@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
@@ -71,7 +72,7 @@ var _ = Describe("ProjectReference controller reconcilation", func() {
 		}
 		configMap = corev1.ConfigMap{
 			Data: map[string]string{
-				"data": `
+				configmap.OperatorConfigMapKey: `
 billingAccount: fake-account
 parentFolderID: fake-folder
 `,

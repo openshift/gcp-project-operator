@@ -14,7 +14,7 @@ import (
 const (
 	OperatorConfigMapName      = "gcp-project-operator"
 	OperatorConfigMapNamespace = "gcp-project-operator"
-	OperatorConfigMapKey       = "data"
+	OperatorConfigMapKey       = "config.yaml"
 )
 
 // OperatorConfigMap store data for the specified configmap

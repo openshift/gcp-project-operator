@@ -53,7 +53,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 						Namespace: "gcp-project-operator",
 					},
 					Data: map[string]string{
-						"data": `{parentFolderID: 1234567, billingAccount: "billing123"}`,
+						OperatorConfigMapKey: `{parentFolderID: 1234567, billingAccount: "billing123"}`,
 					},
 				},
 			},
@@ -109,7 +109,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 						Namespace: "gcp-project-operator",
 					},
 					Data: map[string]string{
-						"data": `{billingAccount: foo}`,
+						OperatorConfigMapKey: `{billingAccount: foo}`,
 					},
 				}
 				return []runtime.Object{sec}
@@ -137,7 +137,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 						Namespace: "gcp-project-operator",
 					},
 					Data: map[string]string{
-						"data": `{parentFolderID: 1234567,billingAccount: "billing123",ccsConsoleAccess: [foo, bar]}`,
+						OperatorConfigMapKey: `{parentFolderID: 1234567,billingAccount: "billing123",ccsConsoleAccess: [foo, bar]}`,
 					},
 				}
 				return []runtime.Object{sec}
