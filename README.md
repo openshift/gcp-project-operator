@@ -135,16 +135,5 @@ Note: unless you're running this against your very own GCP org, **someone likely
 ### Configmap
 
 The controller expects to find a `ConfigMap` with the name `gcp-project-operator` inside the `gcp-project-operator` namespace.
-It will parse it and verify its contents, expecting to extract the values of two specific fields that should be already populated by you:
 
-* `billingAccount`
-* `parentFolderID`
-
-To fulfill this prerequisite, please type:
-
-```bash
-export PARENTFOLDERID="123456789123"         # Google Cloud organization Parent Folder ID
-export BILLINGACCOUNT="123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
-
-kubectl create -n gcp-project-operator configmap gcp-project-operator --from-literal parentFolderID=$PARENTFOLDERID --from-literal billingAccount=$BILLINGACCOUNT
-```
+For how to create a `ConfigMap`, please refer to the [doc](docs/gcpconfig.md).

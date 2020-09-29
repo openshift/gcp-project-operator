@@ -8,6 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
+	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	"github.com/openshift/gcp-project-operator/pkg/util"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
@@ -101,8 +102,13 @@ func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconc
 		return r.requeueOnErr(err)
 	}
 
+	cm, err := r.getConfigMap()
+	if err != nil {
+		return r.requeueOnErr(err)
+	}
+
 	conditionManager := condition.NewConditionManager()
-	adapter, err := NewReferenceAdapter(projectReference, reqLogger, r.client, gcpClient, conditionManager)
+	adapter, err := NewReferenceAdapter(projectReference, reqLogger, r.client, gcpClient, conditionManager, cm)
 	if err != nil {
 		err = operrors.Wrap(err, "could not create ReferenceAdapter")
 		return r.requeueOnErr(err)
@@ -169,6 +175,19 @@ func (r *ReconcileProjectReference) getGcpClient(projectReference *gcpv1alpha1.P
 	}
 
 	return gcpClient, nil
+}
+
+func (r *ReconcileProjectReference) getConfigMap() (configmap.OperatorConfigMap, error) {
+	operatorConfigMap, err := configmap.GetOperatorConfigMap(r.client)
+	if err != nil {
+		return operatorConfigMap, operrors.Wrap(err, "could not find the OperatorConfigMap")
+	}
+
+	if err := configmap.ValidateOperatorConfigMap(operatorConfigMap); err != nil {
+		return operatorConfigMap, operrors.Wrap(err, "configmap didn't get filled properly")
+	}
+
+	return operatorConfigMap, err
 }
 
 func (r *ReconcileProjectReference) doNotRequeue() (reconcile.Result, error) {
