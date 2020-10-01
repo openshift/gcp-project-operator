@@ -34,6 +34,21 @@ func (m *MockCustomResourceAdapter) EXPECT() *MockCustomResourceAdapterMockRecor
 	return m.recorder
 }
 
+// EnsureCCSSecretOwnerReference mocks base method
+func (m *MockCustomResourceAdapter) EnsureCCSSecretOwnerReference() (util.OperationResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnsureCCSSecretOwnerReference")
+	ret0, _ := ret[0].(util.OperationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EnsureCCSSecretOwnerReference indicates an expected call of EnsureCCSSecretOwnerReference
+func (mr *MockCustomResourceAdapterMockRecorder) EnsureCCSSecretOwnerReference() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureCCSSecretOwnerReference", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureCCSSecretOwnerReference))
+}
+
 // EnsureFinalizer mocks base method
 func (m *MockCustomResourceAdapter) EnsureFinalizer() (util.OperationResult, error) {
 	m.ctrl.T.Helper()

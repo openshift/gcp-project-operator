@@ -228,6 +228,73 @@ var _ = Describe("Customresourceadapter", func() {
 			})
 		})
 	})
+	Context("EnsureCCSSecretOwnerReference", func() {
+		Context("when it's not a CCS cluster", func() {
+			BeforeEach(func() {
+				projectClaim.Spec.CCS = false
+			})
+			It("doesn't cancel processing", func() {
+				result, err := adapter.EnsureCCSSecretOwnerReference()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.CancelRequest).To(BeFalse())
+			})
+
+		})
+		Context("when it's a CCS cluster", func() {
+			var (
+				ccsSecret corev1.Secret
+			)
+			BeforeEach(func() {
+				ccsSecret = corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "secret-name",
+						Namespace: projectClaim.Namespace,
+						UID:       "secret-uid",
+					},
+				}
+			})
+			Context("when the owner reference is not set", func() {
+				BeforeEach(func() {
+					projectClaim.Spec.CCS = true
+					projectClaim.Spec.CCSSecretRef = gcpv1alpha1.NamespacedName{
+						Namespace: projectClaim.Namespace,
+						Name:      "secret-name",
+					}
+				})
+				It("sets the owner reference to match the secret", func() {
+					mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, ccsSecret).Times(1)
+
+					matcher := testStructs.NewProjectClaimMatcher()
+					mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
+
+					numOwnerReferencesBefore := len(projectClaim.OwnerReferences)
+					result, err := adapter.EnsureCCSSecretOwnerReference()
+					Expect(len(matcher.ActualProjectClaim.OwnerReferences)).To(Equal(numOwnerReferencesBefore + 1))
+					Expect(matcher.ActualProjectClaim.OwnerReferences[0].Name).To(Equal(ccsSecret.Name))
+					Expect(matcher.ActualProjectClaim.OwnerReferences[0].UID).To(Equal(ccsSecret.UID))
+					Expect(*matcher.ActualProjectClaim.OwnerReferences[0].Controller).To(BeTrue())
+					Expect(*matcher.ActualProjectClaim.OwnerReferences[0].BlockOwnerDeletion).To(BeTrue())
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result.CancelRequest).To(Equal(true))
+				})
+			})
+
+			Context("when the owner reference is set already", func() {
+				BeforeEach(func() {
+					projectClaim.OwnerReferences = append(projectClaim.OwnerReferences, metav1.OwnerReference{
+						UID:  ccsSecret.UID,
+						Name: ccsSecret.Name,
+					})
+				})
+
+				It("doesn't cancel processing", func() {
+					result, err := adapter.EnsureCCSSecretOwnerReference()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result.CancelRequest).To(BeFalse())
+				})
+			})
+		})
+	})
 
 	Context("EnsureProjectReferenceExists()", func() {
 		Context("when matching ProjectReference doesn't exist", func() {

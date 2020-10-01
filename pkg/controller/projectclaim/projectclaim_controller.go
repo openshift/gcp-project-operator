@@ -32,6 +32,7 @@ type CustomResourceAdapter interface {
 	EnsureProjectReferenceExists() (gcputil.OperationResult, error)
 	EnsureProjectReferenceLink() (gcputil.OperationResult, error)
 	EnsureFinalizer() (gcputil.OperationResult, error)
+	EnsureCCSSecretOwnerReference() (gcputil.OperationResult, error)
 	FinalizeProjectClaim() (ObjectState, error)
 	SetProjectClaimCondition(reason string, err error) error
 }
@@ -120,6 +121,7 @@ func (r *ReconcileProjectClaim) ReconcileHandler(adapter CustomResourceAdapter) 
 		adapter.EnsureProjectReferenceExists,
 		adapter.EnsureProjectReferenceLink,
 		adapter.EnsureFinalizer,
+		adapter.EnsureCCSSecretOwnerReference,
 		adapter.EnsureProjectClaimStatePendingProject,
 	}
 	for _, operation := range operations {

@@ -196,7 +196,6 @@ func (c *ProjectClaimAdapter) EnsureFinalizer() (gcputil.OperationResult, error)
 	if !util.Contains(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer) {
 		c.logger.Info("Adding Finalizer to the ProjectClaim")
 		c.projectClaim.SetFinalizers(append(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer))
-
 		err := c.client.Update(context.TODO(), c.projectClaim)
 		if err != nil {
 			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize projectclaim with finalizer"))
@@ -204,6 +203,43 @@ func (c *ProjectClaimAdapter) EnsureFinalizer() (gcputil.OperationResult, error)
 		return gcputil.StopProcessing()
 	}
 	return gcputil.ContinueProcessing()
+}
+
+func (c *ProjectClaimAdapter) EnsureCCSSecretOwnerReference() (gcputil.OperationResult, error) {
+	if !c.projectClaim.Spec.CCS || c.projectClaim.Spec.CCSSecretRef.Namespace != c.projectClaim.Namespace {
+		return gcputil.ContinueProcessing()
+	}
+	trueBool := true //this is needed just to get a pointer to a bool below
+	expectedOwnerRef := metav1.OwnerReference{
+		Kind:               "Secret",
+		Name:               c.projectClaim.Spec.CCSSecretRef.Name,
+		Controller:         &trueBool,
+		BlockOwnerDeletion: &trueBool,
+		APIVersion:         "v1",
+	}
+
+	for _, ref := range c.projectClaim.OwnerReferences {
+		if ref.Name == expectedOwnerRef.Name {
+			return gcputil.ContinueProcessing()
+		}
+	}
+
+	secret := &corev1.Secret{}
+	secretName := types.NamespacedName{
+		Namespace: c.projectClaim.Spec.CCSSecretRef.Namespace,
+		Name:      c.projectClaim.Spec.CCSSecretRef.Name,
+	}
+	err := c.client.Get(context.TODO(), secretName, secret)
+	expectedOwnerRef.UID = secret.UID
+
+	if err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, "failed to get secret "+secretName.String()))
+	}
+
+	c.projectClaim.OwnerReferences = append(c.projectReference.OwnerReferences, expectedOwnerRef)
+
+	err = c.client.Update(context.TODO(), c.projectClaim)
+	return gcputil.RequeueOnErrorOrStop(err)
 }
 
 func (c *ProjectClaimAdapter) EnsureProjectReferenceExists() (gcputil.OperationResult, error) {
