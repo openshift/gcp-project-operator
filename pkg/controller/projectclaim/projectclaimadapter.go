@@ -15,7 +15,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -36,6 +38,7 @@ const (
 )
 
 const ProjectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
+const CCSSecretFinalizer string = "finalizer.gcp.managed.openshift.io/ccs"
 
 // Regions supported in the gcp-project-operator
 var supportedRegions = map[string]bool{
@@ -129,11 +132,31 @@ func (c *ProjectClaimAdapter) IsProjectReferenceDeletion() bool {
 }
 
 func (c *ProjectClaimAdapter) EnsureFinalizerDeleted() error {
+	if c.projectClaim.Spec.CCS {
+		secret, err := c.getCCSSecret()
+		if err != nil {
+			return err
+		}
+		c.logger.Info("Deleting CCS Secret Finalizer")
+		err = c.deleteFinalizer(secret, CCSSecretFinalizer)
+		if err != nil {
+			return err
+		}
+
+	}
 	c.logger.Info("Deleting ProjectClaim Finalizer")
-	finalizers := c.projectClaim.GetFinalizers()
-	if util.Contains(finalizers, ProjectClaimFinalizer) {
-		c.projectClaim.SetFinalizers(util.Filter(finalizers, ProjectClaimFinalizer))
-		return c.client.Update(context.TODO(), c.projectClaim)
+	return c.deleteFinalizer(c.projectClaim, ProjectClaimFinalizer)
+}
+
+func (c *ProjectClaimAdapter) deleteFinalizer(object runtime.Object, finalizer string) error {
+	metadata, err := meta.Accessor(object)
+	if err != nil {
+		return operrors.Wrap(err, "Failed to delete finalizer "+finalizer)
+	}
+	finalizers := metadata.GetFinalizers()
+	if util.Contains(finalizers, finalizer) {
+		metadata.SetFinalizers(util.Filter(finalizers, finalizer))
+		return c.client.Update(context.TODO(), object)
 	}
 	return nil
 }
@@ -195,15 +218,49 @@ func (c *ProjectClaimAdapter) EnsureProjectReferenceLink() (gcputil.OperationRes
 func (c *ProjectClaimAdapter) EnsureFinalizer() (gcputil.OperationResult, error) {
 	if !util.Contains(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer) {
 		c.logger.Info("Adding Finalizer to the ProjectClaim")
-		c.projectClaim.SetFinalizers(append(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer))
-
-		err := c.client.Update(context.TODO(), c.projectClaim)
-		if err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize projectclaim with finalizer"))
-		}
-		return gcputil.StopProcessing()
+		err := c.addFinalizer(c.projectClaim, ProjectClaimFinalizer)
+		return gcputil.RequeueOnErrorOrStop(err)
 	}
 	return gcputil.ContinueProcessing()
+}
+
+func (c *ProjectClaimAdapter) EnsureCCSSecretFinalizer() (gcputil.OperationResult, error) {
+	if !c.projectClaim.Spec.CCS {
+		return gcputil.ContinueProcessing()
+	}
+
+	secret, err := c.getCCSSecret()
+	if err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, "failed to set ccs secret finalizer"))
+	}
+	err = c.addFinalizer(secret, CCSSecretFinalizer)
+	return gcputil.RequeueOnErrorOrContinue(err)
+}
+
+func (c *ProjectClaimAdapter) addFinalizer(object runtime.Object, finalizer string) error {
+	metadata, err := meta.Accessor(object)
+	if err != nil {
+		return operrors.Wrap(err, "Failed to add finalizer "+finalizer)
+	}
+	finalizers := metadata.GetFinalizers()
+	if !util.Contains(finalizers, finalizer) {
+		metadata.SetFinalizers(append(finalizers, finalizer))
+		return c.client.Update(context.TODO(), object)
+	}
+	return nil
+}
+
+func (c *ProjectClaimAdapter) getCCSSecret() (*corev1.Secret, error) {
+	secret := &corev1.Secret{}
+	secretName := types.NamespacedName{
+		Namespace: c.projectClaim.Spec.CCSSecretRef.Namespace,
+		Name:      c.projectClaim.Spec.CCSSecretRef.Name,
+	}
+	err := c.client.Get(context.TODO(), secretName, secret)
+	if err != nil {
+		return nil, err
+	}
+	return secret, nil
 }
 
 func (c *ProjectClaimAdapter) EnsureProjectReferenceExists() (gcputil.OperationResult, error) {

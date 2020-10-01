@@ -34,6 +34,21 @@ func (m *MockCustomResourceAdapter) EXPECT() *MockCustomResourceAdapterMockRecor
 	return m.recorder
 }
 
+// EnsureCCSSecretFinalizer mocks base method
+func (m *MockCustomResourceAdapter) EnsureCCSSecretFinalizer() (util.OperationResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnsureCCSSecretFinalizer")
+	ret0, _ := ret[0].(util.OperationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EnsureCCSSecretFinalizer indicates an expected call of EnsureCCSSecretFinalizer
+func (mr *MockCustomResourceAdapterMockRecorder) EnsureCCSSecretFinalizer() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureCCSSecretFinalizer", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureCCSSecretFinalizer))
+}
+
 // EnsureFinalizer mocks base method
 func (m *MockCustomResourceAdapter) EnsureFinalizer() (util.OperationResult, error) {
 	m.ctrl.T.Helper()

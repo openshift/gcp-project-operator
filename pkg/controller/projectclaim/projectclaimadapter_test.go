@@ -31,6 +31,7 @@ var _ = Describe("Customresourceadapter", func() {
 		mockStatusWriter *mocks.MockStatusWriter
 		projectClaim     *gcpv1alpha1.ProjectClaim
 		mockConditions   *mockconditions.MockConditions
+		ccsSecret        corev1.Secret
 	)
 
 	BeforeEach(func() {
@@ -39,6 +40,12 @@ var _ = Describe("Customresourceadapter", func() {
 		mockClient = mocks.NewMockClient(mockCtrl)
 		mockConditions = mockconditions.NewMockConditions(mockCtrl)
 		mockStatusWriter = mocks.NewMockStatusWriter(mockCtrl)
+		ccsSecret = corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "secret-name",
+				Namespace: projectClaim.Namespace,
+			},
+		}
 	})
 	JustBeforeEach(func() {
 		adapter = NewProjectClaimAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient, mockConditions)
@@ -119,17 +126,49 @@ var _ = Describe("Customresourceadapter", func() {
 		})
 
 		Context("when the project reference doesn't exist", func() {
+			var (
+				notFound error
+			)
 			BeforeEach(func() {
-				notFound := errors.NewNotFound(schema.GroupResource{}, "FakeProjectReference")
-				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(notFound)
-				mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
+				notFound = errors.NewNotFound(schema.GroupResource{}, "FakeProjectReference")
+			})
+			Context("when it's a not CCS cluster", func() {
+				BeforeEach(func() {
+					mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(notFound)
+					mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
+				})
+
+				It("removes the finalizer", func() {
+					crStatus, err := adapter.FinalizeProjectClaim()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(crStatus).To(Equal(ObjectModified))
+					Expect(matcher.ActualProjectClaim.Finalizers).ToNot(ContainElement(ProjectClaimFinalizer))
+				})
 			})
 
-			It("removes the finalizer", func() {
-				crStatus, err := adapter.FinalizeProjectClaim()
-				Expect(err).ToNot(HaveOccurred())
-				Expect(crStatus).To(Equal(ObjectModified))
-				Expect(matcher.ActualProjectClaim.Finalizers).ToNot(ContainElement(ProjectClaimFinalizer))
+			Context("when it's a CCS cluster", func() {
+				var (
+					secretMatcher *testStructs.SecretMatcher
+				)
+				BeforeEach(func() {
+					secretMatcher = testStructs.NewSecretMatcher()
+					projectClaim.Spec.CCS = true
+					ccsSecret.Finalizers = []string{CCSSecretFinalizer}
+				})
+				JustBeforeEach(func() {
+					mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(notFound)
+					mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, ccsSecret)
+					mockClient.EXPECT().Update(gomock.Any(), secretMatcher).Times(1)
+					mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
+				})
+
+				It("removes the finalizer as well from the CCS secret", func() {
+					crStatus, err := adapter.FinalizeProjectClaim()
+					Expect(err).ToNot(HaveOccurred())
+					Expect(crStatus).To(Equal(ObjectModified))
+					Expect(matcher.ActualProjectClaim.Finalizers).ToNot(ContainElement(ProjectClaimFinalizer))
+					Expect(secretMatcher.ActualSecret.Finalizers).ToNot(ContainElement(CCSSecretFinalizer))
+				})
 			})
 		})
 
@@ -225,6 +264,57 @@ var _ = Describe("Customresourceadapter", func() {
 				result, err := adapter.EnsureFinalizer()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.CancelRequest).To(Equal(false))
+			})
+		})
+	})
+	Context("EnsureCCSSecretFinalizer", func() {
+		Context("when it's not a CCS cluster", func() {
+			BeforeEach(func() {
+				projectClaim.Spec.CCS = false
+			})
+			It("doesn't cancel processing", func() {
+				result, err := adapter.EnsureCCSSecretFinalizer()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.CancelRequest).To(BeFalse())
+			})
+
+		})
+		Context("when it's a CCS cluster", func() {
+			BeforeEach(func() {
+				projectClaim.Spec.CCS = true
+			})
+			JustBeforeEach(func() {
+				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, ccsSecret).Times(1)
+			})
+			Context("when the finalizer of the ccs secret is not set", func() {
+				BeforeEach(func() {
+					projectClaim.Spec.CCSSecretRef = gcpv1alpha1.NamespacedName{
+						Namespace: projectClaim.Namespace,
+						Name:      "secret-name",
+					}
+				})
+				It("sets the finalizer at the ccs secret", func() {
+
+					matcher := testStructs.NewSecretMatcher()
+					mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
+
+					result, err := adapter.EnsureCCSSecretFinalizer()
+					Expect(matcher.ActualSecret.GetFinalizers()).To(ContainElement(projectclaim.CCSSecretFinalizer))
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result.CancelRequest).To(Equal(false))
+				})
+			})
+
+			Context("when the finalizer of the ccs secret is set already", func() {
+				BeforeEach(func() {
+					ccsSecret.Finalizers = []string{projectclaim.CCSSecretFinalizer}
+				})
+
+				It("doesn't cancel processing", func() {
+					result, err := adapter.EnsureCCSSecretFinalizer()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(result.CancelRequest).To(BeFalse())
+				})
 			})
 		})
 	})
