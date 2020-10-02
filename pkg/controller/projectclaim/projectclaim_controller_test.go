@@ -109,13 +109,30 @@ var _ = Describe("ProjectclaimController", func() {
 						mockAdapter.EXPECT().EnsureFinalizer().Return(gcputil.ContinueProcessing())
 					})
 
-					It("Sets the state to PendingProject", func() {
-						mockAdapter.EXPECT().EnsureProjectClaimStatePendingProject()
-						res, err := reconciler.ReconcileHandler(mockAdapter)
-						Expect(err).ToNot(HaveOccurred())
-						Expect(res.Requeue).To(Equal(false))
-						Expect(res.RequeueAfter).To(Equal(0 * time.Second))
+					Context("When it's a CCS cluster", func() {
+						It("Sets finalizer at the ccs secret", func() {
+							mockAdapter.EXPECT().EnsureCCSSecretFinalizer().Return(gcputil.StopProcessing())
+							res, err := reconciler.ReconcileHandler(mockAdapter)
+							Expect(err).ToNot(HaveOccurred())
+							Expect(res.Requeue).To(Equal(false))
+							Expect(res.RequeueAfter).To(Equal(0 * time.Second))
+						})
+
 					})
+
+					Context("When it's not a CCS cluster or finalizer is set", func() {
+						BeforeEach(func() {
+							mockAdapter.EXPECT().EnsureCCSSecretFinalizer().Return(gcputil.ContinueProcessing())
+						})
+						It("Sets the state to PendingProject", func() {
+							mockAdapter.EXPECT().EnsureProjectClaimStatePendingProject()
+							res, err := reconciler.ReconcileHandler(mockAdapter)
+							Expect(err).ToNot(HaveOccurred())
+							Expect(res.Requeue).To(Equal(false))
+							Expect(res.RequeueAfter).To(Equal(0 * time.Second))
+						})
+					})
+
 				})
 			})
 		})
