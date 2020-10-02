@@ -131,10 +131,18 @@ func (c *ProjectClaimAdapter) IsProjectReferenceDeletion() bool {
 	return c.projectReference.DeletionTimestamp != nil
 }
 
-func (c *ProjectClaimAdapter) EnsureFinalizerDeleted() error {
+func (c *ProjectClaimAdapter) EnsureProjectClaimFinalizerDeleted() error {
+	c.logger.Info("Deleting ProjectClaim Finalizer")
+	return c.deleteFinalizer(c.projectClaim, ProjectClaimFinalizer)
+}
+
+func (c *ProjectClaimAdapter) EnsureCCSSecretFinalizerDeleted() error {
 	if c.projectClaim.Spec.CCS {
 		secret, err := c.getCCSSecret()
 		if err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
 			return err
 		}
 		c.logger.Info("Deleting CCS Secret Finalizer")
@@ -142,10 +150,8 @@ func (c *ProjectClaimAdapter) EnsureFinalizerDeleted() error {
 		if err != nil {
 			return err
 		}
-
 	}
-	c.logger.Info("Deleting ProjectClaim Finalizer")
-	return c.deleteFinalizer(c.projectClaim, ProjectClaimFinalizer)
+	return nil
 }
 
 func (c *ProjectClaimAdapter) deleteFinalizer(object runtime.Object, finalizer string) error {
@@ -177,7 +183,12 @@ func (c *ProjectClaimAdapter) FinalizeProjectClaim() (ObjectState, error) {
 
 	// Assure the finalizer is not deleted as long as ProjectReference exists
 	if !projectReferenceExists {
-		err := c.EnsureFinalizerDeleted()
+		err := c.EnsureCCSSecretFinalizerDeleted()
+		if err != nil {
+			return ObjectUnchanged, err
+		}
+
+		err = c.EnsureProjectClaimFinalizerDeleted()
 		if err != nil {
 			return ObjectUnchanged, err
 		}
