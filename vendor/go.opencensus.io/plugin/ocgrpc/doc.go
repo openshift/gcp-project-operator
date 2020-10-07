@@ -1,4 +1,4 @@
-// Copyright 2018 The Operator-SDK Authors
+// Copyright 2017, OpenCensus Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package version
-
-var (
-	Version    = "v0.9.0"
-	GitVersion = "unknown"
-	GitCommit  = "unknown"
-)
+// Package ocgrpc contains OpenCensus stats and trace
+// integrations for gRPC.
+//
+// Use ServerHandler for servers and ClientHandler for clients.
+package ocgrpc // import "go.opencensus.io/plugin/ocgrpc"
