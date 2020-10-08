@@ -35,7 +35,7 @@ require (
 	go.uber.org/zap v1.9.1 // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	golang.org/x/time v0.0.0-20191023065245-6d3f0bb11be5 // indirect
-	golang.org/x/tools v0.0.0-20201002055958-0d28ed0cbe40 // indirect
+	golang.org/x/tools v0.0.0-20201008025239-9df69603baec // indirect
 	google.golang.org/api v0.11.0
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/grpc v1.24.0 // indirect
