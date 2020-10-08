@@ -13,6 +13,7 @@ import (
 
 	"github.com/openshift/gcp-project-operator/pkg/apis"
 	"github.com/openshift/gcp-project-operator/pkg/controller"
+	"github.com/openshift/gcp-project-operator/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
@@ -34,6 +35,7 @@ var (
 var log = logf.Log.WithName("cmd")
 
 func printVersion() {
+	log.V(1).Info(fmt.Sprintf("Operator Version: %s", version.Version))
 	log.V(1).Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.V(1).Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	log.V(1).Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
