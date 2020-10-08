@@ -26,7 +26,7 @@ spec:
     listKind: ProjectReferenceList
     plural: projectreferences
     singular: projectreference
-  scope: ""
+  scope: Namespaced
   subresources:
     status: {}
   validation:

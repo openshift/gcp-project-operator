@@ -2,29 +2,28 @@ module github.com/openshift/gcp-project-operator
 
 require (
 	cloud.google.com/go v0.47.0 // indirect
-	contrib.go.opencensus.io/exporter/ocagent v0.7.0 // indirect
 	github.com/emicklei/go-restful v2.11.2+incompatible // indirect
 	github.com/go-logr/logr v0.1.0
-	github.com/go-openapi/spec v0.19.3
-	github.com/golang/groupcache v0.0.0-20191002201903-404acd9df4cc // indirect
+	github.com/go-openapi/spec v0.19.4
 	github.com/golang/mock v1.4.4
+	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/uuid v1.1.1
-	github.com/hashicorp/golang-lru v0.5.3 // indirect
-	github.com/imdario/mergo v0.3.8 // indirect
 	github.com/onsi/ginkgo v1.12.0
 	github.com/onsi/gomega v1.9.0
 	github.com/openshift/cluster-api v0.0.0-20191129101638-b09907ac6668
-	github.com/operator-framework/operator-sdk v0.13.0
+	github.com/operator-framework/operator-sdk v0.14.1
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.4.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
+	go.opencensus.io v0.22.3 // indirect
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/time v0.0.0-20191023065245-6d3f0bb11be5 // indirect
-	golang.org/x/tools v0.0.0-20201008174424-ffec97847fac // indirect
+	golang.org/x/sys v0.0.0-20200523222454-059865788121 // indirect
+	golang.org/x/tools v0.0.0-20201008180153-4c6f507b8ab8 // indirect
 	google.golang.org/api v0.25.0
-	google.golang.org/appengine v1.6.5 // indirect
+	google.golang.org/genproto v0.0.0-20200527145253-8367513e4ece // indirect
+	google.golang.org/grpc v1.29.1 // indirect
 	gopkg.in/yaml.v2 v2.2.5
 	k8s.io/api v0.17.1
 	k8s.io/apimachinery v0.17.1
@@ -59,6 +58,8 @@ replace (
 	k8s.io/metrics => k8s.io/metrics v0.0.0-20191016113814-3b1a734dba6e
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.0.0-20191016112829-06bb3c9d77c9
 )
+
+replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309 // Required by Helm
 
 // Pin google api to v0.11.0
 replace google.golang.org/api => google.golang.org/api v0.11.0

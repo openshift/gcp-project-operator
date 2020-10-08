@@ -22,7 +22,7 @@ spec:
     listKind: ProjectClaimList
     plural: projectclaims
     singular: projectclaim
-  scope: ""
+  scope: Namespaced
   subresources:
     status: {}
   validation:
