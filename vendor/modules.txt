@@ -139,7 +139,7 @@ github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
 # github.com/openshift/cluster-api v0.0.0-20191129101638-b09907ac6668
 github.com/openshift/cluster-api/pkg/util
-# github.com/operator-framework/operator-sdk v0.15.2
+# github.com/operator-framework/operator-sdk v0.16.0
 github.com/operator-framework/operator-sdk/pkg/k8sutil
 github.com/operator-framework/operator-sdk/pkg/leader
 github.com/operator-framework/operator-sdk/pkg/log/zap
