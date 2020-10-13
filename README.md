@@ -103,8 +103,8 @@ Just run `make`.
 
 ```
 oc new-project gcp-project-operator
-oc apply -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
-oc apply -f deploy/crds/gcp_v1alpha1_projectreference_crd.yaml
+oc apply -f deploy/crds/gcp.managed.openshift.io_projectclaims_crd.yaml
+oc apply -f deploy/crds/gcp.managed.openshift.io_projectreferences_crd.yaml
 
 operator-sdk run local --watch-namespace gcp-project-operator
 ```

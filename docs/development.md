@@ -38,8 +38,8 @@ The operator can run either:
 No matter which option you choose, before running the Operator you have to create the following Custom Resource Definitions on the cluster:
 
 ```shell
-kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
-kubectl create -f deploy/crds/gcp_v1alpha1_projectreference_crd.yaml
+kubectl create -f deploy/crds/gcp.managed.openshift.io_projectclaims_crd.yaml
+kubectl create -f deploy/crds/gcp.managed.openshift.io_projectreferences_crd.yaml
 ```
 
 ### Locally
@@ -128,7 +128,7 @@ Follow [these instructions](./gcpconfig.md) to create both the `ConfigMap` and t
 No matter if the operator is running locally or remotely, you can request it to create Google GCP Project for you. So, if you want to actually test the operator, create a `ProjectClaim` resource or apply the example:
 
 ```
-kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_cr.yaml
+kubectl create -f deploy/crds/gcp.managed.openshift.io_v1alpha1_projectclaim_cr.yaml
 ```
 
 This will trigger the Operator to start reconciling.
