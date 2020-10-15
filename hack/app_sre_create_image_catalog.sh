@@ -24,7 +24,7 @@ REMOVED_VERSIONS=""
 if [[ "$REMOVE_UNDEPLOYED" == true ]]; then
     DEPLOYED_HASH=$(
         curl -s "https://gitlab.cee.redhat.com/service/app-interface/raw/master/data/services/osd-operators/cicd/saas/saas-gcp-project-operator.yaml" | \
-            docker run --rm -i evns/yq -r '.resourceTemplates[]|select(.name="gcp-project-operator").targets[]|select(.namespace["$ref"]=="/services/osd-operators/namespaces/gcp-project-operator-production.yml")|.ref'
+            docker run --rm -i quay.io/app-sre/yq -r '.resourceTemplates[]|select(.name="gcp-project-operator").targets[]|select(.namespace["$ref"]=="/services/osd-operators/namespaces/gcp-project-operator-production.yml")|.ref'
     )
     delete=false
     # Sort based on commit number
