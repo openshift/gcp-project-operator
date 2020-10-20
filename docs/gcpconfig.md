@@ -23,7 +23,7 @@ metadata:
   name: gcp-project-operator
   namespace: gcp-project-operator
 data:
-  data: |
+  config.yaml: |
     billingAccount: "123456-ABCDEF-123456" # Google billing ID from https://console.cloud.google.com/billing
     parentFolderID: "123456789123"         # Google Cloud organization Parent Folder ID
     ccsConsoleAccess:
