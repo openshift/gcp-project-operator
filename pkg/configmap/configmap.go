@@ -19,9 +19,10 @@ const (
 
 // OperatorConfigMap store data for the specified configmap
 type OperatorConfigMap struct {
-	BillingAccount   string   `yaml:"billingAccount"`
-	ParentFolderID   string   `yaml:"parentFolderID"`
-	CCSConsoleAccess []string `yaml:"ccsConsoleAccess,omitempty"`
+	BillingAccount           string   `yaml:"billingAccount"`
+	ParentFolderID           string   `yaml:"parentFolderID"`
+	CCSConsoleAccess         []string `yaml:"ccsConsoleAccess,omitempty"`
+	CCSReadOnlyConsoleAccess []string `yaml:"ccsReadOnlyConsoleAccess,omitempty"`
 }
 
 // ValidateOperatorConfigMap checks if OperatorConfigMap filled properly

@@ -79,6 +79,12 @@ var OSDSREConsoleAccessRoles = []string{
 	"roles/orgpolicy.policyViewer",
 }
 
+// OSDReadOnlyConsoleAccessRoles is a list of Roles that a service account
+// required to get read only console access.
+var OSDReadOnlyConsoleAccessRoles = []string{
+	"roles/viewer",
+}
+
 //ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
 type ReferenceAdapter struct {
 	ProjectClaim     *gcpv1alpha1.ProjectClaim
@@ -251,6 +257,12 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 			// TODO(yeya24): Use google API to check whether this email is
 			// for a group or a service account.
 			if err := r.SetIAMPolicy(email, OSDSREConsoleAccessRoles, gcputil.GoogleGroup); err != nil {
+				return result, err
+			}
+		}
+
+		for _, email := range r.OperatorConfig.CCSReadOnlyConsoleAccess {
+			if err := r.SetIAMPolicy(email, OSDReadOnlyConsoleAccessRoles, gcputil.GoogleGroup); err != nil {
 				return result, err
 			}
 		}

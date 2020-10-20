@@ -31,14 +31,15 @@ func TestValidateOperatorConfigMap(t *testing.T) {
 
 func TestGetOperatorConfigMap(t *testing.T) {
 	tests := []struct {
-		name                     string
-		localObjects             []runtime.Object
-		expectedParentFolderID   string
-		expectedBillingAccount   string
-		expectedCCSConsoleAccess []string
-		expectedErr              error
-		validateResult           func(*testing.T, string, string)
-		validateErr              func(*testing.T, error, error)
+		name                             string
+		localObjects                     []runtime.Object
+		expectedParentFolderID           string
+		expectedBillingAccount           string
+		expectedCCSConsoleAccess         []string
+		expectedCCSReadOnlyConsoleAccess []string
+		expectedErr                      error
+		validateResult                   func(*testing.T, string, string)
+		validateErr                      func(*testing.T, error, error)
 	}{
 		{
 			name: "Correct parentFolderID and billingAccount exist in configmap",
@@ -146,6 +147,35 @@ func TestGetOperatorConfigMap(t *testing.T) {
 			expectedBillingAccount:   "billing123",
 			expectedCCSConsoleAccess: []string{"foo", "bar"},
 			expectedErr:              nil,
+			validateResult: func(t *testing.T, expected, result string) {
+				assert.Equal(t, expected, result)
+			},
+			validateErr: func(t *testing.T, expected, result error) {
+				assert.Equal(t, expected, result)
+			},
+		},
+		{
+			name: "ccsReadOnlyConsoleAccess configured",
+			localObjects: func() []runtime.Object {
+				sec := &corev1.ConfigMap{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "gcp-project-operator",
+						Namespace: "gcp-project-operator",
+					},
+					Data: map[string]string{
+						OperatorConfigMapKey: `{parentFolderID: 1234567,billingAccount: "billing123",ccsReadOnlyConsoleAccess: [foo, bar]}`,
+					},
+				}
+				return []runtime.Object{sec}
+			}(),
+			expectedParentFolderID:           "1234567",
+			expectedBillingAccount:           "billing123",
+			expectedCCSReadOnlyConsoleAccess: []string{"foo", "bar"},
+			expectedErr:                      nil,
 			validateResult: func(t *testing.T, expected, result string) {
 				assert.Equal(t, expected, result)
 			},
