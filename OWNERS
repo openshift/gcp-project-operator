@@ -7,16 +7,15 @@ reviewers:
 - ninabauer
 - pyates86
 - rafael-azevedo
-- RiRa12621
 - Tessg22
 - georgettica
 - sulmer-redhat
+- sam-nguyen7
 approvers:
 - NautiluX
 - rafael-azevedo
 - boranx
 - drpaneas
-- RiRa12621
 maintainers:
 - NautiluX
 - rafael-azevedo
