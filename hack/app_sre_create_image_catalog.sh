@@ -2,6 +2,10 @@
 
 set -exv
 
+# prefix var with _ so we don't clober the var used during the Make build
+# it probably doesn't matter but we can change it later.
+_OPERATOR_NAME="gcp-project-operator"
+
 BRANCH_CHANNEL="$1"
 QUAY_IMAGE="$2"
 
@@ -23,8 +27,8 @@ git clone \
 REMOVED_VERSIONS=""
 if [[ "$REMOVE_UNDEPLOYED" == true ]]; then
     DEPLOYED_HASH=$(
-        curl -s "https://gitlab.cee.redhat.com/service/app-interface/raw/master/data/services/osd-operators/cicd/saas/saas-gcp-project-operator.yaml" | \
-            docker run --rm -i quay.io/app-sre/yq -r '.resourceTemplates[]|select(.name="gcp-project-operator").targets[]|select(.namespace["$ref"]=="/services/osd-operators/namespaces/gcp-project-operator-production.yml")|.ref'
+        curl -s "https://gitlab.cee.redhat.com/service/app-interface/raw/master/data/services/osd-operators/cicd/saas/saas-${_OPERATOR_NAME}.yaml" | \
+            docker run --rm -i quay.io/app-sre/yq yq r - "resourceTemplates[*].targets(namespace.\$ref==/services/osd-operators/namespaces/hivep01ue1/${_OPERATOR_NAME}.yml).ref"
     )
     delete=false
     # Sort based on commit number
