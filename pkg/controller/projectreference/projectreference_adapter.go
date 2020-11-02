@@ -77,6 +77,7 @@ var OSDSREConsoleAccessRoles = []string{
 	"roles/iam.serviceAccountAdmin",
 	"roles/serviceusage.serviceUsageAdmin",
 	"roles/orgpolicy.policyViewer",
+	"roles/iam.roleAdmin",
 }
 
 // OSDReadOnlyConsoleAccessRoles is a list of Roles that a service account
