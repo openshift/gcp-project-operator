@@ -34,7 +34,7 @@ type CustomResourceAdapter interface {
 	EnsureFinalizer() (gcputil.OperationResult, error)
 	EnsureCCSSecretFinalizer() (gcputil.OperationResult, error)
 	FinalizeProjectClaim() (ObjectState, error)
-	SetProjectClaimCondition(reason string, err error) error
+	SetProjectClaimCondition(gcpv1alpha1.ConditionType, string, error) (gcputil.OperationResult, error)
 }
 
 // Add creates a new ProjectClaim Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -100,7 +100,7 @@ func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.
 	adapter := NewProjectClaimAdapter(instance, reqLogger, r.client, conditionManager)
 	result, err := r.ReconcileHandler(adapter)
 	reason := "ReconcileError"
-	_ = adapter.SetProjectClaimCondition(reason, err)
+	_, _ = adapter.SetProjectClaimCondition(gcpv1alpha1.ConditionError, reason, err)
 
 	return result, err
 }

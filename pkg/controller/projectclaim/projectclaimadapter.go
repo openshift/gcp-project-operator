@@ -39,6 +39,7 @@ const (
 
 const ProjectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
 const CCSSecretFinalizer string = "finalizer.gcp.managed.openshift.io/ccs"
+const RegionCheckFailed string = "RegionCheckFailed"
 
 // Regions supported in the gcp-project-operator
 var supportedRegions = map[string]bool{
@@ -203,7 +204,7 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (gcputil.Operation
 		c.projectClaim.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := c.client.Status().Update(context.TODO(), c.projectClaim)
 		if err != nil {
-			gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize projectclaim"))
+			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize projectclaim"))
 		}
 		return gcputil.StopProcessing()
 	}
@@ -312,35 +313,36 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimSta
 	}
 
 	c.projectClaim.Status.State = state
-	err := c.StatusUpdate()
-	if err != nil {
-		return gcputil.RequeueWithError(err)
-	}
-
-	return gcputil.StopProcessing()
+	return gcputil.RequeueOnErrorOrStop(c.StatusUpdate())
 }
 
 // SetProjectClaimCondition calls SetCondition() with project claim conditions
-func (c *ProjectClaimAdapter) SetProjectClaimCondition(reason string, err error) error {
+func (c *ProjectClaimAdapter) SetProjectClaimCondition(conditionType gcpv1alpha1.ConditionType, reason string, err error) (gcputil.OperationResult, error) {
 	conditions := &c.projectClaim.Status.Conditions
-	conditionType := gcpv1alpha1.ConditionError
 	if err != nil {
 		c.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error())
-	} else {
-		if len(*conditions) != 0 {
-			reason = reason + "Resolved"
-			c.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, reason, "")
-		} else {
-			return nil
-		}
+		return gcputil.RequeueOnErrorOrStop(c.StatusUpdate())
 	}
 
-	return c.StatusUpdate()
+	if !c.conditionManager.HasCondition(conditions, conditionType) {
+		return gcputil.ContinueProcessing()
+	}
+	reason = reason + "Resolved"
+	if condition, _ := c.conditionManager.FindCondition(conditions, conditionType); condition.Reason == reason {
+		return gcputil.ContinueProcessing()
+	}
+
+	c.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, reason, "")
+	return gcputil.RequeueOnErrorOrStop(c.StatusUpdate())
+
 }
 
 // IsRegionSupported checks if current region is supported.
 // It returns an error message if a region is not supported.
 func (c *ProjectClaimAdapter) IsRegionSupported() error {
+	if c.projectClaim.Spec.CCS {
+		return nil
+	}
 	if _, ok := supportedRegions[c.projectClaim.Spec.Region]; !ok {
 		return operrors.ErrRegionNotSupported
 	}
@@ -350,12 +352,14 @@ func (c *ProjectClaimAdapter) IsRegionSupported() error {
 // EnsureRegionSupported modifies projectClaim.Status.State with result from IsRegionSupported.
 // If a region is not supported it returns an error and sets projectClaim.Status.State to ClaimStatusError.
 func (c *ProjectClaimAdapter) EnsureRegionSupported() (gcputil.OperationResult, error) {
-	if err := c.IsRegionSupported(); err != nil {
+	err := c.IsRegionSupported()
+	if err != nil {
 		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
-		c.StatusUpdate()
-		return gcputil.RequeueWithError(operrors.Wrap(err, ""))
 	}
-	return gcputil.ContinueProcessing()
+	if err == nil && c.projectClaim.Status.State == gcpv1alpha1.ClaimStatusError {
+		c.projectClaim.Status.State = "Pending"
+	}
+	return c.SetProjectClaimCondition(gcpv1alpha1.ConditionInvalid, RegionCheckFailed, err)
 }
 
 // StatusUpdate updates the project claim status
