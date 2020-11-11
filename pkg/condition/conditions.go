@@ -11,6 +11,7 @@ import (
 type Conditions interface {
 	SetCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType, status corev1.ConditionStatus, reason string, message string)
 	FindCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) (*gcpv1alpha1.Condition, bool)
+	HasCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) bool
 }
 
 type ConditionManager struct {
@@ -59,4 +60,14 @@ func (c *ConditionManager) FindCondition(conditions *[]gcpv1alpha1.Condition, co
 	)
 
 	return &(*conditions)[len(*conditions)-1], false
+}
+
+// HasCondition checks for the existance of a given Condition type
+func (c *ConditionManager) HasCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) bool {
+	for _, condition := range *conditions {
+		if condition.Type == conditionType {
+			return true
+		}
+	}
+	return false
 }

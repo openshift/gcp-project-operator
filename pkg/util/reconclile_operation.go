@@ -8,12 +8,23 @@ type OperationResult struct {
 	CancelRequest  bool
 }
 
-func StopProcessing() (result OperationResult, err error) {
-	result = OperationResult{
+func ContinueOperationResult() OperationResult {
+	return OperationResult{
+		RequeueDelay:   0,
+		RequeueRequest: false,
+		CancelRequest:  false,
+	}
+}
+func StopOperationResult() OperationResult {
+	return OperationResult{
 		RequeueDelay:   0,
 		RequeueRequest: false,
 		CancelRequest:  true,
 	}
+}
+
+func StopProcessing() (result OperationResult, err error) {
+	result = StopOperationResult()
 	return
 }
 
@@ -58,10 +69,6 @@ func RequeueAfter(delay time.Duration, errIn error) (result OperationResult, err
 }
 
 func ContinueProcessing() (result OperationResult, err error) {
-	result = OperationResult{
-		RequeueDelay:   0,
-		RequeueRequest: false,
-		CancelRequest:  false,
-	}
+	result = ContinueOperationResult()
 	return
 }
