@@ -357,7 +357,7 @@ func (c *ProjectClaimAdapter) EnsureRegionSupported() (gcputil.OperationResult, 
 		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
 	}
 	if err == nil && c.projectClaim.Status.State == gcpv1alpha1.ClaimStatusError {
-		c.projectClaim.Status.State = "Pending"
+		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusPending
 	}
 	return c.SetProjectClaimCondition(gcpv1alpha1.ConditionInvalid, RegionCheckFailed, err)
 }
