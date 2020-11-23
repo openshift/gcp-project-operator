@@ -33,7 +33,7 @@ According to the message from KubeBuilder (which is the one Operators SDK is bas
 Please type:
 
 ```zsh
-$ kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
+$ kubectl create -f deploy/crds/gcp.managed.openshift.io_projectclaims_crd.yaml
 ```
 
 
@@ -42,7 +42,7 @@ $ kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
 ### Command
 
 ```zsh
-$ kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
+$ kubectl create -f deploy/crds/gcp.managed.openshift.io_projectclaims_crd.yaml
 ```
 
 ### Logs
@@ -68,5 +68,5 @@ This is expected behavior.
 Please type:
 
 ```zsh
-$ kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_cr.yaml
+$ kubectl create -f deploy/crds/gcp.managed.openshift.io_v1alpha1_projectclaim_cr.yaml
 ```

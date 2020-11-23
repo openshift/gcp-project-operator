@@ -21,7 +21,8 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockconditions "github.com/openshift/gcp-project-operator/pkg/util/mocks/condition"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var _ = Describe("Customresourceadapter", func() {
@@ -478,6 +479,11 @@ var _ = Describe("Customresourceadapter", func() {
 
 type stubStatus struct{}
 
-func (stubStatus) Update(ctx context.Context, obj runtime.Object) error {
+var _ client.StatusWriter = stubStatus{}
+
+func (stubStatus) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return nil
+}
+func (stubStatus) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
 	return nil
 }

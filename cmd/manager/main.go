@@ -7,21 +7,26 @@ import (
 	"runtime"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 
 	"github.com/openshift/gcp-project-operator/pkg/apis"
 	"github.com/openshift/gcp-project-operator/pkg/controller"
+	"github.com/openshift/gcp-project-operator/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/leader"
 	"github.com/operator-framework/operator-sdk/pkg/log/zap"
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
-	"github.com/operator-framework/operator-sdk/pkg/restmapper"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"github.com/spf13/pflag"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -32,6 +37,7 @@ var (
 var log = logf.Log.WithName("cmd")
 
 func printVersion() {
+	log.V(1).Info(fmt.Sprintf("Operator Version: %s", version.Version))
 	log.V(1).Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
 	log.V(1).Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
 	log.V(1).Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
@@ -87,7 +93,7 @@ func run() error {
 	// Create a new Cmd to provide shared dependencies and start components
 	mgr, err := manager.New(cfg, manager.Options{
 		Namespace:          "", //watch all namespaces
-		MapperProvider:     restmapper.NewDynamicRESTMapper,
+		MapperProvider:     func(cfg *rest.Config) (meta.RESTMapper, error) { return apiutil.NewDynamicRESTMapper(cfg) },
 		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 	})
 	if err != nil {
@@ -108,15 +114,15 @@ func run() error {
 	}
 
 	log.V(2).Info("Expose metrics")
-	_, err = metrics.ExposeMetricsPort(ctx, metricsPort)
+	// TODO: Use operator-custom-metrics
+	servicePorts := []v1.ServicePort{
+		{Port: metricsPort, Name: metrics.OperatorPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: metricsPort}},
+	}
+
+	_, err = metrics.CreateMetricsService(ctx, cfg, servicePorts)
 	if err != nil {
 		log.V(2).Info(err.Error())
 	}
-
-	log.V(2).Info("Initalize and start cache")
-	cache := mgr.GetCache()
-	go cache.Start(stopCh)
-	cache.WaitForCacheSync(stopCh)
 
 	log.Info("Starting the 'gcp-project-operator' Reconcile loop")
 	return mgr.Start(stopCh)

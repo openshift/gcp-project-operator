@@ -35,8 +35,8 @@ kubectl apply -f deploy/service_account.yaml
 ### Install the CRDs
 
 ```zsh
-kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
-kubectl create -f deploy/crds/gcp_v1alpha1_projectreference_crd.yaml
+kubectl create -f deploy/crds/gcp.managed.openshift.io_projectclaims_crd.yaml
+kubectl create -f deploy/crds/gcp.managed.openshift.io_projectreferences_crd.yaml
 ```
 
 ### Install the Operator
@@ -53,7 +53,7 @@ Create a new `ProjectClaim` signaling your request to the Operator.
 For example:
 
 ```kube
-kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_cr.yaml
+kubectl create -f deploy/crds/gcp.managed.openshift.io_v1alpha1_projectclaim_cr.yaml
 ```
 
 ### Delete a GCP Project
@@ -62,5 +62,5 @@ Delete the already created `ProjectClaim` instance.
 This will propagate the request to Google GCP and it will delete the GCP Project that is linked to that.
 
 ```kube
-kubectl delete -f deploy/crds/gcp_v1alpha1_projectclaim_cr.yaml
+kubectl delete -f deploy/crds/gcp.managed.openshift.io_v1alpha1_projectclaim_cr.yaml
 ```

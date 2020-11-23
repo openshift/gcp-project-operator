@@ -12,7 +12,7 @@ You do not need to understand how API aggregation works behind the scenes.
 Please type:
 
 ```zsh
-$ kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_crd.yaml
+$ kubectl create -f deploy/crds/gcp.managed.openshift.io_projectclaims_crd.yaml
 ```
 
 ### Create an instance of ProjectClaim type
@@ -50,7 +50,7 @@ spec:
 For example, you can apply our example by typing:
 
 ```zsh
-$ kubectl create -f deploy/crds/gcp_v1alpha1_projectclaim_cr.yaml
+$ kubectl create -f deploy/crds/gcp.managed.openshift.io_v1alpha1_projectclaim_cr.yaml
 ```
 
 After running this, verify everything is applied into Kubernetes:
