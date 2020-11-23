@@ -1,3 +1,5 @@
+include boilerplate/generated-includes.mk
+
 SHELL := /usr/bin/env bash
 
 OPERATOR_DOCKERFILE = ./build/Dockerfile
@@ -20,3 +22,7 @@ generate:
 coverage:
 	go get github.com/jpoles1/gopherbadger
 	gopherbadger
+
+.PHONY: boilerplate-update
+boilerplate-update:
+	@boilerplate/update
