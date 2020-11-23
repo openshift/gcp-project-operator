@@ -60,3 +60,17 @@ func (mr *MockConditionsMockRecorder) FindCondition(conditions, conditionType in
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindCondition", reflect.TypeOf((*MockConditions)(nil).FindCondition), conditions, conditionType)
 }
+
+// HasCondition mocks base method
+func (m *MockConditions) HasCondition(conditions *[]v1alpha1.Condition, conditionType v1alpha1.ConditionType) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HasCondition", conditions, conditionType)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// HasCondition indicates an expected call of HasCondition
+func (mr *MockConditionsMockRecorder) HasCondition(conditions, conditionType interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasCondition", reflect.TypeOf((*MockConditions)(nil).HasCondition), conditions, conditionType)
+}

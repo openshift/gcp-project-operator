@@ -17,6 +17,7 @@ import (
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
+	"github.com/openshift/gcp-project-operator/pkg/util"
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	mockconditions "github.com/openshift/gcp-project-operator/pkg/util/mocks/condition"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
@@ -93,26 +94,42 @@ var _ = Describe("Customresourceadapter", func() {
 	Context("When the EnsureRegionSupported() is called", func() {
 		Context("if the projectclaim has a supported region", func() {
 			BeforeEach(func() {
+				mockConditions.EXPECT().HasCondition(gomock.Any(), gcpv1alpha1.ConditionInvalid).Return(false)
 				projectClaim.Spec.Region = "us-east1"
 			})
 			It("should return nil", func() {
-				_, err := adapter.EnsureRegionSupported()
-				Expect(err).To(BeNil())
+				res, err := adapter.EnsureRegionSupported()
+				Expect(res).To(Equal(util.ContinueOperationResult()))
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 		Context("if the projectclaim has an unsupported region", func() {
 			BeforeEach(func() {
-				matcher := testStructs.NewProjectClaimMatcher()
-				mockClient.EXPECT().Status().Return(mockStatusWriter)
-				mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
 				projectClaim.Spec.Region = "fake-region"
 			})
-			It("should return err", func() {
-				_, err := adapter.EnsureRegionSupported()
-				Expect(err.Error()).Should(ContainSubstring("gcp-project-operator/pkg/controller/projectclaim/projectclaimadapter.go"))
-				Expect(err.Error()).Should(ContainSubstring("Line:"))
-				Expect(err.Error()).Should(ContainSubstring("gcp-project-operator/pkg/controller/projectclaim.(*ProjectClaimAdapter).EnsureRegionSupported"))
-				Expect(err.Error()).Should(ContainSubstring("RegionNotSupported"))
+			Context("when it is not a CCS cluster", func() {
+				BeforeEach(func() {
+					mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionInvalid, corev1.ConditionTrue, RegionCheckFailed, gomock.Any())
+					matcher := testStructs.NewProjectClaimMatcher()
+					mockClient.EXPECT().Status().Return(mockStatusWriter)
+					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
+				})
+				It("should return err", func() {
+					res, err := adapter.EnsureRegionSupported()
+					Expect(err).NotTo(HaveOccurred())
+					Expect(res).To(Equal(util.StopOperationResult()))
+				})
+			})
+			Context("when it is a CCS cluster", func() {
+				BeforeEach(func() {
+					mockConditions.EXPECT().HasCondition(gomock.Any(), gcpv1alpha1.ConditionInvalid).Return(false)
+					projectClaim.Spec.CCS = true
+				})
+				It("should return nil", func() {
+					res, err := adapter.EnsureRegionSupported()
+					Expect(res).To(Equal(util.ContinueOperationResult()))
+					Expect(err).NotTo(HaveOccurred())
+				})
 			})
 		})
 	})
@@ -369,7 +386,7 @@ var _ = Describe("Customresourceadapter", func() {
 					currentState = gcpv1alpha1.ClaimStatusReady
 				})
 				It("doesn't change the ProjectClaim state", func() {
-					adapter.EnsureProjectClaimState(requestedState)
+					_, _ = adapter.EnsureProjectClaimState(requestedState)
 					Expect(projectClaim.Status.State).To(Equal(currentState))
 				})
 			})
@@ -380,7 +397,7 @@ var _ = Describe("Customresourceadapter", func() {
 				})
 				It("updates the state to Pending", func() {
 					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
-					adapter.EnsureProjectClaimState(requestedState)
+					_, _ = adapter.EnsureProjectClaimState(requestedState)
 					Expect(projectClaim.Status.State).To(Equal(requestedState))
 				})
 			})
@@ -396,7 +413,7 @@ var _ = Describe("Customresourceadapter", func() {
 					currentState = gcpv1alpha1.ClaimStatusReady
 				})
 				It("doesn't change the ProjectClaim state", func() {
-					adapter.EnsureProjectClaimState(requestedState)
+					_, _ = adapter.EnsureProjectClaimState(requestedState)
 					Expect(projectClaim.Status.State).To(Equal(currentState))
 				})
 			})
@@ -407,7 +424,7 @@ var _ = Describe("Customresourceadapter", func() {
 				})
 				It("updates the state to PendingProject", func() {
 					mockClient.EXPECT().Status().Times(1).Return(stubStatus{})
-					adapter.EnsureProjectClaimState(requestedState)
+					_, _ = adapter.EnsureProjectClaimState(requestedState)
 					Expect(projectClaim.Status.State).To(Equal(requestedState))
 				})
 			})
@@ -420,29 +437,40 @@ var _ = Describe("Customresourceadapter", func() {
 				conditionType = gcpv1alpha1.ConditionError
 			)
 			Context("when no conditions defined before and the err is nil", func() {
+				BeforeEach(func() {
+					mockConditions.EXPECT().HasCondition(gomock.Any(), conditionType).Return(false)
+				})
 				It("It returns nil ", func() {
-					errTemp := adapter.SetProjectClaimCondition(reason, nil)
+					_, errTemp := adapter.SetProjectClaimCondition(conditionType, reason, nil)
 					Expect(errTemp).To(BeNil())
 				})
 			})
 			Context("when the err comes from reconcileHandler", func() {
-				It("should update the CRD", func() {
+				It("should update the CR", func() {
 					matcher := testStructs.NewProjectClaimMatcher()
 					mockClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
 					mockConditions.EXPECT().SetCondition(gomock.Any(), conditionType, corev1.ConditionTrue, reason, err.Error()).Times(1)
-					adapter.SetProjectClaimCondition(reason, err)
+					res, err := adapter.SetProjectClaimCondition(conditionType, reason, err)
+					Expect(res).To(Equal(util.StopOperationResult()))
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 			Context("when the err has been resolved", func() {
-				It("It should update the CRD condition status as resolved", func() {
+				BeforeEach(func() {
+					mockConditions.EXPECT().HasCondition(gomock.Any(), conditionType).Return(true)
+					mockConditions.EXPECT().FindCondition(gomock.Any(), conditionType).Return(&gcpv1alpha1.Condition{}, true)
+				})
+				It("It should update the CR condition status as resolved", func() {
 					matcher := testStructs.NewProjectClaimMatcher()
 					conditions := &projectClaim.Status.Conditions
 					*conditions = append(*conditions, gcpv1alpha1.Condition{})
 					mockClient.EXPECT().Status().Return(mockStatusWriter)
 					mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
 					mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "ReconcileErrorResolved", "").Times(1)
-					adapter.SetProjectClaimCondition(reason, nil)
+					res, err := adapter.SetProjectClaimCondition(conditionType, reason, nil)
+					Expect(res).To(Equal(util.StopOperationResult()))
+					Expect(err).NotTo(HaveOccurred())
 				})
 			})
 		})

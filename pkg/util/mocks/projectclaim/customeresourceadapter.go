@@ -6,6 +6,7 @@ package projectclaim
 
 import (
 	gomock "github.com/golang/mock/gomock"
+	v1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	projectclaim "github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
 	util "github.com/openshift/gcp-project-operator/pkg/util"
 	reflect "reflect"
@@ -200,15 +201,16 @@ func (mr *MockCustomResourceAdapterMockRecorder) ProjectReferenceExists() *gomoc
 }
 
 // SetProjectClaimCondition mocks base method
-func (m *MockCustomResourceAdapter) SetProjectClaimCondition(arg0 string, arg1 error) error {
+func (m *MockCustomResourceAdapter) SetProjectClaimCondition(arg0 v1alpha1.ConditionType, arg1 string, arg2 error) (util.OperationResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetProjectClaimCondition", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "SetProjectClaimCondition", arg0, arg1, arg2)
+	ret0, _ := ret[0].(util.OperationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SetProjectClaimCondition indicates an expected call of SetProjectClaimCondition
-func (mr *MockCustomResourceAdapterMockRecorder) SetProjectClaimCondition(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockCustomResourceAdapterMockRecorder) SetProjectClaimCondition(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetProjectClaimCondition", reflect.TypeOf((*MockCustomResourceAdapter)(nil).SetProjectClaimCondition), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetProjectClaimCondition", reflect.TypeOf((*MockCustomResourceAdapter)(nil).SetProjectClaimCondition), arg0, arg1, arg2)
 }
