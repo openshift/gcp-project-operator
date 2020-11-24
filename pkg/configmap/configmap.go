@@ -23,6 +23,7 @@ type OperatorConfigMap struct {
 	ParentFolderID           string   `yaml:"parentFolderID"`
 	CCSConsoleAccess         []string `yaml:"ccsConsoleAccess,omitempty"`
 	CCSReadOnlyConsoleAccess []string `yaml:"ccsReadOnlyConsoleAccess,omitempty"`
+	DisabledRegions          []string `yaml:"disabledRegions,omitempty"`
 }
 
 // ValidateOperatorConfigMap checks if OperatorConfigMap filled properly
