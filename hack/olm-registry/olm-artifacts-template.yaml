@@ -10,6 +10,14 @@ parameters:
   value: staging
 - name: IMAGE_TAG
   value: latest
+- name: PARENT_FOLDER_ID
+  required: true
+- name: BILLING_ACCOUNT
+  required: true
+- name: CCS_CONSOLE_ACCESS
+  required: true
+- name: DISABLED_REGIONS
+  required: true
 
 objects:
 - apiVersion: operators.coreos.com/v1alpha1
@@ -39,3 +47,14 @@ objects:
     name: gcp-project-operator
     source: gcp-project-operator-catalog
     sourceNamespace: gcp-project-operator
+
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: gcp-project-operator
+  data:
+    config.yaml: |
+      billingAccount: "${BILLING_ACCOUNT}"
+      parentFolderID: "${PARENT_FOLDER_ID}"
+      ccsConsoleAccess: ${CCS_CONSOLE_ACCESS}
+      disabledRegions: ${DISABLED_REGIONS}
