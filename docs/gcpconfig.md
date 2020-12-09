@@ -28,8 +28,17 @@ data:
     parentFolderID: "123456789123"         # Google Cloud organization Parent Folder ID
     ccsConsoleAccess:
     - example-group@xxx.com # A list of groups that will get access to CCS projects
+    disabledRegions:
+    - europe-north1
+    - asia-northeast2
+    - asia-south1
 EOF
 ```
+
+The list of disabledRegions can be used to block the creation of projects in certain regions. Example use of this list is a region in which you do not have enough quota to provision a OCP cluster.
+If a `ProjectClaim` is created that is configured to create a project in one of those regions, the state will be set to `Error` before any action is taken.
+
+Consult the [OCP documentation](https://docs.openshift.com/container-platform/4.6/installing/installing_gcp/installing-gcp-account.html#installation-gcp-limits_installing-gcp-account) for a list of minimum quota necessary to provision an OpenShift cluster.
 
 ### Secret
 
