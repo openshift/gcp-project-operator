@@ -10,6 +10,7 @@ import (
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
+	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 
@@ -40,37 +41,6 @@ const (
 const ProjectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
 const CCSSecretFinalizer string = "finalizer.gcp.managed.openshift.io/ccs"
 const RegionCheckFailed string = "RegionCheckFailed"
-
-// Regions supported in the gcp-project-operator
-var supportedRegions = map[string]bool{
-	"asia-east1":      true,
-	"asia-northeast1": true,
-	"asia-southeast1": true,
-	"europe-west1":    true,
-	"europe-west4":    true,
-	"us-central1":     true,
-	"us-east1":        true,
-	"us-east4":        true,
-	"us-west1":        true,
-
-	// Regions below don't have enough quota configured by default, but our org has sufficient quota
-	"asia-east2":   true,
-	"europe-west2": true,
-	"us-west2":     true,
-
-	// Regions below have enough quota, but the region name will produce too long hostnames.
-	// This is an issue the openshift installer needs to fix.
-	// "australia-southeast1":    true,
-	// "northamerica-northeast1": true,
-	// "southamerica-east1":      true,
-
-	// Regions below are disabled do not have enough quota configured (CPU < 28 or SSD storage < 896)
-	// "europe-west3":            true,
-	// "europe-west6":            true,
-	// "europe-north1":           true,
-	// "asia-northeast2":         true,
-	// "asia-south1":             true,
-}
 
 func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, manager condition.Conditions) *ProjectClaimAdapter {
 	projectReference := newMatchingProjectReference(projectClaim)
@@ -339,24 +309,35 @@ func (c *ProjectClaimAdapter) SetProjectClaimCondition(conditionType gcpv1alpha1
 
 // IsRegionSupported checks if current region is supported.
 // It returns an error message if a region is not supported.
-func (c *ProjectClaimAdapter) IsRegionSupported() error {
+func (c *ProjectClaimAdapter) IsRegionSupported() (bool, error) {
 	if c.projectClaim.Spec.CCS {
-		return nil
+		return true, nil
 	}
-	if _, ok := supportedRegions[c.projectClaim.Spec.Region]; !ok {
-		return operrors.ErrRegionNotSupported
+
+	operatorConfigMap, err := configmap.GetOperatorConfigMap(c.client)
+	if err != nil {
+		return true, operrors.Wrap(err, "could not find the OperatorConfigMap")
 	}
-	return nil
+	if util.Contains(operatorConfigMap.DisabledRegions, c.projectClaim.Spec.Region) {
+		return false, nil
+	}
+	return true, nil
 }
 
 // EnsureRegionSupported modifies projectClaim.Status.State with result from IsRegionSupported.
 // If a region is not supported it returns an error and sets projectClaim.Status.State to ClaimStatusError.
 func (c *ProjectClaimAdapter) EnsureRegionSupported() (gcputil.OperationResult, error) {
-	err := c.IsRegionSupported()
+	supported, err := c.IsRegionSupported()
 	if err != nil {
-		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
+		return gcputil.RequeueWithError(err)
 	}
-	if err == nil && c.projectClaim.Status.State == gcpv1alpha1.ClaimStatusError {
+
+	if !supported {
+		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
+		err = operrors.ErrRegionNotSupported
+	}
+
+	if supported && c.projectClaim.Status.State == gcpv1alpha1.ClaimStatusError {
 		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusPending
 	}
 	return c.SetProjectClaimCondition(gcpv1alpha1.ConditionInvalid, RegionCheckFailed, err)

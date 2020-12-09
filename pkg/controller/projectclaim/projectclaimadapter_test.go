@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
 	. "github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
 	"github.com/openshift/gcp-project-operator/pkg/util"
@@ -92,6 +93,28 @@ var _ = Describe("Customresourceadapter", func() {
 	})
 
 	Context("When the EnsureRegionSupported() is called", func() {
+		BeforeEach(func() {
+			configMap := corev1.ConfigMap{
+				Data: map[string]string{
+					configmap.OperatorConfigMapKey: `
+billingAccount: fake-account
+parentFolderID: fake-folder
+disabledRegions:
+- australia-southeast1
+- northamerica-northeast1
+- southamerica-east1
+
+- europe-west3
+- europe-west6
+- europe-north1
+- asia-northeast2
+- asia-south1
+`,
+				},
+			}
+			mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap).AnyTimes()
+
+		})
 		Context("if the projectclaim has a supported region", func() {
 			BeforeEach(func() {
 				mockConditions.EXPECT().HasCondition(gomock.Any(), gcpv1alpha1.ConditionInvalid).Return(false)
@@ -105,7 +128,7 @@ var _ = Describe("Customresourceadapter", func() {
 		})
 		Context("if the projectclaim has an unsupported region", func() {
 			BeforeEach(func() {
-				projectClaim.Spec.Region = "fake-region"
+				projectClaim.Spec.Region = "europe-west3"
 			})
 			Context("when it is not a CCS cluster", func() {
 				BeforeEach(func() {
