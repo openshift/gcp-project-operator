@@ -234,6 +234,10 @@ func (r *ReferenceAdapter) isCCS() bool {
 	return r.ProjectReference.Spec.CCS
 }
 
+func (r *ReferenceAdapter) isOnTheMove() bool {
+	return r.ProjectClaim.Spec.OnTheMove
+}
+
 func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, error) {
 	r.logger.V(1).Info("Configuring APIS")
 	err := r.configureAPIS()
@@ -342,7 +346,7 @@ func (r *ReferenceAdapter) EnsureFinalizerDeleted() error {
 
 // EnsureProjectCleanedUp deletes the project, the secret and the finalizer if they still exist
 func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
-	if !r.isCCS() {
+	if !r.isCCS() && !r.isOnTheMove() {
 		err := r.deleteProject()
 		if err != nil {
 			return err

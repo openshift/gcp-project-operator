@@ -91,6 +91,9 @@ func (adapter *ProjectClaimAdapter) EnsureProjectClaimDeletionProcessed() (gcput
 		}
 		return gcputil.StopProcessing()
 	}
+	if adapter.projectClaim.Spec.OnTheMove {
+		return gcputil.StopProcessing()
+	}
 	return gcputil.ContinueProcessing()
 }
 
