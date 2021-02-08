@@ -149,23 +149,36 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					Context("When availability zones are not set", func() {
 						BeforeEach(func() {
 							mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
-							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
+							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Times(1)
 							mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones").Times(1)
 						})
-						It("updates the ProjectClaim with availability zones and sets GCPProjectID", func() {
+						It("updates the ProjectClaim with availability zones", func() {
 							_, err := EnsureProjectClaimReady(adapter)
 							Expect(err).NotTo(HaveOccurred())
 							Expect(adapter.ProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
-							Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal(adapter.ProjectReference.Spec.GCPProjectID))
+						})
+
+					})
+
+					Context("When availability zones are set but GCPProjectID are not", func() {
+						BeforeEach(func() {
+							mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
+							mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones").Times(1)
+						})
+						It("updates the ProjectClaim with availability zones", func() {
+							_, err := EnsureProjectClaimReady(adapter)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(adapter.ProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
 						})
 
 					})
 					Context("When availability zones are set already", func() {
 						BeforeEach(func() {
-							mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
-							mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
 							projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
 							projectClaim.Spec.GCPProjectID = "fake-id"
+							mockKubeClient.EXPECT().Status().Return(mockStatusWriter).Times(1)
+							mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Times(1)
 						})
 
 						It("sets state to Ready", func() {
@@ -191,15 +204,12 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 						conditionFound = false
 						mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones").Times(1)
-						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
-						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any())
 						mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{}, errors.New("googleapi: Error 403: Access Not Configured. Compute Engine API has not been used in project ...."))
+						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 					})
 
 					Context("When compute API is not ready and no condition is set, yet", func() {
-						BeforeEach(func() {
-							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
-						})
 						It("does not return an error", func() {
 							_, err := EnsureProjectClaimReady(adapter)
 							Expect(err).NotTo(HaveOccurred())
@@ -217,8 +227,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 								Reason:             "fake-reason",
 								Message:            "fake-message",
 							}
-							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
-
 						})
 						It("does not return an error", func() {
 							_, err := EnsureProjectClaimReady(adapter)
@@ -332,7 +340,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
 						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 						result, err := EnsureProjectCreated(adapter)
-						// No error returned in this case.
 						Expect(err).ToNot(HaveOccurred())
 						Expect(result).To(Equal(stopProcessingResult))
 					})
@@ -750,6 +757,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				It("deletes the project", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
+					email := "Some Email"
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
+					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					err := adapter.EnsureProjectCleanedUp()
 					Expect(err).NotTo(HaveOccurred())
 				})
@@ -757,6 +767,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Context("When the lifecycleStatus is ACTIVE", func() {
 				It("deletes the project", func() {
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					email := "Some Email"
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
+					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
 					err := adapter.EnsureProjectCleanedUp()
@@ -766,6 +779,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Context("When it cannot delete the project", func() {
 				It("returns an error", func() {
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					email := "Some Email"
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
+					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
 					err := adapter.EnsureProjectCleanedUp()

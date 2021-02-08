@@ -3,7 +3,11 @@ package projectreference
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
+
+	"reflect"
+	goruntime "runtime"
 
 	"github.com/go-logr/logr"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
@@ -131,18 +135,23 @@ type ReconcileOperation func(*ReferenceAdapter) (util.OperationResult, error)
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, reqLogger logr.Logger) (reconcile.Result, error) {
 	operations := []ReconcileOperation{
+		EnsureServiceAccountNameMigration,
 		EnsureProjectReferenceInitialized, //Set conditions
 		EnsureDeletionProcessed,           // Cleanup
 		EnsureProjectClaimReady,           // Make projectReference  be processed based on state of ProjectClaim and Project Reference
 		VerifyProjectClaimPending,         //only make changes to ProjectReference if ProjectClaim is pending
 		EnsureProjectReferenceStatusCreating,
 		EnsureProjectID,
+		EnsureServiceAccountName,
 		EnsureFinalizerAdded,
 		EnsureProjectCreated,
 		EnsureProjectConfigured,
 		EnsureStateReady,
 	}
 	for _, operation := range operations {
+		if log.V(3).Enabled() {
+			log.V(3).Info("func", strings.Split(goruntime.FuncForPC(reflect.ValueOf(operation).Pointer()).Name(), ".")[2])
+		}
 		result, err := operation(adapter)
 		if err != nil || result.RequeueRequest {
 			return r.requeueAfter(result.RequeueDelay, err)

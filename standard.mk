@@ -33,7 +33,7 @@ export GO111MODULE=on
 
 TESTTARGETS := $(shell go list -e ./... | egrep -v "/(vendor)/")
 # ex, -v
-TESTOPTS := 
+TESTOPTS :=  -cover
 
 ALLOW_DIRTY_CHECKOUT?=false
 

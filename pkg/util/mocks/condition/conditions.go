@@ -5,48 +5,37 @@
 package condition
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	v1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	v1 "k8s.io/api/core/v1"
-	reflect "reflect"
 )
 
-// MockConditions is a mock of Conditions interface
+// MockConditions is a mock of Conditions interface.
 type MockConditions struct {
 	ctrl     *gomock.Controller
 	recorder *MockConditionsMockRecorder
 }
 
-// MockConditionsMockRecorder is the mock recorder for MockConditions
+// MockConditionsMockRecorder is the mock recorder for MockConditions.
 type MockConditionsMockRecorder struct {
 	mock *MockConditions
 }
 
-// NewMockConditions creates a new mock instance
+// NewMockConditions creates a new mock instance.
 func NewMockConditions(ctrl *gomock.Controller) *MockConditions {
 	mock := &MockConditions{ctrl: ctrl}
 	mock.recorder = &MockConditionsMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockConditions) EXPECT() *MockConditionsMockRecorder {
 	return m.recorder
 }
 
-// SetCondition mocks base method
-func (m *MockConditions) SetCondition(conditions *[]v1alpha1.Condition, conditionType v1alpha1.ConditionType, status v1.ConditionStatus, reason, message string) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetCondition", conditions, conditionType, status, reason, message)
-}
-
-// SetCondition indicates an expected call of SetCondition
-func (mr *MockConditionsMockRecorder) SetCondition(conditions, conditionType, status, reason, message interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCondition", reflect.TypeOf((*MockConditions)(nil).SetCondition), conditions, conditionType, status, reason, message)
-}
-
-// FindCondition mocks base method
+// FindCondition mocks base method.
 func (m *MockConditions) FindCondition(conditions *[]v1alpha1.Condition, conditionType v1alpha1.ConditionType) (*v1alpha1.Condition, bool) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FindCondition", conditions, conditionType)
@@ -55,13 +44,13 @@ func (m *MockConditions) FindCondition(conditions *[]v1alpha1.Condition, conditi
 	return ret0, ret1
 }
 
-// FindCondition indicates an expected call of FindCondition
+// FindCondition indicates an expected call of FindCondition.
 func (mr *MockConditionsMockRecorder) FindCondition(conditions, conditionType interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindCondition", reflect.TypeOf((*MockConditions)(nil).FindCondition), conditions, conditionType)
 }
 
-// HasCondition mocks base method
+// HasCondition mocks base method.
 func (m *MockConditions) HasCondition(conditions *[]v1alpha1.Condition, conditionType v1alpha1.ConditionType) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HasCondition", conditions, conditionType)
@@ -69,8 +58,20 @@ func (m *MockConditions) HasCondition(conditions *[]v1alpha1.Condition, conditio
 	return ret0
 }
 
-// HasCondition indicates an expected call of HasCondition
+// HasCondition indicates an expected call of HasCondition.
 func (mr *MockConditionsMockRecorder) HasCondition(conditions, conditionType interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasCondition", reflect.TypeOf((*MockConditions)(nil).HasCondition), conditions, conditionType)
+}
+
+// SetCondition mocks base method.
+func (m *MockConditions) SetCondition(conditions *[]v1alpha1.Condition, conditionType v1alpha1.ConditionType, status v1.ConditionStatus, reason, message string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetCondition", conditions, conditionType, status, reason, message)
+}
+
+// SetCondition indicates an expected call of SetCondition.
+func (mr *MockConditionsMockRecorder) SetCondition(conditions, conditionType, status, reason, message interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCondition", reflect.TypeOf((*MockConditions)(nil).SetCondition), conditions, conditionType, status, reason, message)
 }

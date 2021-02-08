@@ -22,7 +22,6 @@ func (t *testProjectReferenceBuilder) GetProjectReference() *api.ProjectReferenc
 func NewProjectReferenceBuilder() *testProjectReferenceBuilder {
 	return &testProjectReferenceBuilder{
 		p: api.ProjectReference{
-
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "fakeProjectReference",
 				Namespace: "fakeNamespace",
@@ -38,6 +37,7 @@ func NewProjectReferenceBuilder() *testProjectReferenceBuilder {
 					Name: "fakeLegalEntityName",
 					ID:   "fakeLegalEntityID",
 				},
+				ServiceAccountName: "",
 			},
 		},
 	}

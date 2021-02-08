@@ -22,9 +22,11 @@ import (
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -36,8 +38,8 @@ const (
 )
 
 const (
-	osdServiceAccountName = "osd-managed-admin"
-	FinalizerName         = "finalizer.gcp.managed.openshift.io"
+	osdServiceAccountNameDefault = "osd-managed-admin"
+	FinalizerName                = "finalizer.gcp.managed.openshift.io"
 )
 
 // OSDRequiredAPIS is list of API's, required to setup
@@ -98,14 +100,6 @@ type ReferenceAdapter struct {
 	OperatorConfig   configmap.OperatorConfigMap
 }
 
-type ensureAzResult int
-
-const (
-	ensureAzResultNotReady ensureAzResult = iota
-	ensureAzResultModified
-	ensureAzResultNoChange
-)
-
 // NewReferenceAdapter creates an adapter to turn what is requested in a ProjectReference into a GCP project and write the output back.
 func NewReferenceAdapter(
 	projectReference *gcpv1alpha1.ProjectReference,
@@ -140,30 +134,20 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, erro
 		return gcputil.StopProcessing()
 	}
 
-	azResult, err := r.ensureClaimAvailabilityZonesSet()
-	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "error ensuring availability zones"))
+	res, err := r.ensureClaimAvailabilityZonesSet()
+	if err != nil || res.RequeueOrCancel() {
+		return res, err
 	}
 
 	idModified := r.ensureClaimProjectIDSet()
-
-	if azResult == ensureAzResultModified || idModified {
+	if idModified {
 		err := r.kubeClient.Update(context.TODO(), r.ProjectClaim)
 		if err != nil {
 			return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
 		}
-		return gcputil.StopProcessing()
 	}
-
-	if azResult == ensureAzResultNotReady {
-		r.logger.V(2).Info("Compute API not yet fully initialized. Retrying in 30 seconds.")
-		return gcputil.RequeueAfter(30*time.Second, nil)
-	}
-
-	r.logger.V(2).Info("Project Ready update matchingClaim to ready")
 	r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
-	err = r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim)
-	if err != nil {
+	if err := r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim); err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim status"))
 	}
 	return gcputil.StopProcessing()
@@ -187,6 +171,48 @@ func EnsureProjectReferenceStatusCreating(adapter *ReferenceAdapter) (gcputil.Op
 		return gcputil.RequeueWithError(err)
 	}
 	return gcputil.StopProcessing()
+}
+
+func serviceNameAlreadyGenerated(projectReference *gcpv1alpha1.ProjectReference) bool {
+	osdServiceAccountNameDefaultPrefix := serviceAccountNameTemplate("")
+	serviceAccountName := projectReference.Spec.ServiceAccountName
+	return strings.HasPrefix(serviceAccountName, osdServiceAccountNameDefaultPrefix) &&
+		len(serviceAccountName) > len(osdServiceAccountNameDefaultPrefix)
+}
+
+func serviceNameAlreadyFilled(projectReference *gcpv1alpha1.ProjectReference) bool {
+	return projectReference.Spec.ServiceAccountName == osdServiceAccountNameDefault
+}
+func serviceAccountNameTemplate(suffix string) string {
+	return fmt.Sprintf("%s-%s", osdServiceAccountNameDefault, suffix)
+}
+
+func EnsureServiceAccountNameMigration(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
+	adapter.logger.V(1).Info("enter EnsureServiceAccountNameMigration")
+	if adapter.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady &&
+		adapter.ProjectReference.Spec.ServiceAccountName == "" {
+
+		adapter.ProjectReference.Spec.ServiceAccountName = osdServiceAccountNameDefault
+		err := adapter.kubeClient.Update(context.TODO(), adapter.ProjectReference)
+		return gcputil.RequeueOnErrorOrStop(err)
+	}
+	return gcputil.ContinueProcessing()
+}
+
+func EnsureServiceAccountName(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
+	if serviceNameAlreadyGenerated(adapter.ProjectReference) ||
+		serviceNameAlreadyFilled(adapter.ProjectReference) {
+		return gcputil.ContinueProcessing()
+	}
+
+	adapter.logger.V(1).Info("Creating ServiceAccountName in ProjectReference CR")
+	err := adapter.UpdateServiceAccountName()
+	if err != nil {
+		err = operrors.Wrap(err, "could not update ServiceAccountName in Project Reference CR")
+		return gcputil.RequeueWithError(err)
+	}
+	return gcputil.StopProcessing()
+
 }
 
 func EnsureProjectID(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
@@ -241,6 +267,7 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring APIS"))
 	}
 
+	osdServiceAccountName := r.ProjectReference.Spec.ServiceAccountName
 	r.logger.V(1).Info("Configuring Service Account " + osdServiceAccountName)
 	result, err := r.configureServiceAccount(OSDRequiredRoles)
 	if err != nil || result.RequeueRequest {
@@ -302,6 +329,15 @@ func (r *ReferenceAdapter) UpdateProjectID() error {
 	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
 }
 
+func (r *ReferenceAdapter) UpdateServiceAccountName() error {
+	const serviceAccountNameSuffixLength = 8
+	// using k8s library instead of local implementation
+	serviceAccountNameSuffix := utilrand.String(serviceAccountNameSuffixLength)
+
+	r.ProjectReference.Spec.ServiceAccountName = serviceAccountNameTemplate(serviceAccountNameSuffix)
+	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
+}
+
 func EnsureDeletionProcessed(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
 	// Cleanup
 	if adapter.IsDeletionRequested() {
@@ -343,10 +379,16 @@ func (r *ReferenceAdapter) EnsureFinalizerDeleted() error {
 // EnsureProjectCleanedUp deletes the project, the secret and the finalizer if they still exist
 func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
 	if !r.isCCS() {
-		err := r.deleteProject()
+		var err error
+		err = r.deleteProject()
 		if err != nil {
 			return err
 		}
+		err = r.deleteServiceAccount()
+		if err != nil {
+			return err
+		}
+
 	}
 
 	err := r.deleteCredentials()
@@ -404,6 +446,30 @@ func (r *ReferenceAdapter) deleteProject() error {
 	default:
 		return fmt.Errorf("ProjectReference Controller is unable to understand the project.LifecycleState %s", project.LifecycleState)
 	}
+}
+
+func (r *ReferenceAdapter) deleteServiceAccount() error {
+	serviceAccountName := r.ProjectReference.Spec.ServiceAccountName
+
+	r.logger.V(1).Info("SA delete started", "serviceAccountName", serviceAccountName)
+
+	sa, err := r.gcpClient.GetServiceAccount(serviceAccountName)
+	if err != nil {
+		if matchesNotFoundError(err) {
+			return nil
+		}
+
+		return operrors.Wrap(err, "could not get the SA, something happened")
+	}
+	r.logger.V(1).Info("after get")
+
+	if err := r.gcpClient.DeleteServiceAccount(sa.Email); err != nil {
+		return operrors.Wrap(err, "could not delete the SA, something happened")
+	}
+
+	r.logger.V(1).Info("done")
+
+	return nil
 }
 
 func (r *ReferenceAdapter) createProject(parentFolderID string) error {
@@ -496,6 +562,8 @@ func (r *ReferenceAdapter) configureAPIS() error {
 func (r *ReferenceAdapter) configureServiceAccount(policies []string) (gcputil.OperationResult, error) {
 	// See if GCP service account exists if not create it
 	var serviceAccount *iam.ServiceAccount
+
+	osdServiceAccountName := r.ProjectReference.Spec.ServiceAccountName
 	serviceAccount, err := r.gcpClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
 		// Create OSDManged Service account
@@ -526,6 +594,7 @@ func (r *ReferenceAdapter) createCredentials() (gcputil.OperationResult, error) 
 	}
 
 	r.logger.Info("Creating credentials")
+	osdServiceAccountName := r.ProjectReference.Spec.ServiceAccountName
 	serviceAccount, err := r.gcpClient.GetServiceAccount(osdServiceAccountName)
 	if err != nil {
 		if matchesNotFoundError(err) {
@@ -587,9 +656,10 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 
 // ensureAvailabilityZonesSet sets the az in the projectclaim spec if necessary
 // returns true if the project claim has been modified
-func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (ensureAzResult, error) {
+func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (gcputil.OperationResult, error) {
+	r.logger.V(1).Info("enter ensureClaimProjectIDSet")
 	if len(r.ProjectClaim.Spec.AvailabilityZones) > 0 {
-		return ensureAzResultNoChange, nil
+		return gcputil.ContinueProcessing()
 	}
 
 	zones, err := r.gcpClient.ListAvailabilityZones(r.ProjectReference.Spec.GCPProjectID, r.ProjectClaim.Spec.Region)
@@ -600,24 +670,33 @@ func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (ensureAzResult, er
 	r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones")
 
 	r.ProjectClaim.Spec.AvailabilityZones = zones
-
-	return ensureAzResultModified, nil
+	err = r.kubeClient.Update(context.TODO(), r.ProjectClaim)
+	if err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
+	}
+	// as the ProjectClaim is modified, we need to requeue
+	return gcputil.Requeue()
 }
 
-func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (ensureAzResult, error) {
-	conditions := &r.ProjectReference.Status.Conditions
-	if matchesComputeApiNotReadyError(err) {
-		apiCondition, found := r.conditionManager.FindCondition(conditions, gcpv1alpha1.ConditionComputeApiReady)
-		tenMinutesAgo := metav1.NewTime(time.Now().Add(time.Duration(-10 * time.Minute)))
-		if found && apiCondition.LastTransitionTime.Before(&tenMinutesAgo) {
-			r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
-			_ = r.StatusUpdate()
-			return ensureAzResultNoChange, err
-		}
-		r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
-		return ensureAzResultNotReady, r.StatusUpdate()
+func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (gcputil.OperationResult, error) {
+	if !matchesComputeApiNotReadyError(err) {
+		return gcputil.RequeueWithError(err)
 	}
-	return ensureAzResultNoChange, err
+
+	conditions := &r.ProjectReference.Status.Conditions
+	apiCondition, found := r.conditionManager.FindCondition(conditions, gcpv1alpha1.ConditionComputeApiReady)
+	tenMinutesAgo := metav1.NewTime(time.Now().Add(time.Duration(-10 * time.Minute)))
+	if found && apiCondition.LastTransitionTime.Before(&tenMinutesAgo) {
+		r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
+		_ = r.StatusUpdate()
+		return gcputil.RequeueWithError(err)
+	}
+	r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
+	if statusUpdateErr := r.StatusUpdate(); statusUpdateErr != nil {
+		return gcputil.RequeueWithError(statusUpdateErr)
+	}
+	r.logger.V(2).Info("Compute API not yet fully initialized. Retrying in 30 seconds.")
+	return gcputil.RequeueAfter(30*time.Second, nil)
 }
 
 func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
