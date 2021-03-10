@@ -23,5 +23,8 @@ func getCallerInfo() (string, int, string) {
 // Nested errors will be wrapped as well.
 func Wrap(err error, message string) error {
 	f, l, fn := getCallerInfo()
-	return fmt.Errorf("File: %v, Line: %v, Caller: %v Message: %s %w", f, l, fn, message, err)
+	if err != nil {
+		return fmt.Errorf("File: %v \nLine: %v \nCaller: %v \nMessage: %s \n%w\n\n", f, l, fn, message, err)
+	}
+	return nil
 }

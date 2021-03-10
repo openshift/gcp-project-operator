@@ -12,6 +12,7 @@ type ProjectReferenceSpec struct {
 	LegalEntity        LegalEntity    `json:"legalEntity"`
 	CCS                bool           `json:"ccs,omitempty"`
 	CCSSecretRef       NamespacedName `json:"ccsSecretRef,omitempty"`
+	ServiceAccountName string         `json:"serviceAccountName,omitempty"`
 }
 
 // ProjectReferenceStatus defines the observed state of Project

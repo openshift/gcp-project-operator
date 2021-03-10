@@ -13,8 +13,8 @@ type LegalEntity struct {
 
 // NamespacedName contains the name of a object and its namespace
 type NamespacedName struct {
-	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
 }
 
 // Condition contains details for the current condition of a custom resource

@@ -133,6 +133,7 @@ parentFolderID: fake-folder
 	Context("Project Reference State", func() {
 		JustBeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "Project-ID-already-set"
+			projectReference.Spec.ServiceAccountName = "osd-managed-admin-abcdedgh"
 			projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
 			gomock.InOrder(
 				mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
@@ -159,9 +160,24 @@ parentFolderID: fake-folder
 		Context("When Reference State is Ready", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = api.ProjectReferenceStatusReady
-				mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+				projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
 			})
 
+			Context("When ProjectClaim GCPProjectID is empty", func() {
+				BeforeEach(func() {
+					projectClaim.Spec.AvailabilityZones = []string{}
+					mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+				})
+				It("Updates ProjectClaim GCPPRojectID", func() {
+					matcher := testStructs.NewProjectClaimMatcher()
+					mockKubeClient.EXPECT().Update(gomock.Any(), matcher).Return(nil)
+					mockKubeClient.EXPECT().Status().Return(mockUpdater).AnyTimes()
+					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).AnyTimes()
+					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					Expect(err).NotTo(HaveOccurred())
+					Expect(matcher.ActualProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
+				})
+			})
 			Context("When ProjectClaim GCPProjectID is empty", func() {
 				It("Updates ProjectClaim GCPPRojectID", func() {
 					matcher := testStructs.NewProjectClaimMatcher()
@@ -187,6 +203,8 @@ parentFolderID: fake-folder
 			Context("When ProjectClaim GCPProjectID is not empty", func() {
 				BeforeEach(func() {
 					projectClaim.Spec.GCPProjectID = "Not Empty"
+					projectClaim.Spec.AvailabilityZones = []string{}
+					mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
 				})
 
 				It("It updates az and does not reconcile", func() {
@@ -307,14 +325,15 @@ parentFolderID: fake-folder
 			JustBeforeEach(func() {
 				projectReference.Spec.CCS = true
 				projectReference.Spec.GCPProjectID = "Some fake id"
+				projectReference.Spec.ServiceAccountName = "osd-managed-admin-abcdedgh"
 				projectReference.Status.State = api.ProjectReferenceStatusCreating
 				projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
 				projectReference.SetFinalizers([]string{FinalizerName})
 				gomock.InOrder(
 					mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{
-						Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")},
-					}).Times(1),
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+						SetArg(2, corev1.Secret{Data: map[string][]byte{"osServiceAccount.json": []byte("fakedata"), "key.json": []byte("fakedata")}}).
+						Times(1),
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap),
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *testStructs.NewProjectClaimBuilder().GetProjectClaim()).Times(1),
 				)
@@ -329,8 +348,16 @@ parentFolderID: fake-folder
 					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError).Times(1)
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-					mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
-					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError).Times(2)
+
+					gomock.InOrder(
+						mockKubeClient.EXPECT().Status().Return(mockUpdater),
+						mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError),
+
+						// these are for the SetProjectReferenceCondition segment
+						mockKubeClient.EXPECT().Status().Return(mockUpdater),
+						mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil),
+					)
+
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).To(HaveOccurred())
 				})
@@ -347,6 +374,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 					mockKubeClient.EXPECT().Status().Return(mockUpdater)
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).ToNot(HaveOccurred())
 				})
@@ -357,6 +385,7 @@ parentFolderID: fake-folder
 
 			JustBeforeEach(func() {
 				projectReference.Spec.GCPProjectID = "Some fake id"
+				projectReference.Spec.ServiceAccountName = "osd-managed-admin-abcdedgh"
 				projectReference.Status.State = api.ProjectReferenceStatusCreating
 				projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
 				projectReference.SetFinalizers([]string{FinalizerName})
@@ -383,8 +412,15 @@ parentFolderID: fake-folder
 					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "dGVzdAo="}, nil)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError).Times(1)
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-					mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
-					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError).Times(2)
+
+					gomock.InOrder(
+						mockKubeClient.EXPECT().Status().Return(mockUpdater),
+						mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError),
+
+						// these are for the SetProjectReferenceCondition segment
+						mockKubeClient.EXPECT().Status().Return(mockUpdater),
+						mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil),
+					)
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).To(HaveOccurred())
 				})
@@ -404,7 +440,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError).Times(1)
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 					mockKubeClient.EXPECT().Status().Return(mockUpdater)
-					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
 					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).ToNot(HaveOccurred())
 				})
@@ -419,6 +455,7 @@ parentFolderID: fake-folder
 
 		BeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "fake-id"
+			projectReference.Spec.ServiceAccountName = "osd-managed-admin-abcdedgh"
 			projectReference.Status.Conditions = []gcpv1alpha1.Condition{}
 			projects = []*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}
 			deletionTime := metav1.NewTime(time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC))
@@ -444,6 +481,9 @@ parentFolderID: fake-folder
 			Context("When cleanup succeeds", func() {
 				It("does not requeue", func() {
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					email := "Some Email"
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
+					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
@@ -458,6 +498,9 @@ parentFolderID: fake-folder
 				})
 				It("Does not requeue", func() {
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					email := "Some Email"
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
+					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
@@ -471,6 +514,9 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Status().Return(mockUpdater)
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
+					email := "Some Email"
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
+					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(fakeError)
 					result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
@@ -487,6 +533,9 @@ parentFolderID: fake-folder
 			})
 
 			It("Does not requeue", func() {
+				email := "Some Email"
+				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
+				mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
