@@ -42,4 +42,4 @@ replace google.golang.org/api => google.golang.org/api v0.11.0
 // Pin hive dep
 replace github.com/openshift/cluster-network-operator => github.com/openshift/cluster-network-operator v0.0.0-20190207145423-c226dcab667e
 
-go 1.13
+go 1.14
