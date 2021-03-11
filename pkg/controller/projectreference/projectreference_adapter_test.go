@@ -727,6 +727,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		BeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "fake-id"
 			projectState = "ACTIVE"
+			email := "Some Email"
+			mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
+			mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 		})
 		Context("When it's a non-CCS Project", func() {
 			JustBeforeEach(func() {
@@ -757,9 +760,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				It("deletes the project", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
-					email := "Some Email"
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
-					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					err := adapter.EnsureProjectCleanedUp()
 					Expect(err).NotTo(HaveOccurred())
 				})
@@ -767,9 +767,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Context("When the lifecycleStatus is ACTIVE", func() {
 				It("deletes the project", func() {
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
-					email := "Some Email"
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
-					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1)
 					err := adapter.EnsureProjectCleanedUp()
@@ -779,9 +776,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Context("When it cannot delete the project", func() {
 				It("returns an error", func() {
 					mockGCPClient.EXPECT().DeleteProject(gomock.Any()).Times(1)
-					email := "Some Email"
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
-					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(errors.New("Cannot delete the project"))
 					err := adapter.EnsureProjectCleanedUp()

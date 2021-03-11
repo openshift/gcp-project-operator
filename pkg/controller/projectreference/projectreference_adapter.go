@@ -378,20 +378,21 @@ func (r *ReferenceAdapter) EnsureFinalizerDeleted() error {
 
 // EnsureProjectCleanedUp deletes the project, the secret and the finalizer if they still exist
 func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
+	var err error
+
+	err = r.deleteServiceAccount()
+	if err != nil {
+		return err
+	}
+
 	if !r.isCCS() {
-		var err error
 		err = r.deleteProject()
 		if err != nil {
 			return err
 		}
-		err = r.deleteServiceAccount()
-		if err != nil {
-			return err
-		}
-
 	}
 
-	err := r.deleteCredentials()
+	err = r.deleteCredentials()
 	if err != nil {
 		return err
 	}
