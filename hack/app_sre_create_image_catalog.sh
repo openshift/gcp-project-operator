@@ -95,7 +95,7 @@ REGISTRY_IMG="quay.io/app-sre/gcp-project-operator-registry"
 DOCKERFILE_REGISTRY="Dockerfile.olm-registry"
 
 cat <<EOF > $DOCKERFILE_REGISTRY
-FROM quay.io/openshift/origin-operator-registry:4.5
+FROM quay.io/openshift/origin-operator-registry:4.9
 
 COPY $SAAS_OPERATOR_DIR manifests
 RUN initializer --permissive
