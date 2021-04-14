@@ -247,7 +247,7 @@ func (c *gcpClient) DeleteServiceAccountKeys(serviceAccountEmail string) error {
 	}
 
 	for _, key := range response.Keys {
-		_, err = c.iamClient.Projects.ServiceAccounts.Keys.Delete(key.Name).Do()
+		_, _ = c.iamClient.Projects.ServiceAccounts.Keys.Delete(key.Name).Do()
 	}
 
 	// ensure only one key exits
