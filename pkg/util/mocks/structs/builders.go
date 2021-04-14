@@ -8,19 +8,8 @@ import (
 	"github.com/golang/mock/gomock"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-)
-
-const (
-	testClusterName = "clusterName"
-	testUID         = types.UID("1234")
-	testNamespace   = "namespace"
-	testBaseDomain  = "testing.example.com"
-	//testGCPCredentialsSecret = "GCPCredentialsSecret"
-	testProject = "project"
-	testRegion  = "us-east1"
 )
 
 type mocks struct {
