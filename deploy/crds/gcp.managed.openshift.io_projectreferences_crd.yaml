@@ -4,22 +4,22 @@ metadata:
   name: projectreferences.gcp.managed.openshift.io
 spec:
   additionalPrinterColumns:
-  - JSONPath: .status.state
-    description: Status of the ProjectReference
-    name: State
-    type: string
-  - JSONPath: .spec.projectClaimCRLink.name
-    description: Name of corresponding project claim CR
-    name: ClaimName
-    type: string
-  - JSONPath: .spec.projectClaimCRLink.namespace
-    description: Namesspace of corresponding project claim CR
-    name: ClaimNameSpace
-    type: string
-  - JSONPath: .metadata.creationTimestamp
-    description: Age since the ProjectReference was created
-    name: Age
-    type: date
+    - JSONPath: .status.state
+      description: Status of the ProjectReference
+      name: State
+      type: string
+    - JSONPath: .spec.projectClaimCRLink.name
+      description: Name of corresponding project claim CR
+      name: ClaimName
+      type: string
+    - JSONPath: .spec.projectClaimCRLink.namespace
+      description: Namesspace of corresponding project claim CR
+      name: ClaimNameSpace
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      description: Age since the ProjectReference was created
+      name: Age
+      type: date
   group: gcp.managed.openshift.io
   names:
     kind: ProjectReference
@@ -34,14 +34,10 @@ spec:
       description: ProjectReference is the Schema for the ProjectReferences API
       properties:
         apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
           type: string
         kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
@@ -58,22 +54,21 @@ spec:
                 namespace:
                   type: string
               required:
-              - name
-              - namespace
+                - name
+                - namespace
               type: object
             gcpProjectID:
               type: string
             legalEntity:
-              description: LegalEntity contains Red Hat specific identifiers to the
-                original creator the clusters
+              description: LegalEntity contains Red Hat specific identifiers to the original creator the clusters
               properties:
                 id:
                   type: string
                 name:
                   type: string
               required:
-              - id
-              - name
+                - id
+                - name
               type: object
             projectClaimCRLink:
               description: NamespacedName contains the name of a object and its namespace
@@ -83,39 +78,35 @@ spec:
                 namespace:
                   type: string
               required:
-              - name
-              - namespace
+                - name
+                - namespace
               type: object
             serviceAccountName:
               type: string
           required:
-          - legalEntity
-          - projectClaimCRLink
+            - legalEntity
+            - projectClaimCRLink
           type: object
         status:
           description: ProjectReferenceStatus defines the observed state of Project
           properties:
             conditions:
               items:
-                description: Condition contains details for the current condition
-                  of a custom resource
+                description: Condition contains details for the current condition of a custom resource
                 properties:
                   lastProbeTime:
                     description: LastProbeTime is the last time we probed the condition.
                     format: date-time
                     type: string
                   lastTransitionTime:
-                    description: LastTransitionTime is the last time the condition
-                      transitioned from one status to another.
+                    description: LastTransitionTime is the last time the condition transitioned from one status to another.
                     format: date-time
                     type: string
                   message:
-                    description: Message is a human-readable message indicating details
-                      about last transition.
+                    description: Message is a human-readable message indicating details about last transition.
                     type: string
                   reason:
-                    description: Reason is a unique, one-word, CamelCase reason for
-                      the condition's last transition.
+                    description: Reason is a unique, one-word, CamelCase reason for the condition's last transition.
                     type: string
                   status:
                     description: Status is the status of the condition.
@@ -124,19 +115,19 @@ spec:
                     description: Type is the type of the condition.
                     type: string
                 required:
-                - status
-                - type
+                  - status
+                  - type
                 type: object
               type: array
             state:
               description: ProjectReferenceState is a valid value from ProjectReference.Status
               type: string
           required:
-          - conditions
-          - state
+            - conditions
+            - state
           type: object
   version: v1alpha1
   versions:
-  - name: v1alpha1
-    served: true
-    storage: true
+    - name: v1alpha1
+      served: true
+      storage: true
