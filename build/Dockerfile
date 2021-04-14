@@ -2,7 +2,7 @@ FROM quay.io/app-sre/boilerplate:image-v0.5.1 AS builder
 ENV OPERATOR_PATH=/gcp-project-operator
 COPY . ${OPERATOR_PATH}
 WORKDIR ${OPERATOR_PATH}
-RUN make gobuild
+RUN make go-build
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 ENV OPERATOR_PATH=/gcp-project-operator \
