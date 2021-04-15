@@ -13,12 +13,12 @@ import (
 
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
-		"./pkg/apis/gcp/v1alpha1.ProjectClaim":           schema_pkg_apis_gcp_v1alpha1_ProjectClaim(ref),
-		"./pkg/apis/gcp/v1alpha1.ProjectClaimSpec":       schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref),
-		"./pkg/apis/gcp/v1alpha1.ProjectClaimStatus":     schema_pkg_apis_gcp_v1alpha1_ProjectClaimStatus(ref),
-		"./pkg/apis/gcp/v1alpha1.ProjectReference":       schema_pkg_apis_gcp_v1alpha1_ProjectReference(ref),
-		"./pkg/apis/gcp/v1alpha1.ProjectReferenceSpec":   schema_pkg_apis_gcp_v1alpha1_ProjectReferenceSpec(ref),
-		"./pkg/apis/gcp/v1alpha1.ProjectReferenceStatus": schema_pkg_apis_gcp_v1alpha1_ProjectReferenceStatus(ref),
+		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaim":           schema_pkg_apis_gcp_v1alpha1_ProjectClaim(ref),
+		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimSpec":       schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref),
+		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimStatus":     schema_pkg_apis_gcp_v1alpha1_ProjectClaimStatus(ref),
+		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectReference":       schema_pkg_apis_gcp_v1alpha1_ProjectReference(ref),
+		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectReferenceSpec":   schema_pkg_apis_gcp_v1alpha1_ProjectReferenceSpec(ref),
+		"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectReferenceStatus": schema_pkg_apis_gcp_v1alpha1_ProjectReferenceStatus(ref),
 	}
 }
 
@@ -50,19 +50,19 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaim(ref common.ReferenceCallback) com
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.ProjectClaimSpec"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.ProjectClaimStatus"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/gcp/v1alpha1.ProjectClaimSpec", "./pkg/apis/gcp/v1alpha1.ProjectClaimStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimSpec", "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectClaimStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -75,12 +75,12 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref common.ReferenceCallback)
 				Properties: map[string]spec.Schema{
 					"legalEntity": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.LegalEntity"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity"),
 						},
 					},
 					"gcpCredentialSecret": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.NamespacedName"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
 						},
 					},
 					"region": {
@@ -97,7 +97,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref common.ReferenceCallback)
 					},
 					"projectReferenceCRLink": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.NamespacedName"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
 						},
 					},
 					"availabilityZones": {
@@ -121,7 +121,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref common.ReferenceCallback)
 					},
 					"ccsSecretRef": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.NamespacedName"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
 						},
 					},
 					"ccsProjectID": {
@@ -135,7 +135,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimSpec(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/gcp/v1alpha1.LegalEntity", "./pkg/apis/gcp/v1alpha1.NamespacedName"},
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity", "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"},
 	}
 }
 
@@ -152,7 +152,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimStatus(ref common.ReferenceCallbac
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("./pkg/apis/gcp/v1alpha1.Condition"),
+										Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.Condition"),
 									},
 								},
 							},
@@ -169,7 +169,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectClaimStatus(ref common.ReferenceCallbac
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/gcp/v1alpha1.Condition"},
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.Condition"},
 	}
 }
 
@@ -201,19 +201,19 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReference(ref common.ReferenceCallback)
 					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.ProjectReferenceSpec"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectReferenceSpec"),
 						},
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.ProjectReferenceStatus"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectReferenceStatus"),
 						},
 					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/gcp/v1alpha1.ProjectReferenceSpec", "./pkg/apis/gcp/v1alpha1.ProjectReferenceStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectReferenceSpec", "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.ProjectReferenceStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
 	}
 }
 
@@ -232,12 +232,12 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceSpec(ref common.ReferenceCallb
 					},
 					"projectClaimCRLink": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.NamespacedName"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
 						},
 					},
 					"legalEntity": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.LegalEntity"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity"),
 						},
 					},
 					"ccs": {
@@ -248,7 +248,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceSpec(ref common.ReferenceCallb
 					},
 					"ccsSecretRef": {
 						SchemaProps: spec.SchemaProps{
-							Ref: ref("./pkg/apis/gcp/v1alpha1.NamespacedName"),
+							Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"),
 						},
 					},
 					"serviceAccountName": {
@@ -262,7 +262,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceSpec(ref common.ReferenceCallb
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/gcp/v1alpha1.LegalEntity", "./pkg/apis/gcp/v1alpha1.NamespacedName"},
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.LegalEntity", "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.NamespacedName"},
 	}
 }
 
@@ -279,7 +279,7 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceStatus(ref common.ReferenceCal
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("./pkg/apis/gcp/v1alpha1.Condition"),
+										Ref: ref("github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.Condition"),
 									},
 								},
 							},
@@ -296,6 +296,6 @@ func schema_pkg_apis_gcp_v1alpha1_ProjectReferenceStatus(ref common.ReferenceCal
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/gcp/v1alpha1.Condition"},
+			"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1.Condition"},
 	}
 }
