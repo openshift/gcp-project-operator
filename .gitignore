@@ -65,6 +65,7 @@ anaconda-mode/
 # swap
 .sw[a-p]
 .*.sw[a-p]
+*.orig
 # session
 Session.vim
 # temporary
@@ -80,3 +81,6 @@ tags
 key.json
 config.source
 /secrets
+
+### boilerplate
+.operator-sdk/
