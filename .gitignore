@@ -84,3 +84,7 @@ config.source
 
 ### boilerplate
 .operator-sdk/
+# app-sre pipeline
+.docker/
+Dockerfile.olm-registry
+saas-gcp-project-operator-bundle/
