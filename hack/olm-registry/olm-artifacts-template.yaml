@@ -10,6 +10,8 @@ parameters:
   value: staging
 - name: IMAGE_TAG
   value: latest
+- name: REPO_DIGEST
+  requred: true
 - name: PARENT_FOLDER_ID
   required: true
 - name: BILLING_ACCOUNT
@@ -26,7 +28,7 @@ objects:
     name: gcp-project-operator-catalog
   spec:
     sourceType: grpc
-    image: ${REGISTRY_IMG}:${CHANNEL}-${IMAGE_TAG}
+    image: ${REPO_DIGEST}
     displayName: gcp-project-operator Registry
     publisher: SRE 
 
