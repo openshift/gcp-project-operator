@@ -131,6 +131,11 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, erro
 	}
 
 	if r.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusReady {
+		//Ensure Labels are set even if state is "Ready"
+		res, err := r.ConfigureProjectLabel()
+		if err != nil {
+			return res, err
+		}
 		return gcputil.StopProcessing()
 	}
 
@@ -295,6 +300,11 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 				return result, err
 			}
 		}
+	}
+	r.logger.V(1).Info("Creating Labels")
+	result, err = r.ConfigureProjectLabel()
+	if err != nil {
+		return result, err
 	}
 
 	return result, nil
@@ -493,7 +503,7 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 
 	r.logger.Info("Creating Project")
 	// If we cannot create the project clear the projectID from spec so we can try again with another unique key
-	_, creationFailed := r.gcpClient.CreateProject(parentFolderID)
+	_, creationFailed := r.gcpClient.CreateProject(parentFolderID, r.ProjectClaim.ObjectMeta.Name)
 	if creationFailed != nil {
 		r.logger.V(1).Info("Clearing gcpProjectID from ProjectReferenceSpec")
 		//Todo() We need to requeue here ot it will continue to the next step.
@@ -558,6 +568,25 @@ func (r *ReferenceAdapter) configureAPIS() error {
 	}
 
 	return nil
+}
+
+func (r *ReferenceAdapter) ConfigureProjectLabel() (gcputil.OperationResult, error) {
+	claimName := r.ProjectClaim.ObjectMeta.Name
+	project, err := r.gcpClient.GetProject(r.ProjectReference.Spec.GCPProjectID)
+	if err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("error fetching labels for project %s.", r.ProjectReference.Spec.GCPProjectID)))
+	}
+	claimLabel := project.Labels["claim_name"]
+	// includes a case where claimLabel is nil.
+	if claimLabel != claimName {
+		labels := make(map[string]string)
+		labels["claim_name"] = claimName
+		err := r.gcpClient.CreateProjectLabels(project, labels)
+		if err != nil {
+			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("error creating labels for project %s.", r.ProjectReference.Spec.GCPProjectID)))
+		}
+	}
+	return gcputil.ContinueProcessing()
 }
 
 func (r *ReferenceAdapter) configureServiceAccount(policies []string) (gcputil.OperationResult, error) {

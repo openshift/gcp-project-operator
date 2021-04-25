@@ -130,6 +130,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				})
 
 				It("returns without altering ProjectClaim", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					oldClaim := projectClaim.DeepCopy()
 					_, err := EnsureProjectClaimReady(adapter)
 					Expect(err).NotTo(HaveOccurred())
@@ -290,6 +292,37 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			})
 		})
 	})
+	Context("ConfigureProjectLabel", func() {
+		var (
+			claimName string
+		)
+		JustBeforeEach(func() {
+			mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE",
+				ProjectId: projectReference.Spec.GCPProjectID, Labels: map[string]string{"claim_name": claimName}}, nil)
+		})
+		Context("When an existing project has the correct label", func() {
+			BeforeEach(func() {
+				claimName = projectClaim.Name
+			})
+			It("Does nothing", func() {
+				result, err := adapter.ConfigureProjectLabel()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(continueProcessingResult))
+			})
+		})
+		Context("When an existing project has a wrong label", func() {
+			BeforeEach(func() {
+				claimName = "fake-wrong-label"
+			})
+			It("Updates the labels on the project", func() {
+				mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), map[string]string{"claim_name": projectClaim.Name}).Return(nil)
+				result, err := adapter.ConfigureProjectLabel()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(continueProcessingResult))
+			})
+		})
+
+	})
 
 	Context("EnsureProjectCreated", func() {
 
@@ -350,7 +383,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					Context("When fails to clear projectID", func() {
 						It("It requeues with error", func() {
 							mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: "foo"}}, nil)
-							mockGCPClient.EXPECT().CreateProject(gomock.Any()).Return(nil, fakeError)
+							mockGCPClient.EXPECT().CreateProject(gomock.Any(), gomock.Any()).Return(nil, fakeError)
 							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError)
 							_, err := EnsureProjectCreated(adapter)
 							Expect(err).To(HaveOccurred())
@@ -361,7 +394,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					Context("When it clears projectID successfully", func() {
 						It("It requeues with error", func() {
 							mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: "foo"}}, nil)
-							mockGCPClient.EXPECT().CreateProject(gomock.Any()).Return(nil, fakeError)
+							mockGCPClient.EXPECT().CreateProject(gomock.Any(), gomock.Any()).Return(nil, fakeError)
 							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 							_, err := EnsureProjectCreated(adapter)
 							Expect(err).To(HaveOccurred())
@@ -535,6 +568,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		Context("When it create credentials successfully", func() {
 			Context("Credential Secret already exists", func() {
 				It("Continue execute", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
@@ -547,6 +582,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 			Context("Create a secret successfully", func() {
 				It("Continue execute", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
@@ -577,6 +614,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 			Context("When it is a non CCS project", func() {
 				It("nothing to do", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).ToNot(HaveOccurred())
 				})
@@ -589,6 +628,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 				Context("When only one ccsConsoleAccessAccount are configured", func() {
 					It("It doesn't need to create a service account", func() {
+						mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+						mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						_, err := EnsureProjectConfigured(adapter)
@@ -601,6 +642,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						adapter.OperatorConfig.CCSConsoleAccess = []string{"foo", "bar"}
 					})
 					It("repeat the process", func() {
+						mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+						mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
@@ -628,6 +671,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 			Context("When it is a non CCS project", func() {
 				It("nothing to do", func() {
+					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).ToNot(HaveOccurred())
 				})
@@ -640,6 +685,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 				Context("When only one ccsReadOnlyConsoleAccessAccount are configured", func() {
 					It("It doesn't need to create a service account", func() {
+						mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+						mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						_, err := EnsureProjectConfigured(adapter)
@@ -652,6 +699,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						adapter.OperatorConfig.CCSReadOnlyConsoleAccess = []string{"foo", "bar"}
 					})
 					It("repeat the process", func() {
+						mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
+						mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
