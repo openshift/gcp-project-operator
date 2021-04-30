@@ -16,6 +16,7 @@ type ProjectClaimSpec struct {
 	CCS                    bool           `json:"ccs,omitempty"`
 	CCSSecretRef           NamespacedName `json:"ccsSecretRef,omitempty"`
 	CCSProjectID           string         `json:"ccsProjectID,omitempty"`
+	ServiceAccountName     string         `json:"serviceAccountName,omitempty"`
 }
 
 // ProjectClaimStatus defines the observed state of ProjectClaim

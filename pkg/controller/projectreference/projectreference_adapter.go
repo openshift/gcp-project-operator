@@ -130,26 +130,28 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, erro
 		return gcputil.ContinueProcessing()
 	}
 
-	if r.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusReady {
-		return gcputil.StopProcessing()
-	}
-
 	res, err := r.ensureClaimAvailabilityZonesSet()
 	if err != nil || res.RequeueOrCancel() {
 		return res, err
 	}
 
-	idModified := r.ensureClaimProjectIDSet()
-	if idModified {
-		err := r.kubeClient.Update(context.TODO(), r.ProjectClaim)
-		if err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
+	res, err = r.ensureClaimProjectIDSet()
+	if err != nil || res.RequeueOrCancel() {
+		return res, err
+	}
+
+	res, err = r.ensureClaimServiceAccountSet()
+	if err != nil || res.RequeueOrCancel() {
+		return res, err
+	}
+
+	if r.ProjectClaim.Status.State != gcpv1alpha1.ClaimStatusReady {
+		r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
+		if err := r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim); err != nil {
+			return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim status"))
 		}
 	}
-	r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
-	if err := r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim); err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim status"))
-	}
+
 	return gcputil.StopProcessing()
 }
 
@@ -700,13 +702,36 @@ func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (gcputil.Oper
 	return gcputil.RequeueAfter(30*time.Second, nil)
 }
 
-func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
-	if r.ProjectClaim.Spec.GCPProjectID == "" {
-		r.ProjectClaim.Spec.GCPProjectID = r.ProjectReference.Spec.GCPProjectID
-		return true
+func (r *ReferenceAdapter) ensureClaimServiceAccountSet() (gcputil.OperationResult, error) {
+	r.logger.V(1).Info("enter ensureClaimServiceAccountSet")
+
+	if r.ProjectClaim.Spec.ServiceAccountName != "" {
+		return gcputil.ContinueProcessing()
 	}
 
-	return false
+	r.ProjectClaim.Spec.ServiceAccountName = r.ProjectReference.Spec.ServiceAccountName
+	err := r.kubeClient.Update(context.TODO(), r.ProjectClaim)
+	if err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
+	}
+
+	return gcputil.Requeue()
+}
+
+func (r *ReferenceAdapter) ensureClaimProjectIDSet() (gcputil.OperationResult, error) {
+	r.logger.V(1).Info("enter ensureClaimProjectIDSet")
+
+	if r.ProjectClaim.Spec.GCPProjectID != "" {
+		return gcputil.ContinueProcessing()
+	}
+
+	r.ProjectClaim.Spec.GCPProjectID = r.ProjectReference.Spec.GCPProjectID
+	err := r.kubeClient.Update(context.TODO(), r.ProjectClaim)
+	if err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
+	}
+
+	return gcputil.Requeue()
 }
 
 func EnsureProjectReferenceInitialized(r *ReferenceAdapter) (gcputil.OperationResult, error) {

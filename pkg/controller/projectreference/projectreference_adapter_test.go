@@ -127,6 +127,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Context("When ProjectClaim is in Ready state", func() {
 				BeforeEach(func() {
 					projectClaim.Status.State = api.ClaimStatusReady
+					projectClaim.Spec.GCPProjectID = "fake-gcp-project"
+					projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
+					projectClaim.Spec.ServiceAccountName = "fake-service-account"
 				})
 
 				It("returns without altering ProjectClaim", func() {
@@ -143,7 +146,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						projectClaim.Status.State = api.ClaimStatusPending
 						projectClaim.Spec.GCPProjectID = ""
 						projectReference.Spec.GCPProjectID = "fake-gcp-project"
-
+						projectReference.Spec.ServiceAccountName = "fake-service-account"
 					})
 
 					Context("When availability zones are not set", func() {
@@ -162,21 +165,36 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 					Context("When availability zones are set but GCPProjectID are not", func() {
 						BeforeEach(func() {
-							mockGCPClient.EXPECT().ListAvailabilityZones(gomock.Any(), gomock.Any()).Return([]string{"zone1", "zone2", "zone3"}, nil)
+							projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
 							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
-							mockConditions.EXPECT().SetCondition(gomock.Any(), gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones").Times(1)
 						})
-						It("updates the ProjectClaim with availability zones", func() {
+						It("updates the ProjectClaim with project ID", func() {
 							_, err := EnsureProjectClaimReady(adapter)
 							Expect(err).NotTo(HaveOccurred())
-							Expect(adapter.ProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
+							Expect(adapter.ProjectClaim.Spec.GCPProjectID).To(Equal("fake-gcp-project"))
 						})
 
 					})
-					Context("When availability zones are set already", func() {
+
+					Context("When availability zones and GCPProjectID are set but ServiceAccountName is not", func() {
 						BeforeEach(func() {
 							projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
 							projectClaim.Spec.GCPProjectID = "fake-id"
+							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any())
+						})
+						It("updates the ProjectClaim with service account name", func() {
+							_, err := EnsureProjectClaimReady(adapter)
+							Expect(err).NotTo(HaveOccurred())
+							Expect(adapter.ProjectClaim.Spec.ServiceAccountName).To(Equal("fake-service-account"))
+						})
+
+					})
+
+					Context("When availability zones, GCPProjectID and ServiceAccountName are set already", func() {
+						BeforeEach(func() {
+							projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
+							projectClaim.Spec.GCPProjectID = "fake-id"
+							projectClaim.Spec.ServiceAccountName = "fake-service-account"
 							mockKubeClient.EXPECT().Status().Return(mockStatusWriter).Times(1)
 							mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Times(1)
 						})
