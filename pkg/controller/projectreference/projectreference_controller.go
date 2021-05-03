@@ -132,7 +132,6 @@ type ReconcileOperation func(*ReferenceAdapter) (util.OperationResult, error)
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, reqLogger logr.Logger) (reconcile.Result, error) {
 	operations := []ReconcileOperation{
-		EnsureServiceAccountNameMigration,
 		EnsureProjectReferenceInitialized, //Set conditions
 		EnsureDeletionProcessed,           // Cleanup
 		EnsureProjectClaimReady,           // Make projectReference  be processed based on state of ProjectClaim and Project Reference

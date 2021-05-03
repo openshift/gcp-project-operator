@@ -187,18 +187,6 @@ func serviceAccountNameTemplate(suffix string) string {
 	return fmt.Sprintf("%s-%s", osdServiceAccountNameDefault, suffix)
 }
 
-func EnsureServiceAccountNameMigration(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
-	adapter.logger.V(1).Info("enter EnsureServiceAccountNameMigration")
-	if adapter.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady &&
-		adapter.ProjectReference.Spec.ServiceAccountName == "" {
-
-		adapter.ProjectReference.Spec.ServiceAccountName = osdServiceAccountNameDefault
-		err := adapter.kubeClient.Update(context.TODO(), adapter.ProjectReference)
-		return gcputil.RequeueOnErrorOrStop(err)
-	}
-	return gcputil.ContinueProcessing()
-}
-
 func EnsureServiceAccountName(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
 	if serviceNameAlreadyGenerated(adapter.ProjectReference) ||
 		serviceNameAlreadyFilled(adapter.ProjectReference) {
