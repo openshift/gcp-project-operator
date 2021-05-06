@@ -343,8 +343,6 @@ parentFolderID: fake-folder
 
 			Context("When the failing to update Status to Ready", func() {
 				It("It requeues with error", func() {
-					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
-					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
@@ -369,8 +367,6 @@ parentFolderID: fake-folder
 
 			Context("When processes the project reference correctly", func() {
 				It("It does not requeue", func() {
-					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
-					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "Some Email"}, nil).Times(2)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)

@@ -158,15 +158,11 @@ func (c *gcpClient) CreateProjectLabels(project *cloudresourcemanager.Project, l
 
 	project.Labels = labels
 
-	// operation, err := c.cloudResourceManagerClient.Projects.Update(projectID, &project).Do()
-	operation, err := c.cloudResourceManagerClient.Projects.Update(project.ProjectId, project).Do()
+	_, err := c.cloudResourceManagerClient.Projects.Update(project.ProjectId, project).Do()
 	if err != nil {
 		return fmt.Errorf("gcpclient.CreateProject.Projects.Update %v", err)
 	}
 	time.Sleep(3 * time.Second) //Wait 3 seconds to make it more probable the project is updated after returning
-	fmt.Println(operation)
-	// "operation" here is of type Project and not Operation
-	// return operation, nil
 
 	return nil
 }

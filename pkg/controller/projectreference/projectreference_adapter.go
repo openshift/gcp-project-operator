@@ -571,6 +571,9 @@ func (r *ReferenceAdapter) configureAPIS() error {
 }
 
 func (r *ReferenceAdapter) ConfigureProjectLabel() (gcputil.OperationResult, error) {
+	if r.isCCS() {
+		return gcputil.ContinueProcessing()
+	}
 	claimName := r.ProjectClaim.ObjectMeta.Name
 	project, err := r.gcpClient.GetProject(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {

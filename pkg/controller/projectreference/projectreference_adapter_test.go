@@ -628,8 +628,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 				Context("When only one ccsConsoleAccessAccount are configured", func() {
 					It("It doesn't need to create a service account", func() {
-						mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
-						mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						_, err := EnsureProjectConfigured(adapter)
@@ -642,8 +640,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						adapter.OperatorConfig.CCSConsoleAccess = []string{"foo", "bar"}
 					})
 					It("repeat the process", func() {
-						mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
-						mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
@@ -685,8 +681,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 				Context("When only one ccsReadOnlyConsoleAccessAccount are configured", func() {
 					It("It doesn't need to create a service account", func() {
-						mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
-						mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						_, err := EnsureProjectConfigured(adapter)
@@ -699,8 +693,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						adapter.OperatorConfig.CCSReadOnlyConsoleAccess = []string{"foo", "bar"}
 					})
 					It("repeat the process", func() {
-						mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
-						mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
