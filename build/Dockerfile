@@ -1,4 +1,4 @@
-FROM quay.io/app-sre/boilerplate:image-v0.5.1 AS builder
+FROM quay.io/app-sre/boilerplate:image-v0.5.2 AS builder
 ENV OPERATOR_PATH=/gcp-project-operator
 COPY . ${OPERATOR_PATH}
 WORKDIR ${OPERATOR_PATH}
