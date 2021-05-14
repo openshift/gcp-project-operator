@@ -145,10 +145,13 @@ parentFolderID: fake-folder
 			)
 		})
 
-		Context("When Reference State is Ready and Project Claim is Ready", func() {
+		Context("When Reference State is Ready Project Claim is Ready and all parameters are set", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = api.ProjectReferenceStatusReady
 				projectClaim.Status.State = api.ClaimStatusReady
+				projectClaim.Spec.GCPProjectID = "fake-project-id"
+				projectClaim.Spec.ServiceAccountName = "fake-service-account"
+				projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
 			})
 
 			It("Does not reconcile", func() {
@@ -217,10 +220,11 @@ parentFolderID: fake-folder
 			})
 		})
 
-		Context("When Reference State is Ready and it fails to update", func() {
+		Context("When Reference State is Ready and it fails to update the ProjectClaim", func() {
 			BeforeEach(func() {
 				projectReference.Status.State = api.ProjectReferenceStatusReady
 				projectClaim.Spec.GCPProjectID = "fake-id"
+				projectClaim.Spec.ServiceAccountName = "fake-service-account"
 				projectClaim.Spec.AvailabilityZones = []string{"zone1", "zone2", "zone3"}
 			})
 
