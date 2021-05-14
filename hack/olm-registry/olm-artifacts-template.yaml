@@ -8,9 +8,7 @@ parameters:
   required: true
 - name: CHANNEL
   value: staging
-- name: IMAGE_TAG
-  value: latest
-- name: REPO_DIGEST
+- name: IMAGE_DIGEST
   requred: true
 - name: PARENT_FOLDER_ID
   required: true
@@ -28,7 +26,7 @@ objects:
     name: gcp-project-operator-catalog
   spec:
     sourceType: grpc
-    image: ${REPO_DIGEST}
+    image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
     displayName: gcp-project-operator Registry
     publisher: SRE 
 
