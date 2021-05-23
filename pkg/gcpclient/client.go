@@ -39,17 +39,15 @@ type Client interface {
 	GetIamPolicy(projectName string) (*cloudresourcemanager.Policy, error)
 	SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIamPolicyRequest) (*cloudresourcemanager.Policy, error)
 	ListProjects() ([]*cloudresourcemanager.Project, error)
-	CreateProject(parentFolder string) (*cloudresourcemanager.Operation, error)
+	CreateProject(parentFolder string, claimName string) (*cloudresourcemanager.Operation, error)
+	CreateProjectLabels(project *cloudresourcemanager.Project, labels map[string]string) error
 	DeleteProject(parentFolder string) (*cloudresourcemanager.Empty, error)
 	GetProject(projectID string) (*cloudresourcemanager.Project, error)
-
 	// ServiceManagement
 	EnableAPI(projectID, api string) error
 	ListAPIs(projectID string) ([]string, error)
-
 	// CloudBilling
 	CreateCloudBillingAccount(projectID, billingAccount string) error
-
 	//Compute
 	ListAvailabilityZones(projectID, region string) ([]string, error)
 }
@@ -154,12 +152,31 @@ func (c *gcpClient) GetProject(projectID string) (*cloudresourcemanager.Project,
 	return project, nil
 }
 
+// CreateProjectLabels creates the claimName label on a project
+func (c *gcpClient) CreateProjectLabels(project *cloudresourcemanager.Project, labels map[string]string) error {
+	log.V(2).Info("Started gcpClient.CreateProjectLabels")
+
+	project.Labels = labels
+
+	_, err := c.cloudResourceManagerClient.Projects.Update(project.ProjectId, project).Do()
+	if err != nil {
+		return fmt.Errorf("gcpclient.CreateProject.Projects.Update %v", err)
+	}
+	time.Sleep(3 * time.Second) //Wait 3 seconds to make it more probable the project is updated after returning
+
+	return nil
+}
+
 // CreateProject creates a project in a given folder.
-func (c *gcpClient) CreateProject(parentFolderID string) (*cloudresourcemanager.Operation, error) {
+func (c *gcpClient) CreateProject(parentFolderID string, claimName string) (*cloudresourcemanager.Operation, error) {
 	log.V(2).Info("Started gcpClient.CreateProject")
+
+	labelsMap := make(map[string]string)
+	labelsMap["claim_name"] = claimName
+
 	project := cloudresourcemanager.Project{
-		//Labels:          nil,
-		Name: c.projectName,
+		Labels: labelsMap,
+		Name:   c.projectName,
 		Parent: &cloudresourcemanager.ResourceId{
 			Id:   parentFolderID,
 			Type: "folder",

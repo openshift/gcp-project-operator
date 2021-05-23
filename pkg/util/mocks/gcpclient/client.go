@@ -154,18 +154,32 @@ func (mr *MockClientMockRecorder) ListProjects() *gomock.Call {
 }
 
 // CreateProject mocks base method
-func (m *MockClient) CreateProject(parentFolder string) (*cloudresourcemanager.Operation, error) {
+func (m *MockClient) CreateProject(parentFolder, claimName string) (*cloudresourcemanager.Operation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateProject", parentFolder)
+	ret := m.ctrl.Call(m, "CreateProject", parentFolder, claimName)
 	ret0, _ := ret[0].(*cloudresourcemanager.Operation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateProject indicates an expected call of CreateProject
-func (mr *MockClientMockRecorder) CreateProject(parentFolder interface{}) *gomock.Call {
+func (mr *MockClientMockRecorder) CreateProject(parentFolder, claimName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProject", reflect.TypeOf((*MockClient)(nil).CreateProject), parentFolder)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProject", reflect.TypeOf((*MockClient)(nil).CreateProject), parentFolder, claimName)
+}
+
+// CreateProjectLabels mocks base method
+func (m *MockClient) CreateProjectLabels(project *cloudresourcemanager.Project, labels map[string]string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateProjectLabels", project, labels)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateProjectLabels indicates an expected call of CreateProjectLabels
+func (mr *MockClientMockRecorder) CreateProjectLabels(project, labels interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateProjectLabels", reflect.TypeOf((*MockClient)(nil).CreateProjectLabels), project, labels)
 }
 
 // DeleteProject mocks base method
