@@ -269,8 +269,8 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 
 	r.logger.V(1).Info("Creating Credentials")
 	result, err = r.createCredentials()
-	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "error creating credentials"))
+	if err != nil || result.RequeueRequest {
+		return result, err
 	}
 
 	if r.isCCS() {
@@ -279,23 +279,17 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 			// TODO(yeya24): Use google API to check whether this email is
 			// for a group or a service account.
 			if err := r.SetIAMPolicy(email, OSDSREConsoleAccessRoles, gcputil.GoogleGroup); err != nil {
-				return result, err
+				return gcputil.RequeueWithError(err)
 			}
 		}
 
 		for _, email := range r.OperatorConfig.CCSReadOnlyConsoleAccess {
 			if err := r.SetIAMPolicy(email, OSDReadOnlyConsoleAccessRoles, gcputil.GoogleGroup); err != nil {
-				return result, err
+				return gcputil.RequeueWithError(err)
 			}
 		}
 	}
-	r.logger.V(1).Info("Creating Labels")
-	result, err = r.ConfigureProjectLabel()
-	if err != nil {
-		return result, err
-	}
-
-	return result, nil
+	return gcputil.ContinueProcessing()
 }
 
 func EnsureStateReady(r *ReferenceAdapter) (gcputil.OperationResult, error) {

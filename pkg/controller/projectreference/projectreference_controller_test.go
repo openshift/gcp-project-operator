@@ -403,8 +403,6 @@ parentFolderID: fake-folder
 
 			Context("When the failing to update Status to Ready", func() {
 				It("It requeues with error", func() {
-					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
-					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					mockGCPClient.EXPECT().ListAPIs(gomock.Any())
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
@@ -432,8 +430,6 @@ parentFolderID: fake-folder
 
 			Context("When processes the project reference correctly", func() {
 				It("It does not requeue", func() {
-					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
-					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 					mockGCPClient.EXPECT().ListAPIs(gomock.Any())
 					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).AnyTimes()
