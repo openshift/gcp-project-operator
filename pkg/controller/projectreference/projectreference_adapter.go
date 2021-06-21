@@ -840,7 +840,8 @@ func matchesAlreadyExistsError(err error) bool {
 }
 
 func matchesNotFoundError(err error) bool {
-	return strings.HasPrefix(err.Error(), "googleapi: Error 404:")
+	return strings.HasPrefix(err.Error(), "googleapi: Error 404:") || 
+		(strings.HasPrefix(err.Error(), "googleapi: Error 400:") && strings.Contains(err.Error(), "account not found"))
 }
 
 func matchesComputeApiNotReadyError(err error) bool {
