@@ -2,6 +2,7 @@ package projectclaim
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -41,6 +42,7 @@ const (
 const ProjectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
 const CCSSecretFinalizer string = "finalizer.gcp.managed.openshift.io/ccs"
 const RegionCheckFailed string = "RegionCheckFailed"
+const FakeProjectClaim string = "managed.openshift.com/fake"
 
 func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, manager condition.Conditions) *ProjectClaimAdapter {
 	projectReference := newMatchingProjectReference(projectClaim)
@@ -169,7 +171,81 @@ func (c *ProjectClaimAdapter) FinalizeProjectClaim() (ObjectState, error) {
 	return ObjectUnchanged, nil
 }
 
+func (c *ProjectClaimAdapter) IsProjectClaimFake() (gcputil.OperationResult, error) {
+	if c.projectClaim.Annotations[FakeProjectClaim] == "true" {
+		if _, err := c.EnsureFinalizer(); err != nil {
+			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not update project claim state for %s", c.projectClaim.Name)))
+		}
+
+		// If project claim is marked for deletion, remove also fake secret
+		if c.projectClaim.DeletionTimestamp != nil && gcputil.SecretExists(c.client, c.projectClaim.Spec.GCPCredentialSecret.Name, c.projectClaim.Spec.GCPCredentialSecret.Namespace) {
+			secret := &corev1.Secret{}
+			c.client.Get(context.TODO(), types.NamespacedName{
+				Name:      c.projectClaim.Spec.GCPCredentialSecret.Name,
+				Namespace: c.projectClaim.Spec.GCPCredentialSecret.Namespace},
+				secret,
+			)
+			err := c.client.Delete(context.TODO(), secret)
+			if err != nil {
+				return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not delete fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
+			}
+
+			// Remove finalizer to unlock deletion of the project claim
+			err = c.EnsureProjectClaimFinalizerDeleted()
+			if err != nil {
+				return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not delete project claim finalizer for %s", c.projectClaim.Name)))
+			}
+			return gcputil.StopProcessing()
+		}
+
+		// Create fake secret if not existing
+		if !gcputil.SecretExists(c.client, c.projectClaim.Spec.GCPCredentialSecret.Name, c.projectClaim.Spec.GCPCredentialSecret.Namespace) {
+			privateKeyString, err := base64.StdEncoding.DecodeString("SS1hbS1mYWtlLXBhc3M=")
+			if err != nil {
+				return gcputil.RequeueWithError(operrors.Wrap(err, "Could not decode hardcoded secret"))
+			}
+			if err := c.client.Create(context.TODO(), gcputil.NewGCPSecretCR(string(privateKeyString), types.NamespacedName{Namespace: c.projectClaim.Spec.GCPCredentialSecret.Namespace, Name: c.projectClaim.Spec.GCPCredentialSecret.Name})); err != nil {
+				return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not create fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
+			}
+		}
+
+		// Update project claim with fake specs
+		if c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusReady {
+			fakeProjectClaim := &gcpv1alpha1.ProjectClaim{
+				Spec: gcpv1alpha1.ProjectClaimSpec{
+					GCPProjectID: "fakeProjectClaim",
+					GCPCredentialSecret: gcpv1alpha1.NamespacedName{
+						Name:      c.projectClaim.GetName(),
+						Namespace: c.projectClaim.GetNamespace(),
+					},
+					LegalEntity: gcpv1alpha1.LegalEntity{
+						Name: "fakeLegalEntityName",
+						ID:   "fakeLegalEntityID",
+					},
+					Region: "fakeRegion",
+					AvailabilityZones: []string{
+						"fake-az-a",
+						"fake-az-b",
+						"fake-az-c",
+					},
+				},
+				Status: gcpv1alpha1.ProjectClaimStatus{
+					State: "Ready",
+				},
+			}
+			c.projectClaim.Spec = fakeProjectClaim.Spec
+			c.projectClaim.Status = fakeProjectClaim.Status
+			if err := c.client.Update(context.TODO(), c.projectClaim); err != nil {
+				return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not update project claim for %s", c.projectClaim.Name)))
+			}
+		}
+		return gcputil.StopProcessing()
+	}
+	return gcputil.ContinueProcessing()
+}
+
 func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (gcputil.OperationResult, error) {
+
 	if c.projectClaim.Status.Conditions == nil {
 		c.projectClaim.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := c.client.Status().Update(context.TODO(), c.projectClaim)
@@ -304,7 +380,6 @@ func (c *ProjectClaimAdapter) SetProjectClaimCondition(conditionType gcpv1alpha1
 
 	c.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, reason, "")
 	return gcputil.RequeueOnErrorOrStop(c.StatusUpdate())
-
 }
 
 // IsRegionSupported checks if current region is supported.
