@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
 	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/controller/projectclaim"
@@ -28,13 +29,14 @@ import (
 
 var _ = Describe("Customresourceadapter", func() {
 	var (
-		adapter          *ProjectClaimAdapter
-		mockCtrl         *gomock.Controller
-		mockClient       *mocks.MockClient
-		mockStatusWriter *mocks.MockStatusWriter
-		projectClaim     *gcpv1alpha1.ProjectClaim
-		mockConditions   *mockconditions.MockConditions
-		ccsSecret        corev1.Secret
+		adapter             *ProjectClaimAdapter
+		mockCtrl            *gomock.Controller
+		mockClient          *mocks.MockClient
+		mockStatusWriter    *mocks.MockStatusWriter
+		projectClaim        *gcpv1alpha1.ProjectClaim
+		mockConditions      *mockconditions.MockConditions
+		ccsSecret           corev1.Secret
+		GCPCredentialSecret corev1.Secret
 	)
 
 	BeforeEach(func() {
@@ -47,6 +49,12 @@ var _ = Describe("Customresourceadapter", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "secret-name",
 				Namespace: projectClaim.Namespace,
+			},
+		}
+		GCPCredentialSecret = corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      projectClaim.Spec.GCPCredentialSecret.Name,
+				Namespace: projectClaim.Spec.GCPCredentialSecret.Namespace,
 			},
 		}
 	})
@@ -308,6 +316,86 @@ disabledRegions:
 			})
 		})
 	})
+
+	Context("IsProjectClaimFake", func() {
+		BeforeEach(func() {
+			projectClaim.Annotations = map[string]string{}
+			projectClaim.Annotations[FakeProjectClaim] = "true"
+		})
+		Context("when ProjectClaim is marked for deletion", func() {
+			BeforeEach(func() {
+				deletionTime := metav1.NewTime(time.Date(2009, 11, 17, 20, 34, 58, 651387237, time.UTC))
+				projectClaim.SetDeletionTimestamp(&deletionTime)
+				projectClaim.Spec.GCPCredentialSecret.Name = projectClaim.GetName()
+				projectClaim.Spec.GCPCredentialSecret.Namespace = projectClaim.GetNamespace()
+				notFound := errors.NewNotFound(schema.GroupResource{}, "FakeSecret")
+				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, GCPCredentialSecret).Times(2)
+				mockClient.EXPECT().Update(gomock.Any(), projectClaim).Times(2)
+				mockClient.EXPECT().Delete(gomock.Any(), &corev1.Secret{})
+				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(notFound)
+			})
+			It("removes fake secret", func() {
+				result, err := adapter.IsProjectClaimFake()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.CancelRequest).To(Equal(true))
+			})
+		})
+
+		Context("when fake secret doesn't exist", func() {
+			BeforeEach(func() {
+				notFound := errors.NewNotFound(schema.GroupResource{}, "FakeSecret")
+				matcher := testStructs.NewSecretMatcher()
+				mockClient.EXPECT().Update(gomock.Any(), projectClaim).Times(2)
+				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(notFound)
+				mockClient.EXPECT().Create(gomock.Any(), matcher)
+			})
+			It("creates fake secret", func() {
+				_, err := adapter.IsProjectClaimFake()
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when ProjectClaim status is not Ready", func() {
+			BeforeEach(func() {
+				projectClaim.Status.State = ""
+				mockClient.EXPECT().Update(gomock.Any(), projectClaim)
+				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, GCPCredentialSecret)
+			})
+			It("updates ProjectClaim with fake attributes", func() {
+				matcher := testStructs.NewProjectClaimMatcher()
+				mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
+				result, err := adapter.IsProjectClaimFake()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.CancelRequest).To(Equal(true))
+				Expect(matcher.ActualProjectClaim.Spec.GCPProjectID).To(Equal("fakeProjectClaim"))
+				Expect(matcher.ActualProjectClaim.Spec.GCPCredentialSecret.Name).To(Equal(projectClaim.GetName()))
+				Expect(matcher.ActualProjectClaim.Spec.GCPCredentialSecret.Namespace).To(Equal(projectClaim.GetNamespace()))
+				Expect(matcher.ActualProjectClaim.Spec.LegalEntity.Name).To(Equal("fakeLegalEntityName"))
+				Expect(matcher.ActualProjectClaim.Spec.LegalEntity.ID).To(Equal("fakeLegalEntityID"))
+				Expect(matcher.ActualProjectClaim.Spec.Region).To(Equal("fakeRegion"))
+				Expect(matcher.ActualProjectClaim.Spec.AvailabilityZones).To(Equal([]string{
+					"fake-az-a",
+					"fake-az-b",
+					"fake-az-c",
+				}))
+				Expect(matcher.ActualProjectClaim.Status.State).To(Equal(v1alpha1.ClaimStatusReady))
+			})
+		})
+
+		Context("when ProjectClaim status is Ready", func() {
+			BeforeEach(func() {
+				projectClaim.Status.State = "Ready"
+				mockClient.EXPECT().Update(gomock.Any(), projectClaim)
+				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, GCPCredentialSecret)
+			})
+			It("doesn't change the ProjectClaim", func() {
+				result, err := adapter.IsProjectClaimFake()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.CancelRequest).To(Equal(true))
+			})
+		})
+	})
+
 	Context("EnsureCCSSecretFinalizer", func() {
 		Context("when it's not a CCS cluster", func() {
 			BeforeEach(func() {

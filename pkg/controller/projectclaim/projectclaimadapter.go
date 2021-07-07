@@ -177,7 +177,7 @@ func (c *ProjectClaimAdapter) IsProjectClaimFake() (gcputil.OperationResult, err
 			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not update project claim state for %s", c.projectClaim.Name)))
 		}
 
-		// If project claim is marked for deletion, remove also fake secret
+		// If project claim is marked for deletion, remove fake secret
 		if c.projectClaim.DeletionTimestamp != nil && gcputil.SecretExists(c.client, c.projectClaim.Spec.GCPCredentialSecret.Name, c.projectClaim.Spec.GCPCredentialSecret.Namespace) {
 			secret := &corev1.Secret{}
 			c.client.Get(context.TODO(), types.NamespacedName{
@@ -186,7 +186,9 @@ func (c *ProjectClaimAdapter) IsProjectClaimFake() (gcputil.OperationResult, err
 				secret,
 			)
 			err := c.client.Delete(context.TODO(), secret)
-			if err != nil {
+
+			// Confirm that secret was deleted
+			if err != nil || gcputil.SecretExists(c.client, c.projectClaim.Spec.GCPCredentialSecret.Name, c.projectClaim.Spec.GCPCredentialSecret.Namespace) {
 				return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not delete fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
 			}
 

@@ -69,34 +69,32 @@ var _ = Describe("ProjectclaimController", func() {
 		var (
 			mockAdapter *mockclaim.MockCustomResourceAdapter
 		)
+		BeforeEach(func() {
+			mockAdapter = mockclaim.NewMockCustomResourceAdapter(mockCtrl)
+		})
 		Context("When the ProjectClaim is newly created", func() {
-			BeforeEach(func() {
-				mockAdapter = mockclaim.NewMockCustomResourceAdapter(mockCtrl)
-				mockAdapter.EXPECT().EnsureProjectClaimDeletionProcessed().Return(gcputil.ContinueProcessing())
-				mockAdapter.EXPECT().EnsureRegionSupported().Return(gcputil.ContinueProcessing())
-				mockAdapter.EXPECT().EnsureProjectReferenceExists().Return(gcputil.ContinueProcessing())
-				mockAdapter.EXPECT().EnsureProjectClaimInitialized().Return(gcputil.ContinueProcessing())
-				mockAdapter.EXPECT().EnsureProjectClaimStatePending().Return(gcputil.ContinueProcessing())
-			})
-
-			Context("When the ProjectReferenceLink does not exist", func() {
-				It("Creates a ProjectReference, Links reference, sets status to Pending, and does not requeue", func() {
-					mockAdapter.EXPECT().EnsureProjectReferenceLink().Return(gcputil.StopProcessing())
+			Context("When the ProjectClaim is fake", func() {
+				It("Creates a Fake Secret, updates ProjectClaim with fake specs, sets status to Ready, and does not requeue", func() {
+					mockAdapter.EXPECT().IsProjectClaimFake().Return(gcputil.StopProcessing())
 					res, err := reconciler.ReconcileHandler(mockAdapter)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res.Requeue).To(Equal(false))
 					Expect(res.RequeueAfter).To(Equal(0 * time.Second))
 				})
 			})
-
-			Context("When the ProjectReferenceLink exists", func() {
+			Context("When the ProjectClaim is not fake", func() {
 				BeforeEach(func() {
-					mockAdapter.EXPECT().EnsureProjectReferenceLink().Return(gcputil.ContinueProcessing())
-
+					mockAdapter.EXPECT().IsProjectClaimFake().Return(gcputil.ContinueProcessing())
+					mockAdapter.EXPECT().EnsureProjectClaimDeletionProcessed().Return(gcputil.ContinueProcessing())
+					mockAdapter.EXPECT().EnsureRegionSupported().Return(gcputil.ContinueProcessing())
+					mockAdapter.EXPECT().EnsureProjectReferenceExists().Return(gcputil.ContinueProcessing())
+					mockAdapter.EXPECT().EnsureProjectClaimInitialized().Return(gcputil.ContinueProcessing())
+					mockAdapter.EXPECT().EnsureProjectClaimStatePending().Return(gcputil.ContinueProcessing())
 				})
-				Context("When the Finalizer does not exist", func() {
-					It("Adds the finalizer and does not requeue", func() {
-						mockAdapter.EXPECT().EnsureFinalizer().Return(gcputil.StopProcessing())
+
+				Context("When the ProjectReferenceLink does not exist", func() {
+					It("Creates a ProjectReference, Links reference, sets status to Pending, and does not requeue", func() {
+						mockAdapter.EXPECT().EnsureProjectReferenceLink().Return(gcputil.StopProcessing())
 						res, err := reconciler.ReconcileHandler(mockAdapter)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(res.Requeue).To(Equal(false))
@@ -104,45 +102,70 @@ var _ = Describe("ProjectclaimController", func() {
 					})
 				})
 
-				Context("When the finalizer exists", func() {
+				Context("When the ProjectReferenceLink exists", func() {
 					BeforeEach(func() {
-						mockAdapter.EXPECT().EnsureFinalizer().Return(gcputil.ContinueProcessing())
-					})
+						mockAdapter.EXPECT().EnsureProjectReferenceLink().Return(gcputil.ContinueProcessing())
 
-					Context("When it's a CCS cluster", func() {
-						It("Sets finalizer at the ccs secret", func() {
-							mockAdapter.EXPECT().EnsureCCSSecretFinalizer().Return(gcputil.StopProcessing())
+					})
+					Context("When the Finalizer does not exist", func() {
+						It("Adds the finalizer and does not requeue", func() {
+							mockAdapter.EXPECT().EnsureFinalizer().Return(gcputil.StopProcessing())
 							res, err := reconciler.ReconcileHandler(mockAdapter)
 							Expect(err).ToNot(HaveOccurred())
 							Expect(res.Requeue).To(Equal(false))
 							Expect(res.RequeueAfter).To(Equal(0 * time.Second))
 						})
-
 					})
 
-					Context("When it's not a CCS cluster or finalizer is set", func() {
+					Context("When the finalizer exists", func() {
 						BeforeEach(func() {
-							mockAdapter.EXPECT().EnsureCCSSecretFinalizer().Return(gcputil.ContinueProcessing())
+							mockAdapter.EXPECT().EnsureFinalizer().Return(gcputil.ContinueProcessing())
 						})
-						It("Sets the state to PendingProject", func() {
-							mockAdapter.EXPECT().EnsureProjectClaimStatePendingProject()
-							res, err := reconciler.ReconcileHandler(mockAdapter)
-							Expect(err).ToNot(HaveOccurred())
-							Expect(res.Requeue).To(Equal(false))
-							Expect(res.RequeueAfter).To(Equal(0 * time.Second))
-						})
-					})
 
+						Context("When it's a CCS cluster", func() {
+							It("Sets finalizer at the ccs secret", func() {
+								mockAdapter.EXPECT().EnsureCCSSecretFinalizer().Return(gcputil.StopProcessing())
+								res, err := reconciler.ReconcileHandler(mockAdapter)
+								Expect(err).ToNot(HaveOccurred())
+								Expect(res.Requeue).To(Equal(false))
+								Expect(res.RequeueAfter).To(Equal(0 * time.Second))
+							})
+
+						})
+
+						Context("When it's not a CCS cluster or finalizer is set", func() {
+							BeforeEach(func() {
+								mockAdapter.EXPECT().EnsureCCSSecretFinalizer().Return(gcputil.ContinueProcessing())
+							})
+							It("Sets the state to PendingProject", func() {
+								mockAdapter.EXPECT().EnsureProjectClaimStatePendingProject()
+								res, err := reconciler.ReconcileHandler(mockAdapter)
+								Expect(err).ToNot(HaveOccurred())
+								Expect(res.Requeue).To(Equal(false))
+								Expect(res.RequeueAfter).To(Equal(0 * time.Second))
+							})
+						})
+
+					})
 				})
 			})
 		})
 
 		Context("When the ProjectClaim gets deleted", func() {
-
-			It("finalizes the projectclaim", func() {
-				mockAdapter.EXPECT().EnsureProjectClaimDeletionProcessed().Return(gcputil.StopProcessing())
-				_, err := reconciler.ReconcileHandler(mockAdapter)
-				Expect(err).ToNot(HaveOccurred())
+			Context("When the ProjectClaim is fake", func() {
+				It("finalizes the projectclaim", func() {
+					mockAdapter.EXPECT().IsProjectClaimFake().Return(gcputil.StopProcessing())
+					_, err := reconciler.ReconcileHandler(mockAdapter)
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
+			Context("When the ProjectClaim is not fake", func() {
+				It("finalizes the projectclaim", func() {
+					mockAdapter.EXPECT().IsProjectClaimFake().Return(gcputil.ContinueProcessing())
+					mockAdapter.EXPECT().EnsureProjectClaimDeletionProcessed().Return(gcputil.StopProcessing())
+					_, err := reconciler.ReconcileHandler(mockAdapter)
+					Expect(err).ToNot(HaveOccurred())
+				})
 			})
 		})
 	})
