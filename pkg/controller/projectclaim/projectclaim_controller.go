@@ -23,7 +23,7 @@ var log = logf.Log.WithName("controller_projectclaim")
 
 //go:generate mockgen -destination=../../util/mocks/$GOPACKAGE/customeresourceadapter.go -package=$GOPACKAGE github.com/openshift/gcp-project-operator/pkg/controller/projectclaim CustomResourceAdapter
 type CustomResourceAdapter interface {
-	IsProjectClaimFake() (gcputil.OperationResult, error)
+	EnsureProjectClaimFakeProcessed() (gcputil.OperationResult, error)
 	EnsureProjectClaimDeletionProcessed() (gcputil.OperationResult, error)
 	ProjectReferenceExists() (bool, error)
 	EnsureProjectClaimInitialized() (gcputil.OperationResult, error)
@@ -115,7 +115,7 @@ type ReconcileOperation func() (util.OperationResult, error)
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileProjectClaim) ReconcileHandler(adapter CustomResourceAdapter) (reconcile.Result, error) {
 	operations := []ReconcileOperation{
-		adapter.IsProjectClaimFake,
+		adapter.EnsureProjectClaimFakeProcessed,
 		adapter.EnsureProjectClaimDeletionProcessed,
 		adapter.EnsureProjectClaimInitialized,
 		adapter.EnsureRegionSupported,

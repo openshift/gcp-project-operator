@@ -237,44 +237,41 @@ func (c *ProjectClaimAdapter) UpdateFakeProjectClaimState() (bool, error) {
 	return true, nil
 }
 
-func (c *ProjectClaimAdapter) IsProjectClaimFake() (gcputil.OperationResult, error) {
-	if c.projectClaim.Annotations[FakeProjectClaim] == "true" {
-		if _, err := c.EnsureFinalizer(); err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Failed to add finalizer for %s", c.projectClaim.Name)))
+func (c *ProjectClaimAdapter) EnsureProjectClaimFakeProcessed() (gcputil.OperationResult, error) {
+	if c.projectClaim.Annotations[FakeProjectClaim] != "true" {
+		return gcputil.ContinueProcessing()
+	}
+	if _, err := c.EnsureFinalizer(); err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Failed to add finalizer for %s", c.projectClaim.Name)))
+	}
+	// If project claim is marked for deletion, remove fake secret and project claim
+	if c.projectClaim.DeletionTimestamp != nil {
+		if err := c.DeleteFakeSecret(); err != nil {
+			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not delete fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
 		}
-		// If project claim is marked for deletion, remove fake secret and project claim
-		if c.projectClaim.DeletionTimestamp != nil {
-			if err := c.DeleteFakeSecret(); err != nil {
-				return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not delete fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
-			}
-			if _, err := c.EnsureProjectClaimDeletionProcessed(); err != nil {
-				return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not delete project claim %s", c.projectClaim.Name)))
-			}
-			return gcputil.StopProcessing()
-		}
-		// Create fake secret if not existing
-		if err := c.CreateFakeSecret(); err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not create fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
-		}
-		// Update fake project claim specs
-		result, err := c.UpdateFakeProjectClaimSpecs()
-		if err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not update project claim specs for %s", c.projectClaim.Name)))
-		}
-		if !result {
-			return gcputil.StopProcessing()
-		}
-		// Update fake project claim state
-		result, err = c.UpdateFakeProjectClaimState()
-		if err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not update project claim specs for %s", c.projectClaim.Name)))
-		}
-		if !result {
-			return gcputil.StopProcessing()
+		if _, err := c.EnsureProjectClaimDeletionProcessed(); err != nil {
+			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not delete project claim %s", c.projectClaim.Name)))
 		}
 		return gcputil.StopProcessing()
 	}
-	return gcputil.ContinueProcessing()
+	if err := c.CreateFakeSecret(); err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not create fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
+	}
+	result, err := c.UpdateFakeProjectClaimSpecs()
+	if err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not update project claim specs for %s", c.projectClaim.Name)))
+	}
+	if !result {
+		return gcputil.StopProcessing()
+	}
+	result, err = c.UpdateFakeProjectClaimState()
+	if err != nil {
+		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not update project claim specs for %s", c.projectClaim.Name)))
+	}
+	if !result {
+		return gcputil.StopProcessing()
+	}
+	return gcputil.StopProcessing()
 }
 
 func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (gcputil.OperationResult, error) {

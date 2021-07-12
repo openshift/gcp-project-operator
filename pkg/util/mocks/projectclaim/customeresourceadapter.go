@@ -185,19 +185,19 @@ func (mr *MockCustomResourceAdapterMockRecorder) FinalizeProjectClaim() *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalizeProjectClaim", reflect.TypeOf((*MockCustomResourceAdapter)(nil).FinalizeProjectClaim))
 }
 
-// IsProjectClaimFake mocks base method
-func (m *MockCustomResourceAdapter) IsProjectClaimFake() (util.OperationResult, error) {
+// EnsureProjectClaimFakeProcessed mocks base method
+func (m *MockCustomResourceAdapter) EnsureProjectClaimFakeProcessed() (util.OperationResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsProjectClaimFake")
+	ret := m.ctrl.Call(m, "EnsureProjectClaimFakeProcessed")
 	ret0, _ := ret[0].(util.OperationResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// IsProjectClaimFake indicates an expected call of IsProjectClaimFake
-func (mr *MockCustomResourceAdapterMockRecorder) IsProjectClaimFake() *gomock.Call {
+// EnsureProjectClaimFakeProcessed indicates an expected call of EnsureProjectClaimFakeProcessed
+func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimFakeProcessed() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsProjectClaimFake", reflect.TypeOf((*MockCustomResourceAdapter)(nil).IsProjectClaimFake))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimFakeProcessed", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimFakeProcessed))
 }
 
 // ProjectReferenceExists mocks base method

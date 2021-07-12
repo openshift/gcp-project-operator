@@ -332,7 +332,7 @@ disabledRegions:
 				mockClient.EXPECT().Delete(gomock.Any(), &testStructs.ProjectReferenceMatcher{})
 			})
 			It("removes fake secret", func() {
-				result, err := adapter.IsProjectClaimFake()
+				result, err := adapter.EnsureProjectClaimFakeProcessed()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.CancelRequest).To(Equal(true))
 			})
@@ -347,7 +347,7 @@ disabledRegions:
 				mockClient.EXPECT().Create(gomock.Any(), matcher)
 			})
 			It("creates fake secret", func() {
-				_, err := adapter.IsProjectClaimFake()
+				_, err := adapter.EnsureProjectClaimFakeProcessed()
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -362,7 +362,7 @@ disabledRegions:
 			It("updates ProjectClaim with fake specs", func() {
 				matcher := testStructs.NewProjectClaimMatcher()
 				mockClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
-				result, err := adapter.IsProjectClaimFake()
+				result, err := adapter.EnsureProjectClaimFakeProcessed()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.CancelRequest).To(Equal(true))
 				Expect(matcher.ActualProjectClaim.Spec.GCPProjectID).To(Equal("fakeProjectClaim"))
@@ -388,7 +388,7 @@ disabledRegions:
 				matcher := testStructs.NewProjectClaimMatcher()
 				mockClient.EXPECT().Status().Return(mockStatusWriter)
 				mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
-				result, err := adapter.IsProjectClaimFake()
+				result, err := adapter.EnsureProjectClaimFakeProcessed()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.CancelRequest).To(Equal(true))
 				Expect(matcher.ActualProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusReady))
@@ -403,7 +403,7 @@ disabledRegions:
 				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, GCPCredentialSecret)
 			})
 			It("doesn't change the ProjectClaim", func() {
-				result, err := adapter.IsProjectClaimFake()
+				result, err := adapter.EnsureProjectClaimFakeProcessed()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.CancelRequest).To(Equal(true))
 			})

@@ -75,7 +75,7 @@ var _ = Describe("ProjectclaimController", func() {
 		Context("When the ProjectClaim is newly created", func() {
 			Context("When the ProjectClaim is fake", func() {
 				It("Creates a Fake Secret, updates ProjectClaim with fake specs, sets status to Ready, and does not requeue", func() {
-					mockAdapter.EXPECT().IsProjectClaimFake().Return(gcputil.StopProcessing())
+					mockAdapter.EXPECT().EnsureProjectClaimFakeProcessed().Return(gcputil.StopProcessing())
 					res, err := reconciler.ReconcileHandler(mockAdapter)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res.Requeue).To(Equal(false))
@@ -84,7 +84,7 @@ var _ = Describe("ProjectclaimController", func() {
 			})
 			Context("When the ProjectClaim is not fake", func() {
 				BeforeEach(func() {
-					mockAdapter.EXPECT().IsProjectClaimFake().Return(gcputil.ContinueProcessing())
+					mockAdapter.EXPECT().EnsureProjectClaimFakeProcessed().Return(gcputil.ContinueProcessing())
 					mockAdapter.EXPECT().EnsureProjectClaimDeletionProcessed().Return(gcputil.ContinueProcessing())
 					mockAdapter.EXPECT().EnsureRegionSupported().Return(gcputil.ContinueProcessing())
 					mockAdapter.EXPECT().EnsureProjectReferenceExists().Return(gcputil.ContinueProcessing())
@@ -154,14 +154,14 @@ var _ = Describe("ProjectclaimController", func() {
 		Context("When the ProjectClaim gets deleted", func() {
 			Context("When the ProjectClaim is fake", func() {
 				It("finalizes the projectclaim", func() {
-					mockAdapter.EXPECT().IsProjectClaimFake().Return(gcputil.StopProcessing())
+					mockAdapter.EXPECT().EnsureProjectClaimFakeProcessed().Return(gcputil.StopProcessing())
 					_, err := reconciler.ReconcileHandler(mockAdapter)
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
 			Context("When the ProjectClaim is not fake", func() {
 				It("finalizes the projectclaim", func() {
-					mockAdapter.EXPECT().IsProjectClaimFake().Return(gcputil.ContinueProcessing())
+					mockAdapter.EXPECT().EnsureProjectClaimFakeProcessed().Return(gcputil.ContinueProcessing())
 					mockAdapter.EXPECT().EnsureProjectClaimDeletionProcessed().Return(gcputil.StopProcessing())
 					_, err := reconciler.ReconcileHandler(mockAdapter)
 					Expect(err).ToNot(HaveOccurred())
