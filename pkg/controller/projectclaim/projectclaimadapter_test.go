@@ -341,10 +341,13 @@ disabledRegions:
 		Context("when fake secret doesn't exist", func() {
 			BeforeEach(func() {
 				notFound := errors.NewNotFound(schema.GroupResource{}, "FakeSecret")
-				matcher := testStructs.NewSecretMatcher()
+				secretMatcher := testStructs.NewSecretMatcher()
 				mockClient.EXPECT().Update(gomock.Any(), projectClaim).Times(2)
 				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(notFound)
-				mockClient.EXPECT().Create(gomock.Any(), matcher)
+				mockClient.EXPECT().Create(gomock.Any(), secretMatcher)
+				claimMatcher := testStructs.NewProjectClaimMatcher()
+				mockClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), claimMatcher)
 			})
 			It("creates fake secret", func() {
 				_, err := adapter.IsProjectClaimFake()
@@ -355,8 +358,11 @@ disabledRegions:
 		Context("when ProjectClaim GCPProjectID is not fake", func() {
 			BeforeEach(func() {
 				projectClaim.Spec.GCPProjectID = ""
+				matcher := testStructs.NewProjectClaimMatcher()
 				mockClient.EXPECT().Update(gomock.Any(), projectClaim)
 				mockClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, GCPCredentialSecret)
+				mockClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), matcher)
 			})
 			It("updates ProjectClaim with fake specs", func() {
 				matcher := testStructs.NewProjectClaimMatcher()
