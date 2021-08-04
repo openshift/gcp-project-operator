@@ -55,7 +55,7 @@ rules:
 - apiGroups:
   - gcp.managed.openshift.io
   resources:
-  - '*'
+  - projectclaims
   - projectreferences
   verbs:
   - create
