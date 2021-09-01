@@ -130,8 +130,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				})
 
 				It("returns without altering ProjectClaim", func() {
-					mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}, nil)
-					mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), gomock.Any()).Return(nil)
 					oldClaim := projectClaim.DeepCopy()
 					_, err := EnsureProjectClaimReady(adapter)
 					Expect(err).NotTo(HaveOccurred())
@@ -291,37 +289,6 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				})
 			})
 		})
-	})
-	Context("ConfigureProjectLabel", func() {
-		var (
-			claimName string
-		)
-		JustBeforeEach(func() {
-			mockGCPClient.EXPECT().GetProject(gomock.Any()).Return(&cloudresourcemanager.Project{LifecycleState: "ACTIVE",
-				ProjectId: projectReference.Spec.GCPProjectID, Labels: map[string]string{"claim_name": claimName}}, nil)
-		})
-		Context("When an existing project has the correct label", func() {
-			BeforeEach(func() {
-				claimName = projectClaim.Name
-			})
-			It("Does nothing", func() {
-				result, err := adapter.ConfigureProjectLabel()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(continueProcessingResult))
-			})
-		})
-		Context("When an existing project has a wrong label", func() {
-			BeforeEach(func() {
-				claimName = "fake-wrong-label"
-			})
-			It("Updates the labels on the project", func() {
-				mockGCPClient.EXPECT().CreateProjectLabels(gomock.Any(), map[string]string{"claim_name": projectClaim.Name}).Return(nil)
-				result, err := adapter.ConfigureProjectLabel()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal(continueProcessingResult))
-			})
-		})
-
 	})
 
 	Context("EnsureProjectCreated", func() {
