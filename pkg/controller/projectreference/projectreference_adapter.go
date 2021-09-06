@@ -131,11 +131,6 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, erro
 	}
 
 	if r.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusReady {
-		//Ensure Labels are set even if state is "Ready"
-		res, err := r.ConfigureProjectLabel()
-		if err != nil {
-			return res, err
-		}
 		return gcputil.StopProcessing()
 	}
 
@@ -552,28 +547,6 @@ func (r *ReferenceAdapter) configureAPIS() error {
 	return nil
 }
 
-func (r *ReferenceAdapter) ConfigureProjectLabel() (gcputil.OperationResult, error) {
-	if r.isCCS() {
-		return gcputil.ContinueProcessing()
-	}
-	claimName := r.ProjectClaim.ObjectMeta.Name
-	project, err := r.gcpClient.GetProject(r.ProjectReference.Spec.GCPProjectID)
-	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("error fetching labels for project %s.", r.ProjectReference.Spec.GCPProjectID)))
-	}
-	claimLabel := project.Labels["claim_name"]
-	// includes a case where claimLabel is nil.
-	if claimLabel != claimName {
-		labels := make(map[string]string)
-		labels["claim_name"] = claimName
-		err := r.gcpClient.CreateProjectLabels(project, labels)
-		if err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("error creating labels for project %s.", r.ProjectReference.Spec.GCPProjectID)))
-		}
-	}
-	return gcputil.ContinueProcessing()
-}
-
 func (r *ReferenceAdapter) configureServiceAccount(policies []string) (gcputil.OperationResult, error) {
 	// See if GCP service account exists if not create it
 	var serviceAccount *iam.ServiceAccount
@@ -840,7 +813,7 @@ func matchesAlreadyExistsError(err error) bool {
 }
 
 func matchesNotFoundError(err error) bool {
-	return strings.HasPrefix(err.Error(), "googleapi: Error 404:") || 
+	return strings.HasPrefix(err.Error(), "googleapi: Error 404:") ||
 		(strings.Contains(err.Error(), "400 Bad Request") && strings.Contains(err.Error(), "Invalid grant: account not found"))
 }
 
