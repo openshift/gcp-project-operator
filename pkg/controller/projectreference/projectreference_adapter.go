@@ -78,7 +78,6 @@ var OSDSREConsoleAccessRoles = []string{
 	"roles/servicemanagement.quotaAdmin",
 	"roles/iam.serviceAccountAdmin",
 	"roles/serviceusage.serviceUsageAdmin",
-	"roles/orgpolicy.policyViewer",
 	"roles/iam.roleAdmin",
 	"roles/cloudsupport.techSupportEditor",
 }
