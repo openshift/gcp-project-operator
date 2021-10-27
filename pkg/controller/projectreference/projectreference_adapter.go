@@ -2,7 +2,7 @@ package projectreference
 
 import (
 	"context"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -394,7 +394,7 @@ func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
 
 func GenerateProjectID() (string, error) {
 	guid := uuid.New().String()
-	hashing := sha1.New()
+	hashing := sha256.New()
 	_, err := hashing.Write([]byte(guid))
 	if err != nil {
 		return "", err
