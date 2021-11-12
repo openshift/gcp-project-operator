@@ -55,6 +55,7 @@ var OSDRequiredAPIS = []string{
 	"cloudapis.googleapis.com",
 	"iamcredentials.googleapis.com",
 	"servicemanagement.googleapis.com",
+	"networksecurity.googleapis.com", // https://bugzilla.redhat.com/show_bug.cgi?id=2021731
 }
 
 // OSDRequiredRoles is a list of Roles that a service account
