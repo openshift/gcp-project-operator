@@ -2,7 +2,6 @@ package projectclaim
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -49,6 +48,7 @@ func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.
 	return &ProjectClaimAdapter{projectClaim, logger, client, projectReference, manager}
 }
 
+// newMatchingProjectReference creates a ProjectReference CR from a ProjectClaim
 func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1alpha1.ProjectReference {
 	gcpProjectID := ""
 	if projectClaim.Spec.CCS {
@@ -73,6 +73,7 @@ func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1a
 	}
 }
 
+// ProjectReferenceExists checks whether a matching ProjectReference already exists
 func (c *ProjectClaimAdapter) ProjectReferenceExists() (bool, error) {
 	found := &gcpv1alpha1.ProjectReference{}
 	err := c.client.Get(context.TODO(), types.NamespacedName{Name: c.projectReference.Name, Namespace: c.projectReference.Namespace}, found)
@@ -85,6 +86,7 @@ func (c *ProjectClaimAdapter) ProjectReferenceExists() (bool, error) {
 	return true, nil
 }
 
+// EnsureProjectClaimDeletionProcessed deletes ProjectClaim in cases a deletion was triggered
 func (adapter *ProjectClaimAdapter) EnsureProjectClaimDeletionProcessed() (gcputil.OperationResult, error) {
 	if adapter.IsProjectClaimDeletion() {
 		crState, err := adapter.FinalizeProjectClaim()
@@ -96,19 +98,23 @@ func (adapter *ProjectClaimAdapter) EnsureProjectClaimDeletionProcessed() (gcput
 	return gcputil.ContinueProcessing()
 }
 
+// IsProjectClaimDeletion checks whether deletion was triggered for a ProjectClaim
 func (c *ProjectClaimAdapter) IsProjectClaimDeletion() bool {
 	return c.projectClaim.DeletionTimestamp != nil
 }
 
+// IsProjectReferenceDeletion checks whether deletion was triggered for a ProjectReference
 func (c *ProjectClaimAdapter) IsProjectReferenceDeletion() bool {
 	return c.projectReference.DeletionTimestamp != nil
 }
 
+// EnsureProjectClaimFinalizerDeleted removes finalizer of a ProjectClaim
 func (c *ProjectClaimAdapter) EnsureProjectClaimFinalizerDeleted() error {
 	c.logger.Info("Deleting ProjectClaim Finalizer")
 	return c.deleteFinalizer(c.projectClaim, ProjectClaimFinalizer)
 }
 
+// EnsureCCSSecretFinalizerDeleted deletes the finalizer for the access credentials secret to the CCS gcp project
 func (c *ProjectClaimAdapter) EnsureCCSSecretFinalizerDeleted() error {
 	if c.projectClaim.Spec.CCS {
 		secret, err := c.getCCSSecret()
@@ -127,6 +133,7 @@ func (c *ProjectClaimAdapter) EnsureCCSSecretFinalizerDeleted() error {
 	return nil
 }
 
+// deleteFinalizer deletes finalizer of a generic CR
 func (c *ProjectClaimAdapter) deleteFinalizer(object runtime.Object, finalizer string) error {
 	metadata, err := meta.Accessor(object)
 	if err != nil {
@@ -140,6 +147,7 @@ func (c *ProjectClaimAdapter) deleteFinalizer(object runtime.Object, finalizer s
 	return nil
 }
 
+// FinalizeProjectClaim handles the deletion of a ProjectClaim, including deletion of ProjectReference and Secret
 func (c *ProjectClaimAdapter) FinalizeProjectClaim() (ObjectState, error) {
 	projectReferenceExists, err := c.ProjectReferenceExists()
 	if err != nil {
@@ -171,109 +179,7 @@ func (c *ProjectClaimAdapter) FinalizeProjectClaim() (ObjectState, error) {
 	return ObjectUnchanged, nil
 }
 
-func (c *ProjectClaimAdapter) CreateFakeSecret() error {
-	if !gcputil.SecretExists(c.client, c.projectClaim.Spec.GCPCredentialSecret.Name, c.projectClaim.Spec.GCPCredentialSecret.Namespace) {
-		privateKeyString, err := base64.StdEncoding.DecodeString("SS1hbS1mYWtlLXBhc3M=")
-		if err != nil {
-			return err
-		}
-		if err := c.client.Create(context.TODO(), gcputil.NewGCPSecretCR(string(privateKeyString), types.NamespacedName{Namespace: c.projectClaim.Spec.GCPCredentialSecret.Namespace, Name: c.projectClaim.Spec.GCPCredentialSecret.Name})); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (c *ProjectClaimAdapter) DeleteFakeSecret() error {
-	secret := &corev1.Secret{}
-	err := c.client.Get(context.TODO(), types.NamespacedName{
-		Name:      c.projectClaim.Spec.GCPCredentialSecret.Name,
-		Namespace: c.projectClaim.Spec.GCPCredentialSecret.Namespace},
-		secret,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = c.client.Delete(context.TODO(), secret)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *ProjectClaimAdapter) UpdateFakeProjectClaimSpecs() (bool, error) {
-	if c.projectClaim.Spec.GCPProjectID != "fakeProjectClaim" {
-		c.projectClaim.Spec.GCPProjectID = "fakeProjectClaim"
-		c.projectClaim.Spec.GCPCredentialSecret = gcpv1alpha1.NamespacedName{
-			Name:      c.projectClaim.GetName(),
-			Namespace: c.projectClaim.GetNamespace(),
-		}
-		c.projectClaim.Spec.Region = "fakeRegion"
-		c.projectClaim.Spec.AvailabilityZones = []string{
-			"fake-az-a",
-			"fake-az-b",
-			"fake-az-c",
-		}
-		err := c.client.Update(context.TODO(), c.projectClaim)
-		if err != nil {
-			return true, err
-		}
-		return false, nil
-	}
-	return true, nil
-}
-
-func (c *ProjectClaimAdapter) UpdateFakeProjectClaimState() (bool, error) {
-	if c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusReady {
-		c.projectClaim.Status.Conditions = []gcpv1alpha1.Condition{}
-		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
-		err := c.client.Status().Update(context.TODO(), c.projectClaim)
-		if err != nil {
-			return true, err
-		}
-		return false, nil
-	}
-	return true, nil
-}
-
-func (c *ProjectClaimAdapter) EnsureProjectClaimFakeProcessed() (gcputil.OperationResult, error) {
-	if c.projectClaim.Annotations[FakeProjectClaim] != "true" {
-		return gcputil.ContinueProcessing()
-	}
-	if _, err := c.EnsureFinalizer(); err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Failed to add finalizer for %s", c.projectClaim.Name)))
-	}
-	// If project claim is marked for deletion, remove fake secret and project claim
-	if c.projectClaim.DeletionTimestamp != nil {
-		if err := c.DeleteFakeSecret(); err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not delete fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
-		}
-		if _, err := c.EnsureProjectClaimDeletionProcessed(); err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not delete project claim %s", c.projectClaim.Name)))
-		}
-		return gcputil.StopProcessing()
-	}
-	if err := c.CreateFakeSecret(); err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not create fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
-	}
-	result, err := c.UpdateFakeProjectClaimSpecs()
-	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not update project claim specs for %s", c.projectClaim.Name)))
-	}
-	if !result {
-		return gcputil.StopProcessing()
-	}
-	result, err = c.UpdateFakeProjectClaimState()
-	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not update project claim specs for %s", c.projectClaim.Name)))
-	}
-	if !result {
-		return gcputil.StopProcessing()
-	}
-	return gcputil.StopProcessing()
-}
-
+// EnsureProjectClaimInitialized initializes ProjectClaim fields with empty values
 func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (gcputil.OperationResult, error) {
 
 	if c.projectClaim.Status.Conditions == nil {
@@ -287,6 +193,7 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (gcputil.Operation
 	return gcputil.ContinueProcessing()
 }
 
+// EnsureProjectReferenceLink the initial ProjectClaim to the ProjectReference that has been created
 func (c *ProjectClaimAdapter) EnsureProjectReferenceLink() (gcputil.OperationResult, error) {
 	expectedLink := gcpv1alpha1.NamespacedName{
 		Name:      c.projectReference.GetName(),
@@ -303,6 +210,7 @@ func (c *ProjectClaimAdapter) EnsureProjectReferenceLink() (gcputil.OperationRes
 	return gcputil.StopProcessing()
 }
 
+// EnsureFinalizer adds finalizer to a ProjectClaim
 func (c *ProjectClaimAdapter) EnsureFinalizer() (gcputil.OperationResult, error) {
 	if !util.Contains(c.projectClaim.GetFinalizers(), ProjectClaimFinalizer) {
 		c.logger.Info("Adding Finalizer to the ProjectClaim")
@@ -312,6 +220,7 @@ func (c *ProjectClaimAdapter) EnsureFinalizer() (gcputil.OperationResult, error)
 	return gcputil.ContinueProcessing()
 }
 
+// EnsureCCSSecretFinalizer adss finalizer to a CCSSecret
 func (c *ProjectClaimAdapter) EnsureCCSSecretFinalizer() (gcputil.OperationResult, error) {
 	if !c.projectClaim.Spec.CCS {
 		return gcputil.ContinueProcessing()
@@ -325,6 +234,7 @@ func (c *ProjectClaimAdapter) EnsureCCSSecretFinalizer() (gcputil.OperationResul
 	return gcputil.RequeueOnErrorOrContinue(err)
 }
 
+// addFinalizer adds finalizer to a generic CR
 func (c *ProjectClaimAdapter) addFinalizer(object runtime.Object, finalizer string) error {
 	metadata, err := meta.Accessor(object)
 	if err != nil {
@@ -338,6 +248,7 @@ func (c *ProjectClaimAdapter) addFinalizer(object runtime.Object, finalizer stri
 	return nil
 }
 
+// getCCSSecret returns the CCS gcp project access credentials
 func (c *ProjectClaimAdapter) getCCSSecret() (*corev1.Secret, error) {
 	secret := &corev1.Secret{}
 	secretName := types.NamespacedName{
@@ -351,6 +262,7 @@ func (c *ProjectClaimAdapter) getCCSSecret() (*corev1.Secret, error) {
 	return secret, nil
 }
 
+// EnsureProjectReferenceExists triggers Reconcile requeue for the case a ProjectReference for a ProjectClaim doesn't exist yet
 func (c *ProjectClaimAdapter) EnsureProjectReferenceExists() (gcputil.OperationResult, error) {
 	projectReferenceExists, err := c.ProjectReferenceExists()
 	if err != nil {
@@ -363,14 +275,17 @@ func (c *ProjectClaimAdapter) EnsureProjectReferenceExists() (gcputil.OperationR
 	return gcputil.ContinueProcessing()
 }
 
+// EnsureProjectClaimStatePending sets a ProjectClaim State to Pending for the case ProjectReference CR is being set up
 func (c *ProjectClaimAdapter) EnsureProjectClaimStatePending() (gcputil.OperationResult, error) {
 	return c.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPending)
 }
 
+// EnsureProjectClaimStatePendingProject sets a ProjectClaim State to PendingProject for the case gcp project for the ProjectReference is being prepared
 func (c *ProjectClaimAdapter) EnsureProjectClaimStatePendingProject() (gcputil.OperationResult, error) {
 	return c.EnsureProjectClaimState(gcpv1alpha1.ClaimStatusPendingProject)
 }
 
+// EnsureProjectClaimState sets the Status of a ProjectClaim
 func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimStatus) (gcputil.OperationResult, error) {
 	if c.projectClaim.Status.State == state {
 		return gcputil.ContinueProcessing()
@@ -382,10 +297,8 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimState(state gcpv1alpha1.ClaimSta
 		}
 	}
 
-	if state == gcpv1alpha1.ClaimStatusPendingProject {
-		if c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPending {
-			return gcputil.ContinueProcessing()
-		}
+	if state == gcpv1alpha1.ClaimStatusPendingProject && c.projectClaim.Status.State != gcpv1alpha1.ClaimStatusPending {
+		return gcputil.ContinueProcessing()
 	}
 
 	c.projectClaim.Status.State = state

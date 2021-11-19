@@ -1,3 +1,7 @@
+// Package projectclaim contains the logic to reconcile the change of a ProjectClaim CR
+// On the initial creation of a ProjectClaim, the main objective is to create a ProjectReference
+// for the case that the Region is supported. After the attempt of reconciling the ProjectRefrence the
+// ProjectClaim is updated with the result of the procedure.
 package projectclaim
 
 import (

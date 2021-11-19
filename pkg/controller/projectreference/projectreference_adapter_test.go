@@ -723,11 +723,12 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 	Context("EnsureProjectCleanedUp", func() {
 		var (
 			projectState string
+			email        string
 		)
 		BeforeEach(func() {
 			projectReference.Spec.GCPProjectID = "fake-id"
 			projectState = "ACTIVE"
-			email := "Some Email"
+			email = "Some Email"
 			mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
 			mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 		})
@@ -793,6 +794,20 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any())
 				err := adapter.EnsureProjectCleanedUp()
 				Expect(err).NotTo(HaveOccurred())
+			})
+			Context("When SRE console access has been configured", func() {
+				JustBeforeEach(func() {
+					adapter.OperatorConfig.CCSConsoleAccess = []string{"foo"}
+					adapter.OperatorConfig.CCSReadOnlyConsoleAccess = []string{"foo"}
+				})
+				It("removes the Policies for that access", func() {
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
+					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any())
+					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil).Times(2)
+					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Times(2)
+					err := adapter.EnsureProjectCleanedUp()
+					Expect(err).NotTo(HaveOccurred())
+				})
 			})
 		})
 	})

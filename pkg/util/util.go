@@ -21,6 +21,8 @@ const (
 	GoogleGroup
 )
 
+var PrefixMemberType = []string{"serviceAccount:", "group:"}
+
 // SecretExists returns a boolean to the caller based on the secretName and namespace args.
 func SecretExists(kubeClient client.Client, secretName, namespace string) bool {
 	s := &corev1.Secret{}
@@ -129,10 +131,7 @@ func AddOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requir
 
 // roleBindingMap returns a map of requiredBindings role bindings for the added members
 func rolebindingMap(roles []string, member string, memberType IamMemberType) map[string]cloudresourcemanager.Binding {
-	prefix := "serviceAccount:"
-	if memberType == GoogleGroup {
-		prefix = "group:"
-	}
+	prefix := PrefixMemberType[memberType]
 	requiredBindings := make(map[string]cloudresourcemanager.Binding)
 	for _, role := range roles {
 		requiredBindings[role] = cloudresourcemanager.Binding{

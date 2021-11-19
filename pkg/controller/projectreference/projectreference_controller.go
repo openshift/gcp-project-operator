@@ -159,6 +159,7 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 	return r.doNotRequeue()
 }
 
+// Returns a gcpClient, that uses the access credential Secret in the CCS project namespace or the operator namespace
 func (r *ReconcileProjectReference) getGcpClient(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger) (gcpclient.Client, error) {
 	credSecretNamespace := operatorNamespace
 	credSecretName := orgGcpSecretName
