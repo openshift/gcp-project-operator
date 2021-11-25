@@ -21,6 +21,8 @@ import (
 	"google.golang.org/api/option"
 	serviceManagment "google.golang.org/api/servicemanagement/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	backoff "github.com/cenkalti/backoff/v4"
 )
 
 var log = logf.Log.WithName("gcpclient")
@@ -248,7 +250,18 @@ func (c *gcpClient) CreateServiceAccountKey(serviceAccountEmail string) (*iam.Se
 	if err != nil {
 		return &iam.ServiceAccountKey{}, fmt.Errorf("gcpclient.CreateServiceAccountKey.Projects.ServiceAccounts.Keys.Create: %v", err)
 	}
-	return key, nil
+
+	exp := backoff.NewExponentialBackOff()
+	for i := 0; i <= 3; i++ {
+		if _, err = c.iamClient.Projects.ServiceAccounts.Keys.Get(key.Name).Do(); err != nil {
+			duration := exp.NextBackOff()
+			log.V(2).Info("error getting the serviceaccount key, sleeping for %v", duration)
+			time.Sleep(duration)
+		} else {
+			return key, nil
+		}
+	}
+	return key, err
 }
 
 //DeleteServiceAccountKeys deletes all keys associated with the service account
