@@ -1,6 +1,7 @@
 module github.com/openshift/gcp-project-operator
 
 require (
+	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/emicklei/go-restful v2.11.2+incompatible // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.4
