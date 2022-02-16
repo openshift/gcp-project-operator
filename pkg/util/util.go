@@ -21,8 +21,6 @@ const (
 	GoogleGroup
 )
 
-var PrefixMemberType = []string{"serviceAccount:", "group:"}
-
 // SecretExists returns a boolean to the caller based on the secretName and namespace args.
 func SecretExists(kubeClient client.Client, secretName, namespace string) bool {
 	s := &corev1.Secret{}
@@ -87,6 +85,27 @@ func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	return osServiceAccountJSON, nil
 }
 
+func RemoveOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, serviceAccountEmail string, memberType IamMemberType) ([]*cloudresourcemanager.Binding, bool) {
+	prefix := "serviceAccount:"
+	if memberType == GoogleGroup {
+		prefix = "group:"
+	}
+	modified := false
+	memberToRemove := prefix + serviceAccountEmail
+	for i, binding := range existingBindings {
+		for index, v := range binding.Members {
+			if v == memberToRemove {
+				// removing member from policy binding
+				newMembers := append(binding.Members[:index], binding.Members[index+1:]...)
+				existingBindings[i].Members = newMembers
+				modified = true
+				break
+			}
+		}
+	}
+	return existingBindings, modified
+}
+
 // AddOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.
 // If the required binding does not exist it creates a new binding for the role
 // it returns a []*cloudresourcemanager.Binding that contains all the previous bindings and the new ones if no new bindings are required it returns false
@@ -131,7 +150,10 @@ func AddOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requir
 
 // roleBindingMap returns a map of requiredBindings role bindings for the added members
 func rolebindingMap(roles []string, member string, memberType IamMemberType) map[string]cloudresourcemanager.Binding {
-	prefix := PrefixMemberType[memberType]
+	prefix := "serviceAccount:"
+	if memberType == GoogleGroup {
+		prefix = "group:"
+	}
 	requiredBindings := make(map[string]cloudresourcemanager.Binding)
 	for _, role := range roles {
 		requiredBindings[role] = cloudresourcemanager.Binding{

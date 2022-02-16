@@ -378,18 +378,11 @@ func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
 		if err != nil {
 			return err
 		}
-	} else {
-		r.logger.Info("Deleting IAM Policy for console access")
-		for _, email := range r.OperatorConfig.CCSConsoleAccess {
-			if err := r.DeleteIAMPolicy(email, gcputil.GoogleGroup); err != nil {
-				return err
-			}
-		}
-		for _, email := range r.OperatorConfig.CCSReadOnlyConsoleAccess {
-			if err := r.DeleteIAMPolicy(email, gcputil.GoogleGroup); err != nil {
-				return err
-			}
-		}
+	}
+
+	err = r.ensureCCSProjectCleanedUp(r.isCCS())
+	if err != nil {
+		return err
 	}
 
 	err = r.deleteCredentials()
@@ -402,6 +395,24 @@ func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
 		return err
 	}
 
+	return nil
+}
+
+func (r *ReferenceAdapter) ensureCCSProjectCleanedUp(isCCS bool) error {
+	if !isCCS {
+		return nil
+	}
+	r.logger.Info("Deleting IAM Policy for console access")
+	for _, email := range r.OperatorConfig.CCSConsoleAccess {
+		if err := r.DeleteIAMPolicy(email, gcputil.GoogleGroup); err != nil {
+			return err
+		}
+	}
+	for _, email := range r.OperatorConfig.CCSReadOnlyConsoleAccess {
+		if err := r.DeleteIAMPolicy(email, gcputil.GoogleGroup); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -716,6 +727,7 @@ func EnsureProjectReferenceInitialized(r *ReferenceAdapter) (gcputil.OperationRe
 		if err != nil {
 			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize ProjectReference"))
 		}
+		return gcputil.StopProcessing()
 	}
 	return gcputil.ContinueProcessing()
 }
@@ -748,57 +760,61 @@ func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string, polic
 func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []string, memberType gcputil.IamMemberType) error {
 	// Checking if policy needs to be updated
 	var retry int
-	addorUpdateResponse, err := r.AddOrUpdateBindings(serviceAccountEmail, policies, memberType)
-	if err != nil {
-		return err
-	}
-	if !addorUpdateResponse.modified {
-		return nil
-	}
-	setIamPolicyRequest := &cloudresourcemanager.SetIamPolicyRequest{
-		Policy: addorUpdateResponse.policy,
-	}
-
 	for {
-		_, err = r.gcpClient.SetIamPolicy(setIamPolicyRequest)
+
+		addorUpdateResponse, err := r.AddOrUpdateBindings(serviceAccountEmail, policies, memberType)
 		if err != nil {
-			ae, ok := err.(*googleapi.Error)
-			// retry rules below:
-			if ok && ae.Code == http.StatusConflict && retry <= 3 {
-				retry++
-				time.Sleep(time.Second)
-				continue
-			}
 			return err
+		}
+
+		// If existing bindings have been modified update the policy
+		if addorUpdateResponse.modified {
+			setIamPolicyRequest := &cloudresourcemanager.SetIamPolicyRequest{
+				Policy: addorUpdateResponse.policy,
+			}
+			_, err = r.gcpClient.SetIamPolicy(setIamPolicyRequest)
+			if err != nil {
+				ae, ok := err.(*googleapi.Error)
+				// retry rules below:
+
+				if ok && ae.Code == http.StatusConflict && retry < 3 {
+					retry++
+					time.Sleep(time.Second)
+					continue
+				}
+				return err
+			}
+			return nil
 		}
 		return nil
 	}
 }
 
 func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberType gcputil.IamMemberType) error {
+	// Checking if policy needs to be updated
 	var retry int
-	policies, err := r.gcpClient.GetIamPolicy(r.ProjectReference.Spec.GCPProjectID)
-	if err != nil {
-		return err
-	}
-	for i, binding := range policies.Bindings {
-		for index, v := range binding.Members {
-			if v == gcputil.PrefixMemberType[memberType]+serviceAccountEmail {
-				newMembers := append(binding.Members[:index], binding.Members[index+1:]...)
-				policies.Bindings[i].Members = newMembers
-				break
-			}
-		}
-	}
-	setIamPolicyRequest := &cloudresourcemanager.SetIamPolicyRequest{
-		Policy: policies,
-	}
 	for {
+
+		policies, err := r.gcpClient.GetIamPolicy(r.ProjectReference.Spec.GCPProjectID)
+		if err != nil {
+			return err
+		}
+
+		newBindings, modified := gcputil.RemoveOrUpdateBinding(policies.Bindings, serviceAccountEmail, memberType)
+		if !modified {
+			return nil
+		}
+
+		policies.Bindings = newBindings
+		setIamPolicyRequest := &cloudresourcemanager.SetIamPolicyRequest{
+			Policy: policies,
+		}
 		_, err = r.gcpClient.SetIamPolicy(setIamPolicyRequest)
 		if err != nil {
 			ae, ok := err.(*googleapi.Error)
 			// retry rules below:
-			if ok && ae.Code == http.StatusConflict && retry <= 3 {
+
+			if ok && ae.Code == http.StatusConflict && retry < 3 {
 				retry++
 				time.Sleep(time.Second)
 				continue

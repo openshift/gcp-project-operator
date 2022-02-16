@@ -7,6 +7,7 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/util/errors"
 	builders "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/api/cloudresourcemanager/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -191,4 +192,71 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 
 		})
 	}
+}
+
+func TestRemoveOrUpdateBinding(t *testing.T) {
+	tests := []struct {
+		name               string
+		UserToDelete       string
+		UserType           IamMemberType
+		inputBindings      []*cloudresourcemanager.Binding
+		expectedBindings   []*cloudresourcemanager.Binding
+		expectModification bool
+	}{
+		{
+			name:         "User Group Binding Exists",
+			UserToDelete: "CCSConsoleAccess",
+			UserType:     GoogleGroup,
+			inputBindings: []*cloudresourcemanager.Binding{
+				{Role: "role/admin", Members: []string{"group:CCSConsoleAccess", "serviceAccount:customerAcc"}},
+				{Role: "role/viewer", Members: []string{"group:CCSReadOnlyConsoleAccess", "serviceAccount:customerAcc"}},
+				{Role: "role/dev", Members: []string{"group:customerGroup"}},
+			},
+			expectedBindings: []*cloudresourcemanager.Binding{
+				{Role: "role/admin", Members: []string{"serviceAccount:customerAcc"}},
+				{Role: "role/viewer", Members: []string{"group:CCSReadOnlyConsoleAccess", "serviceAccount:customerAcc"}},
+				{Role: "role/dev", Members: []string{"group:customerGroup"}},
+			},
+			expectModification: true,
+		},
+		{
+			name:         "User Serviceaccount Binding Exists",
+			UserToDelete: "CCSReadOnlyConsoleAccess",
+			UserType:     ServiceAccount,
+			inputBindings: []*cloudresourcemanager.Binding{
+				{Role: "role/admin", Members: []string{"group:CCSConsoleAccess", "serviceAccount:customerAcc"}},
+				{Role: "role/viewer", Members: []string{"serviceAccount:CCSReadOnlyConsoleAccess", "serviceAccount:customerAcc"}},
+				{Role: "role/dev", Members: []string{"serviceAccount:customerGroup"}},
+			},
+			expectedBindings: []*cloudresourcemanager.Binding{
+				{Role: "role/admin", Members: []string{"group:CCSConsoleAccess", "serviceAccount:customerAcc"}},
+				{Role: "role/viewer", Members: []string{"serviceAccount:customerAcc"}},
+				{Role: "role/dev", Members: []string{"serviceAccount:customerGroup"}},
+			},
+			expectModification: true,
+		},
+		{
+			name:         "User Binding doesn't Exists",
+			UserToDelete: "CCSConsoleAccess",
+			UserType:     GoogleGroup,
+			inputBindings: []*cloudresourcemanager.Binding{
+				{Role: "role/admin", Members: []string{"serviceAccount:customerAcc"}},
+				{Role: "role/dev", Members: []string{"group:customerGroup"}},
+			},
+			expectedBindings: []*cloudresourcemanager.Binding{
+				{Role: "role/admin", Members: []string{"serviceAccount:customerAcc"}},
+				{Role: "role/dev", Members: []string{"group:customerGroup"}},
+			},
+			expectModification: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, modified := RemoveOrUpdateBinding(test.inputBindings, test.UserToDelete, test.UserType)
+			assert.Equal(t, modified, test.expectModification)
+			assert.Equal(t, result, test.expectedBindings)
+		})
+	}
+
 }
