@@ -159,6 +159,7 @@ func (r *ReconcileProjectReference) ReconcileHandler(adapter *ReferenceAdapter, 
 	return r.doNotRequeue()
 }
 
+// Returns a gcpClient, that uses the access credential Secret in the CCS project namespace or the operator namespace
 func (r *ReconcileProjectReference) getGcpClient(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger) (gcpclient.Client, error) {
 	credSecretNamespace := operatorNamespace
 	credSecretName := orgGcpSecretName
@@ -169,14 +170,14 @@ func (r *ReconcileProjectReference) getGcpClient(projectReference *gcpv1alpha1.P
 	// Get org creds from secret
 	creds, err := util.GetGCPCredentialsFromSecret(r.client, credSecretNamespace, credSecretName)
 	if err != nil {
-		err = operrors.Wrap(err, fmt.Sprintf("could not get org Creds from secret: %s, for namespace %s", orgGcpSecretName, operatorNamespace))
+		err = operrors.Wrap(err, fmt.Sprintf("could not get Creds from secret: %s, for namespace %s", credSecretName, credSecretNamespace))
 		return nil, err
 	}
 
 	// Get gcpclient with creds
 	gcpClient, err := r.gcpClientBuilder(projectReference.Spec.GCPProjectID, creds)
 	if err != nil {
-		return nil, operrors.Wrap(err, fmt.Sprintf("could not get gcp client with secret: %s, for namespace %s", orgGcpSecretName, operatorNamespace))
+		return nil, operrors.Wrap(err, fmt.Sprintf("could not get gcp client with secret: %s, for namespace %s", credSecretName, credSecretNamespace))
 	}
 
 	return gcpClient, nil

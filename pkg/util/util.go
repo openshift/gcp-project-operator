@@ -85,6 +85,27 @@ func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, nam
 	return osServiceAccountJSON, nil
 }
 
+func RemoveOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, serviceAccountEmail string, memberType IamMemberType) ([]*cloudresourcemanager.Binding, bool) {
+	prefix := "serviceAccount:"
+	if memberType == GoogleGroup {
+		prefix = "group:"
+	}
+	modified := false
+	memberToRemove := prefix + serviceAccountEmail
+	for i, binding := range existingBindings {
+		for index, v := range binding.Members {
+			if v == memberToRemove {
+				// removing member from policy binding
+				newMembers := append(binding.Members[:index], binding.Members[index+1:]...)
+				existingBindings[i].Members = newMembers
+				modified = true
+				break
+			}
+		}
+	}
+	return existingBindings, modified
+}
+
 // AddOrUpdateBinding checks if a binding from a map of bindings whose keys are the binding.Role exists in a list and if so it appends any new members to that binding.
 // If the required binding does not exist it creates a new binding for the role
 // it returns a []*cloudresourcemanager.Binding that contains all the previous bindings and the new ones if no new bindings are required it returns false

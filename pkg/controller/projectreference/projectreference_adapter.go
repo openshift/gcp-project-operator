@@ -125,6 +125,7 @@ func NewReferenceAdapter(
 	return r, nil
 }
 
+// EnsureProjectClaimReady sets the ProjectClaim to Ready after the ProjectReference was reconciled correctly and gcp project has been created
 func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, error) {
 	if r.ProjectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
 		return gcputil.ContinueProcessing()
@@ -153,6 +154,7 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, erro
 	return gcputil.StopProcessing()
 }
 
+// Waits until the ProjectClaim has been initialized, meaning is in state PendingProject
 func VerifyProjectClaimPending(r *ReferenceAdapter) (gcputil.OperationResult, error) {
 	if r.ProjectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
 		return gcputil.RequeueAfter(5*time.Second, nil)
@@ -379,6 +381,11 @@ func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
 		}
 	}
 
+	err = r.ensureCCSProjectCleanedUp(r.isCCS())
+	if err != nil {
+		return err
+	}
+
 	err = r.deleteCredentials()
 	if err != nil {
 		return err
@@ -389,6 +396,24 @@ func (r *ReferenceAdapter) EnsureProjectCleanedUp() error {
 		return err
 	}
 
+	return nil
+}
+
+func (r *ReferenceAdapter) ensureCCSProjectCleanedUp(isCCS bool) error {
+	if !isCCS {
+		return nil
+	}
+	r.logger.Info("Deleting IAM Policy for console access")
+	for _, email := range r.OperatorConfig.CCSConsoleAccess {
+		if err := r.DeleteIAMPolicy(email, gcputil.GoogleGroup); err != nil {
+			return err
+		}
+	}
+	for _, email := range r.OperatorConfig.CCSReadOnlyConsoleAccess {
+		if err := r.DeleteIAMPolicy(email, gcputil.GoogleGroup); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -737,8 +762,7 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []s
 	// Checking if policy needs to be updated
 	var retry int
 	for {
-		retry++
-		time.Sleep(time.Second)
+
 		addorUpdateResponse, err := r.AddOrUpdateBindings(serviceAccountEmail, policies, memberType)
 		if err != nil {
 			return err
@@ -754,7 +778,9 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []s
 				ae, ok := err.(*googleapi.Error)
 				// retry rules below:
 
-				if ok && ae.Code == http.StatusConflict && retry <= 3 {
+				if ok && ae.Code == http.StatusConflict && retry < 3 {
+					retry++
+					time.Sleep(time.Second)
 					continue
 				}
 				return err
@@ -763,7 +789,41 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []s
 		}
 		return nil
 	}
+}
 
+func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberType gcputil.IamMemberType) error {
+	// Checking if policy needs to be updated
+	var retry int
+	for {
+
+		policies, err := r.gcpClient.GetIamPolicy(r.ProjectReference.Spec.GCPProjectID)
+		if err != nil {
+			return err
+		}
+
+		newBindings, modified := gcputil.RemoveOrUpdateBinding(policies.Bindings, serviceAccountEmail, memberType)
+		if !modified {
+			return nil
+		}
+
+		policies.Bindings = newBindings
+		setIamPolicyRequest := &cloudresourcemanager.SetIamPolicyRequest{
+			Policy: policies,
+		}
+		_, err = r.gcpClient.SetIamPolicy(setIamPolicyRequest)
+		if err != nil {
+			ae, ok := err.(*googleapi.Error)
+			// retry rules below:
+
+			if ok && ae.Code == http.StatusConflict && retry < 3 {
+				retry++
+				time.Sleep(time.Second)
+				continue
+			}
+			return err
+		}
+		return nil
+	}
 }
 
 // SetProjectReferenceCondition calls SetCondition() with project reference conditions
@@ -791,7 +851,7 @@ func (r *ReferenceAdapter) SetProjectReferenceCondition(reason string, err error
 func (r *ReferenceAdapter) StatusUpdate() error {
 	err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
 	if err != nil {
-		return operrors.Wrap(err, fmt.Sprintf("failed to update ProjectClaim state for %s", r.ProjectReference.Name))
+		return operrors.Wrap(err, fmt.Sprintf("failed to update ProjectReference status of %s", r.ProjectReference.Name))
 	}
 
 	return nil
