@@ -58,7 +58,7 @@ github.com/golang/groupcache/lru
 ## explicit
 github.com/golang/mock/gomock
 github.com/golang/mock/mockgen/model
-# github.com/golang/protobuf v1.4.2
+# github.com/golang/protobuf v1.4.1
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
@@ -154,6 +154,7 @@ github.com/openshift/cluster-api/pkg/util
 ## explicit
 github.com/openshift/gcp-project-operator/pkg/apis
 github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1
+github.com/openshift/gcp-project-operator/pkg/apis/scheme
 # github.com/operator-framework/operator-sdk v0.17.1
 ## explicit
 github.com/operator-framework/operator-sdk/pkg/k8sutil
@@ -644,7 +645,6 @@ sigs.k8s.io/controller-runtime/pkg/ratelimiter
 sigs.k8s.io/controller-runtime/pkg/reconcile
 sigs.k8s.io/controller-runtime/pkg/recorder
 sigs.k8s.io/controller-runtime/pkg/runtime/inject
-sigs.k8s.io/controller-runtime/pkg/scheme
 sigs.k8s.io/controller-runtime/pkg/source
 sigs.k8s.io/controller-runtime/pkg/source/internal
 sigs.k8s.io/controller-runtime/pkg/webhook
