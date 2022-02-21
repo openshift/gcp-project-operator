@@ -1,6 +1,7 @@
 package projectclaim_test
 
 import (
+	"context"
 	"time"
 
 	"github.com/golang/mock/gomock"
@@ -58,7 +59,7 @@ var _ = Describe("ProjectclaimController", func() {
 				mockClient.EXPECT().Get(gomock.Any(), projectClaimName, gomock.Any()).Return(notFound)
 			})
 			It("Returns without error", func() {
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectClaimName})
+				_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectClaimName})
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})

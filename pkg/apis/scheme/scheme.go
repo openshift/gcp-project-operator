@@ -1,4 +1,8 @@
-/*
+// IMPORTANT: This code has been copied from the `controller-runtime` project
+// in order to void importing it from the API sub-module of this project, as
+// that makes it difficult to import the API from other projects. Do not change
+// this.
+
 /*
 Copyright 2018 The Kubernetes Authors.
 

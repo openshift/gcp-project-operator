@@ -10,13 +10,13 @@ import (
 	"google.golang.org/api/cloudresourcemanager/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestSecretExists(t *testing.T) {
 	tests := []struct {
 		name            string
-		localObjects    []runtime.Object
+		localObjects    []client.Object
 		secretName      string
 		secretNamespace string
 		expectedResult  bool
@@ -26,7 +26,7 @@ func TestSecretExists(t *testing.T) {
 			expectedResult:  true,
 			secretName:      "testName",
 			secretNamespace: "testNamespace",
-			localObjects: []runtime.Object{
+			localObjects: []client.Object{
 				builders.NewTestSecretBuilder("testName", "testNamespace", "testCreds").GetTestSecret(),
 			},
 		},
@@ -35,7 +35,7 @@ func TestSecretExists(t *testing.T) {
 			expectedResult:  false,
 			secretName:      "badName",
 			secretNamespace: "testNamespace",
-			localObjects: []runtime.Object{
+			localObjects: []client.Object{
 				builders.NewTestSecretBuilder("testName", "testNamespace", "testCreds").GetTestSecret(),
 			},
 		},
@@ -55,7 +55,7 @@ func TestSecretExists(t *testing.T) {
 func TestGetSecret(t *testing.T) {
 	tests := []struct {
 		name            string
-		localObjects    []runtime.Object
+		localObjects    []client.Object
 		secretName      string
 		secretNamespace string
 		expectedSecret  *corev1.Secret
@@ -66,7 +66,7 @@ func TestGetSecret(t *testing.T) {
 			name:            "Existing Secret",
 			secretName:      "testName",
 			secretNamespace: "testNamespace",
-			localObjects: []runtime.Object{
+			localObjects: []client.Object{
 				builders.NewTestSecretBuilder("testName", "testNamespace", "testCreds").GetTestSecret(),
 			},
 			expectedSecret: builders.NewTestSecretBuilder("testName", "testNamespace", "testCreds").GetTestSecret(),
@@ -79,7 +79,7 @@ func TestGetSecret(t *testing.T) {
 			name:            "Secret does not exist",
 			secretName:      "badName",
 			secretNamespace: "testNamespace",
-			localObjects: []runtime.Object{
+			localObjects: []client.Object{
 				builders.NewTestSecretBuilder("testName", "testNamespace", "testCreds").GetTestSecret(),
 			},
 			expectedSecret: &corev1.Secret{},
@@ -113,7 +113,7 @@ func TestGetSecret(t *testing.T) {
 func TestGetGCPCredentialsFromSecret(t *testing.T) {
 	tests := []struct {
 		name            string
-		localObjects    []runtime.Object
+		localObjects    []client.Object
 		secretNamespace string
 		expectedCreds   []byte
 		expectedErr     error
@@ -122,7 +122,7 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 	}{
 		{
 			name: "Correct ORG GCP Secert",
-			localObjects: []runtime.Object{
+			localObjects: []client.Object{
 				builders.NewTestSecretBuilder("testCreds", "testNamespace", "testCredsContent").GetTestSecret(),
 			},
 			secretNamespace: "testNamespace",
@@ -134,7 +134,7 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 		},
 		{
 			name:            "ORG GCP Secert not found",
-			localObjects:    []runtime.Object{},
+			localObjects:    []client.Object{},
 			secretNamespace: "testNamespace",
 			expectedCreds:   []byte{},
 			expectedErr:     errors.New("error"),
@@ -144,7 +144,7 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 		},
 		{
 			name: "Bad data in ORG GCP Secert",
-			localObjects: func() []runtime.Object {
+			localObjects: func() []client.Object {
 				sec := &corev1.Secret{
 					Type: "Opaque",
 					TypeMeta: metav1.TypeMeta{
@@ -156,7 +156,7 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 						Namespace: "testNamespace",
 					},
 				}
-				return []runtime.Object{sec}
+				return []client.Object{sec}
 			}(),
 			secretNamespace: "testNamespace",
 			expectedCreds:   []byte{},

@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
@@ -606,9 +605,9 @@ type stubStatus struct{}
 
 var _ client.StatusWriter = stubStatus{}
 
-func (stubStatus) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (stubStatus) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return nil
 }
-func (stubStatus) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+func (stubStatus) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	return nil
 }

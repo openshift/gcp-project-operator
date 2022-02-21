@@ -1,6 +1,7 @@
 package projectreference
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -88,7 +89,7 @@ parentFolderID: fake-folder
 			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Return(notFound)
 		})
 		It("Returns without error", func() {
-			_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+			_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})
@@ -100,7 +101,7 @@ parentFolderID: fake-folder
 			mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Return(someError)
 		})
 		It("Returns the error", func() {
-			_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+			_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 			Expect(err).To(Equal(someError))
 		})
 	})
@@ -111,7 +112,7 @@ parentFolderID: fake-folder
 				mockKubeClient.EXPECT().Get(gomock.Any(), projectReferenceName, gomock.Any()).SetArg(2, *projectReference).Times(1),
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(1),
 			)
-			_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+			_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -125,7 +126,7 @@ parentFolderID: fake-folder
 				}).Times(1),
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError).Times(1),
 			)
-			_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+			_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 			Expect(err).To(HaveOccurred())
 		})
 	})
@@ -152,7 +153,7 @@ parentFolderID: fake-folder
 			})
 
 			It("Does not reconcile", func() {
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).NotTo(HaveOccurred())
 			})
 		})
@@ -173,7 +174,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Update(gomock.Any(), matcher).Return(nil)
 					mockKubeClient.EXPECT().Status().Return(mockUpdater).AnyTimes()
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).AnyTimes()
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(matcher.ActualProjectClaim.Spec.AvailabilityZones).To(Equal([]string{"zone1", "zone2", "zone3"}))
 				})
@@ -184,7 +185,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Update(gomock.Any(), matcher).Return(nil)
 					mockKubeClient.EXPECT().Status().Return(mockUpdater).AnyTimes()
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).AnyTimes()
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).NotTo(HaveOccurred())
 					Expect(matcher.ActualProjectClaim.Spec.GCPProjectID).ToNot(Equal(""))
 				})
@@ -195,7 +196,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Status().Return(mockUpdater)
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
 					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError)
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -211,7 +212,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 					mockKubeClient.EXPECT().Status().Return(mockUpdater).AnyTimes()
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).AnyTimes()
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).NotTo(HaveOccurred())
 				})
 			})
@@ -227,7 +228,7 @@ parentFolderID: fake-folder
 			It("It reconciles with error", func() {
 				mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
 				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError).Times(2)
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -242,7 +243,7 @@ parentFolderID: fake-folder
 			It("It reconciles with error", func() {
 				mockKubeClient.EXPECT().Status().Return(mockUpdater).Times(2)
 				mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError).Times(2)
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -264,7 +265,7 @@ parentFolderID: fake-folder
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, configMap)
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *projectClaim).AnyTimes()
 				mockKubeClient.EXPECT().Update(gomock.Any(), matcher).Times(1)
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).NotTo(HaveOccurred())
 				Expect(matcher.ActualProjectReference.Spec.GCPProjectID).NotTo(Equal(""))
 			})
@@ -278,7 +279,7 @@ parentFolderID: fake-folder
 				reconciler.gcpClientBuilder = gcpBuilder
 			})
 			It("Requeues with error", func() {
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -286,7 +287,7 @@ parentFolderID: fake-folder
 		Context("When it fails to get operator configMap", func() {
 			It("Requeues with error", func() {
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -296,7 +297,7 @@ parentFolderID: fake-folder
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.ConfigMap{
 					Data: map[string]string{},
 				})
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).To(HaveOccurred())
 			})
 		})
@@ -314,7 +315,7 @@ parentFolderID: fake-folder
 			mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, *projectClaim).Times(1)
 		})
 		It("Gets requeued after 5 seconds", func() {
-			result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+			result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(Equal(5 * time.Second))
 		})
@@ -358,7 +359,7 @@ parentFolderID: fake-folder
 						mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil),
 					)
 
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -375,7 +376,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Status().Return(mockUpdater)
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -421,7 +422,7 @@ parentFolderID: fake-folder
 						mockKubeClient.EXPECT().Status().Return(mockUpdater),
 						mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil),
 					)
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).To(HaveOccurred())
 				})
 			})
@@ -441,7 +442,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 					mockKubeClient.EXPECT().Status().Return(mockUpdater)
 					mockUpdater.EXPECT().Update(gomock.Any(), gomock.Any())
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -487,7 +488,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -504,7 +505,7 @@ parentFolderID: fake-folder
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
-					_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
@@ -519,7 +520,7 @@ parentFolderID: fake-folder
 					mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 					mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(fakeError)
-					result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+					result, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 					Expect(err).To(HaveOccurred())
 					Expect(result.RequeueAfter).To(Equal(5 * time.Second))
 				})
@@ -539,7 +540,7 @@ parentFolderID: fake-folder
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).SetArg(2, corev1.Secret{}).Times(2)
 				mockKubeClient.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil)
 
-				_, err := reconciler.Reconcile(reconcile.Request{NamespacedName: projectReferenceName})
+				_, err := reconciler.Reconcile(context.Background(), reconcile.Request{NamespacedName: projectReferenceName})
 				Expect(err).ToNot(HaveOccurred())
 
 			})

@@ -12,15 +12,17 @@ type ProjectClaimSpec struct {
 	Region                 string         `json:"region"`
 	GCPProjectID           string         `json:"gcpProjectID,omitempty"`
 	ProjectReferenceCRLink NamespacedName `json:"projectReferenceCRLink,omitempty"`
-	AvailabilityZones      []string       `json:"availabilityZones,omitempty"`
-	CCS                    bool           `json:"ccs,omitempty"`
-	CCSSecretRef           NamespacedName `json:"ccsSecretRef,omitempty"`
-	CCSProjectID           string         `json:"ccsProjectID,omitempty"`
+	// +listType=atomic
+	AvailabilityZones []string       `json:"availabilityZones,omitempty"`
+	CCS               bool           `json:"ccs,omitempty"`
+	CCSSecretRef      NamespacedName `json:"ccsSecretRef,omitempty"`
+	CCSProjectID      string         `json:"ccsProjectID,omitempty"`
 }
 
 // ProjectClaimStatus defines the observed state of ProjectClaim
 // +k8s:openapi-gen=true
 type ProjectClaimStatus struct {
+	// +listType=atomic
 	Conditions []Condition `json:"conditions"`
 	State      ClaimStatus `json:"state"`
 }

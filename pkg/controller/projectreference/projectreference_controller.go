@@ -83,7 +83,7 @@ type ReconcileProjectReference struct {
 }
 
 // Reconcile wraps ReconcileHandler() and updates the conditions if any error occurs
-func (r *ReconcileProjectReference) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileProjectReference) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	projectReference := &gcpv1alpha1.ProjectReference{}

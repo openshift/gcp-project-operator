@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	builders "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 )
@@ -32,7 +32,7 @@ func TestValidateOperatorConfigMap(t *testing.T) {
 func TestGetOperatorConfigMap(t *testing.T) {
 	tests := []struct {
 		name                             string
-		localObjects                     []runtime.Object
+		localObjects                     []client.Object
 		expectedParentFolderID           string
 		expectedBillingAccount           string
 		expectedCCSConsoleAccess         []string
@@ -43,7 +43,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 	}{
 		{
 			name: "Correct parentFolderID and billingAccount exist in configmap",
-			localObjects: []runtime.Object{
+			localObjects: []client.Object{
 				&corev1.ConfigMap{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "ConfigMap",
@@ -66,7 +66,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 		},
 		{
 			name:                   "configmap not found",
-			localObjects:           []runtime.Object{},
+			localObjects:           []client.Object{},
 			expectedParentFolderID: "",
 			expectedErr:            errors.New("error"),
 			validateResult: func(t *testing.T, expected, result string) {
@@ -75,7 +75,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 		},
 		{
 			name: "configmap is exist but not contains the right key",
-			localObjects: []runtime.Object{
+			localObjects: []client.Object{
 				&corev1.ConfigMap{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "ConfigMap",
@@ -99,7 +99,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 		},
 		{
 			name: "configmap is exist but not contains parentFolderID",
-			localObjects: func() []runtime.Object {
+			localObjects: func() []client.Object {
 				sec := &corev1.ConfigMap{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "ConfigMap",
@@ -113,7 +113,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 						OperatorConfigMapKey: `{billingAccount: foo}`,
 					},
 				}
-				return []runtime.Object{sec}
+				return []client.Object{sec}
 			}(),
 			expectedParentFolderID: "",
 			expectedBillingAccount: "foo",
@@ -127,7 +127,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 		},
 		{
 			name: "ccsConsoleAccess configured",
-			localObjects: func() []runtime.Object {
+			localObjects: func() []client.Object {
 				sec := &corev1.ConfigMap{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "ConfigMap",
@@ -141,7 +141,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 						OperatorConfigMapKey: `{parentFolderID: 1234567,billingAccount: "billing123",ccsConsoleAccess: [foo, bar]}`,
 					},
 				}
-				return []runtime.Object{sec}
+				return []client.Object{sec}
 			}(),
 			expectedParentFolderID:   "1234567",
 			expectedBillingAccount:   "billing123",
@@ -156,7 +156,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 		},
 		{
 			name: "ccsReadOnlyConsoleAccess configured",
-			localObjects: func() []runtime.Object {
+			localObjects: func() []client.Object {
 				sec := &corev1.ConfigMap{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "ConfigMap",
@@ -170,7 +170,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 						OperatorConfigMapKey: `{parentFolderID: 1234567,billingAccount: "billing123",ccsReadOnlyConsoleAccess: [foo, bar]}`,
 					},
 				}
-				return []runtime.Object{sec}
+				return []client.Object{sec}
 			}(),
 			expectedParentFolderID:           "1234567",
 			expectedBillingAccount:           "billing123",
