@@ -1,10 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.3.0
+    controller-gen.kubebuilder.io/version: v0.8.0
   creationTimestamp: null
   name: projectclaims.gcp.managed.openshift.io
 spec:
@@ -53,6 +52,7 @@ spec:
                 items:
                   type: string
                 type: array
+                x-kubernetes-list-type: atomic
               ccs:
                 type: boolean
               ccsProjectID:
@@ -150,6 +150,7 @@ spec:
                   - type
                   type: object
                 type: array
+                x-kubernetes-list-type: atomic
               state:
                 description: ClaimStatus is a valid value from ProjectClaim.Status
                 type: string

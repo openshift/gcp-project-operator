@@ -86,7 +86,7 @@ func NewReconcileProjectClaim(client client.Client, scheme *runtime.Scheme) *Rec
 }
 
 // Reconcile calls ReconcileHandler and updates the CRD if any err occurs
-func (r *ReconcileProjectClaim) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileProjectClaim) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	// Fetch the ProjectClaim instance

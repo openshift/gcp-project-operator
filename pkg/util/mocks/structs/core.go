@@ -24,6 +24,8 @@ func NewTestSecretBuilder(secretName, namespace, creds string) *testSecretBuilde
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
 				Namespace: namespace,
+				// This needs to be 999 because that is what the fake client returns.
+				ResourceVersion: "999",
 			},
 			Data: map[string][]byte{
 				"osServiceAccount.json": []byte(creds),

@@ -19,7 +19,7 @@ import (
 	"google.golang.org/api/googleapi"
 	iam "google.golang.org/api/iam/v1"
 	"google.golang.org/api/option"
-	serviceManagment "google.golang.org/api/servicemanagement/v1"
+	"google.golang.org/api/serviceusage/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	backoff "github.com/cenkalti/backoff/v4"
@@ -59,7 +59,7 @@ type gcpClient struct {
 	creds                      *google.Credentials
 	cloudResourceManagerClient *cloudresourcemanager.Service
 	iamClient                  *iam.Service
-	serviceManagmentClient     *serviceManagment.APIService
+	serviceUsageClient         *serviceusage.Service
 	cloudBillingClient         *cloudbilling.APIService
 	computeClient              *compute.Service
 	// Some actions requires new individual client to be
@@ -88,7 +88,7 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 		return nil, fmt.Errorf("gcpclient.iam.NewService %v", err)
 	}
 
-	serviceManagmentClient, err := serviceManagment.NewService(ctx, option.WithCredentials(creds))
+	serviceUsageClient, err := serviceusage.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
 		return nil, fmt.Errorf("gcpclient.serviceManagement.NewService %v", err)
 	}
@@ -108,7 +108,7 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 		creds:                      creds,
 		cloudResourceManagerClient: cloudResourceManagerClient,
 		iamClient:                  iamClient,
-		serviceManagmentClient:     serviceManagmentClient,
+		serviceUsageClient:         serviceUsageClient,
 		cloudBillingClient:         cloudBillingClient,
 		computeClient:              computeService,
 		credentials:                creds,
@@ -312,23 +312,21 @@ func (c *gcpClient) SetIamPolicy(setIamPolicyRequest *cloudresourcemanager.SetIa
 
 func (c *gcpClient) ListAPIs(projectID string) ([]string, error) {
 	enabledAPIs := []string{}
-	response, err := c.serviceManagmentClient.Services.List().ConsumerId("project:" + projectID).Do()
+	parentName := fmt.Sprintf("project/%s", projectID)
+	response, err := c.serviceUsageClient.Services.List(parentName).Do()
 	if err != nil {
 		return enabledAPIs, err
 	}
 	for _, svc := range response.Services {
-		enabledAPIs = append(enabledAPIs, svc.ServiceName)
+		enabledAPIs = append(enabledAPIs, svc.Name)
 	}
 	return enabledAPIs, err
 }
 
 func (c *gcpClient) EnableAPI(projectID, api string) error {
 	log.V(1).Info(fmt.Sprintf("enable %s api", api))
-	enableServicerequest := &serviceManagment.EnableServiceRequest{
-		ConsumerId: fmt.Sprintf("project:%s", projectID),
-	}
-
-	req := c.serviceManagmentClient.Services.Enable(api, enableServicerequest)
+	serviceName := fmt.Sprintf("project/%s/services/%s", projectID, api)
+	req := c.serviceUsageClient.Services.Enable(serviceName, &serviceusage.EnableServiceRequest{})
 
 	var retry int
 	for {

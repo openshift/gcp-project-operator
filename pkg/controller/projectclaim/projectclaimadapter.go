@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -134,7 +133,7 @@ func (c *ProjectClaimAdapter) EnsureCCSSecretFinalizerDeleted() error {
 }
 
 // deleteFinalizer deletes finalizer of a generic CR
-func (c *ProjectClaimAdapter) deleteFinalizer(object runtime.Object, finalizer string) error {
+func (c *ProjectClaimAdapter) deleteFinalizer(object client.Object, finalizer string) error {
 	metadata, err := meta.Accessor(object)
 	if err != nil {
 		return operrors.Wrap(err, "Failed to delete finalizer "+finalizer)
@@ -235,7 +234,7 @@ func (c *ProjectClaimAdapter) EnsureCCSSecretFinalizer() (gcputil.OperationResul
 }
 
 // addFinalizer adds finalizer to a generic CR
-func (c *ProjectClaimAdapter) addFinalizer(object runtime.Object, finalizer string) error {
+func (c *ProjectClaimAdapter) addFinalizer(object client.Object, finalizer string) error {
 	metadata, err := meta.Accessor(object)
 	if err != nil {
 		return operrors.Wrap(err, "Failed to add finalizer "+finalizer)
