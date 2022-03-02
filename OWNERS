@@ -1,6 +1,5 @@
 reviewers:
 - boranx
-- drpaneas
 - NautiluX
 - ninabauer
 - pyates86
@@ -8,11 +7,11 @@ reviewers:
 - Tessg22
 - georgettica
 - sam-nguyen7
+- shibumi
 approvers:
 - NautiluX
 - rafael-azevedo
 - boranx
-- drpaneas
 maintainers:
 - NautiluX
 - rafael-azevedo
