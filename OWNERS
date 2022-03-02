@@ -1,6 +1,5 @@
 reviewers:
 - boranx
-- drpaneas
 - NautiluX
 - ninabauer
 - pyates86
@@ -12,7 +11,6 @@ approvers:
 - NautiluX
 - rafael-azevedo
 - boranx
-- drpaneas
 maintainers:
 - NautiluX
 - rafael-azevedo
