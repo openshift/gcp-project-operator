@@ -65,11 +65,14 @@ EOF
 cat <<EOF > $DOCKERFILE_REGISTRY
 FROM quay.io/openshift/origin-operator-registry:4.8.0
 COPY $SAAS_OPERATOR_DIR manifests
+USER 0
+RUN pip3 install urllib3==1.26.9 pip==21.3.1
+USER 1001
 RUN initializer --permissive
 CMD ["registry-server", "-t", "/tmp/terminate.log"]
 EOF
 
-${CONTAINER_ENGINE} build -f $DOCKERFILE_REGISTRY --tag "${registry_image}:${operator_channel}-latest" .
+${CONTAINER_ENGINE} build --pull -f $DOCKERFILE_REGISTRY --tag "${registry_image}:${operator_channel}-latest" .
 
 if [ $? -ne 0 ] ; then
     echo "docker build failed, exiting..."

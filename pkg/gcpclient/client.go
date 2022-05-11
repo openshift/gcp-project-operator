@@ -2,7 +2,6 @@ package gcpclient
 
 //go:generate mockgen -destination=../util/mocks/$GOPACKAGE/client.go -package=$GOPACKAGE -source client.go
 //go:generate gofmt -s -l -w ../util/mocks/$GOPACKAGE/client.go
-//go:generate goimports -local=github.com/openshift/gcp-account-operator -e -w ../util/mocks/$GOPACKAGE/client.go
 
 import (
 	"context"
@@ -13,16 +12,16 @@ import (
 	"time"
 
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
+	"google.golang.org/api/serviceusage/v1"
+
+	backoff "github.com/cenkalti/backoff/v4"
 	cloudbilling "google.golang.org/api/cloudbilling/v1"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
 	compute "google.golang.org/api/compute/v1"
-	"google.golang.org/api/googleapi"
 	iam "google.golang.org/api/iam/v1"
-	"google.golang.org/api/option"
-	"google.golang.org/api/serviceusage/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	backoff "github.com/cenkalti/backoff/v4"
 )
 
 var log = logf.Log.WithName("gcpclient")
@@ -287,7 +286,7 @@ func (c *gcpClient) DeleteServiceAccountKeys(serviceAccountEmail string) error {
 	}
 
 	if len(newResponse.Keys) > 1 {
-		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.Delete: %v", errors.New("Could not delete all keys"))
+		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.Delete: %v", errors.New("could not delete all keys"))
 	}
 
 	return nil

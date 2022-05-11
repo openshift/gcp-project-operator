@@ -6,7 +6,7 @@ metadata:
   annotations:
     categories: A list of comma separated categories that your operator falls under.
     certified: "false"
-    description: GCP project creator. 
+    description: GCP project creator.
     containerImage: quay.io/app-sre/gcp-project-operator:latest
     createdAt: "2020-02-05T16:12:36Z"
     support: Red Hat
@@ -14,32 +14,32 @@ spec:
   displayName: gcp-project-operator
   description: GCP project creator.
   keywords:
-  - kubernetes
-  - openshift
-  - multi-cluster
-  - cluster
+    - kubernetes
+    - openshift
+    - multi-cluster
+    - cluster
   version: 0.0.1
   provider:
     name: Red Hat, Inc
   maturity: alpha
   installModes:
-  - type: OwnNamespace
-    supported: true
-  - type: SingleNamespace
-    supported: true
-  - type: MultiNamespace
-    supported: false
-  - type: AllNamespaces
-    supported: false
+    - type: OwnNamespace
+      supported: true
+    - type: SingleNamespace
+      supported: true
+    - type: MultiNamespace
+      supported: false
+    - type: AllNamespaces
+      supported: false
   install:
     strategy: deployment
     spec:
       clusterPermissions:
-      - serviceAccountName: gcp-project-operator
-        # Rules will be added here by the generate-operator-bundle.py script.
+        - serviceAccountName: gcp-project-operator
+          # Rules will be added here by the generate-operator-bundle.py script.
       deployments:
-      - name: gcp-project-operator
-        # Deployment spec will be added here by the generate-operator-bundle.py script.
+        - name: gcp-project-operator
+          # Deployment spec will be added here by the generate-operator-bundle.py script.
   customresourcedefinitions:
     owned:
     # CRD's will be added here by the generate-operator-bundle.py

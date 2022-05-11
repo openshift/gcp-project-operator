@@ -20,7 +20,7 @@ type mocks struct {
 
 // setupDefaultMocks is an easy way to setup all of the default mocks
 func SetupDefaultMocks(t *testing.T, localObjects []runtime.Object) *mocks {
-	mockKubeClient := fakekubeclient.NewFakeClient(localObjects...)
+	mockKubeClient := fakekubeclient.NewClientBuilder().WithRuntimeObjects(localObjects...).Build()
 	mockCtrl := gomock.NewController(t)
 	mockGCPClient := mockGCP.NewMockClient(mockCtrl)
 

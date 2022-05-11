@@ -6,11 +6,11 @@ import (
 	"reflect"
 
 	"google.golang.org/api/cloudresourcemanager/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubetypes "k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	kubeclientpkg "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // IamMemberType represents different type of IAM members.
@@ -60,7 +60,7 @@ func NewGCPSecretCR(creds string, namespacedNamed kubetypes.NamespacedName) *cor
 }
 
 // GetGCPCredentialsFromSecret extracts the gcp credentials from a secret. return value is a bytearray
-func GetGCPCredentialsFromSecret(kubeClient kubeclientpkg.Client, namespace, name string) ([]byte, error) {
+func GetGCPCredentialsFromSecret(kubeClient client.Client, namespace, name string) ([]byte, error) {
 	secret := &corev1.Secret{}
 	err := kubeClient.Get(context.TODO(),
 		kubetypes.NamespacedName{
@@ -182,5 +182,25 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 		}
 	}
 
+	return
+}
+
+// Contains returns true if a list contains a string.
+func Contains(list []string, strToSearch string) bool {
+	for _, item := range list {
+		if item == strToSearch {
+			return true
+		}
+	}
+	return false
+}
+
+// Filter filters a list for a string.
+func Filter(list []string, strToFilter string) (newList []string) {
+	for _, item := range list {
+		if item != strToFilter {
+			newList = append(newList, item)
+		}
+	}
 	return
 }

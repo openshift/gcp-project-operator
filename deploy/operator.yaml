@@ -18,7 +18,7 @@ spec:
         - name: gcp-project-operator
           image: quay.io/app-sre/gcp-project-operator
           command:
-          - gcp-project-operator
+            - gcp-project-operator
           imagePullPolicy: Always
           resources:
             requests:
