@@ -84,6 +84,13 @@ GOARCH?=$(shell go env GOARCH)
 unexport GOFLAGS
 GOFLAGS_MOD ?=
 
+# In openshift ci (Prow), we need to set $HOME to a writable directory else tests will fail
+# because they don't have permissions to create /.local or /.cache directories
+# as $HOME is set to "/" by default.
+ifeq ($(HOME),/)
+export HOME=/tmp/home
+endif
+
 ifeq (${FIPS_ENABLED}, true)
 GOFLAGS_MOD+=-tags=fips_enabled
 GOFLAGS_MOD:=$(strip ${GOFLAGS_MOD})
@@ -251,7 +258,7 @@ SETUP_ENVTEST = setup-envtest
 
 .PHONY: setup-envtest
 setup-envtest:
-	$(eval KUBEBUILDER_ASSETS := "$(shell $(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)")
+	$(eval KUBEBUILDER_ASSETS := "$(shell $(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir /tmp/envtest/bin)")
 	
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
