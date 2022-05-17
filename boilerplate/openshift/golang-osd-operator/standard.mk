@@ -90,6 +90,7 @@ GOFLAGS_MOD ?=
 ifeq ($(HOME),/)
 export HOME=/tmp/home
 endif
+PWD=$(shell pwd)
 
 ifeq (${FIPS_ENABLED}, true)
 GOFLAGS_MOD+=-tags=fips_enabled
@@ -203,24 +204,10 @@ CONTROLLER_GEN = controller-gen
 OPENAPI_GEN = openapi-gen
 endif
 
-
 .PHONY: op-generate
+## CRD v1beta1 is no longer supported.
 op-generate:
-	cd $(API_DIR); $(CONTROLLER_GEN) crd paths=./... output:dir=$(PWD)/deploy/crds
-ifeq ($(CRD_VERSION), v1beta1)
-	# HACK: Due to an OLM bug in 3.11, we need to remove the
-	# spec.validation.openAPIV3Schema.type from CRDs. Remove once
-	# 3.11 is no longer supported.
-	find deploy/crds -name '*.yaml' | xargs -n1 -I{} yq d -i {} spec.validation.openAPIV3Schema.type
-	# HACK: But removing that causes certain generated fields to
-	# fail validation in v4. The fields aren't needed, so remove
-	# them. We should be able to get rid of this as well when 3.11
-	# is no longer supported.
-	find deploy/crds -name '*.yaml' | xargs -n1 -I{} yq d -i {} 'spec.**.x-kubernetes-list-map-keys'
-	find deploy/crds -name '*.yaml' | xargs -n1 -I{} yq d -i {} 'spec.**.x-kubernetes-list-type'
-	find deploy/crds -name '*.yaml' | xargs -n1 -I{} yq d -i {} 'spec.**.x-kubernetes-map-type'
-	find deploy/crds -name '*.yaml' | xargs -n1 -I{} yq d -i {} 'spec.**.x-kubernetes-struct-type'
-endif
+	cd $(API_DIR); $(CONTROLLER_GEN) crd:crdVersions=v1 paths=./... output:dir=$(PWD)/deploy/crds
 	cd $(API_DIR); $(CONTROLLER_GEN) object paths=./...
 
 API_DIR_MIN_DEPTH = 1
