@@ -22,11 +22,11 @@ spec:
           imagePullPolicy: Always
           resources:
             requests:
-              cpu: "500m"
-              memory: "1Gi"
+              cpu: 500m
+              memory: 1Gi
             limits:
-              cpu: "500m"
-              memory: "1Gi"
+              cpu: 500m
+              memory: 1Gi
           env:
             - name: WATCH_NAMESPACE
               value: ""
@@ -35,4 +35,4 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
-              value: "gcp-project-operator"
+              value: gcp-project-operator

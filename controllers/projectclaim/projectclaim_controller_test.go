@@ -1,4 +1,4 @@
-package controllers_test
+package projectclaim_test
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/openshift/gcp-project-operator/controllers"
+	. "github.com/openshift/gcp-project-operator/controllers/projectclaim"
 	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	mockclaim "github.com/openshift/gcp-project-operator/pkg/util/mocks/projectclaim"
 	testStructs "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"

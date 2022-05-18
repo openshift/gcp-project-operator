@@ -1,4 +1,4 @@
-package controllers_test
+package projectreference_test
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	. "github.com/openshift/gcp-project-operator/controllers"
+	. "github.com/openshift/gcp-project-operator/controllers/projectreference"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/api/v1alpha1"
 	mockconditions "github.com/openshift/gcp-project-operator/pkg/util/mocks/condition"

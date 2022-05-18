@@ -36,7 +36,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/api/v1alpha1"
-	"github.com/openshift/gcp-project-operator/controllers"
+	"github.com/openshift/gcp-project-operator/controllers/projectclaim"
+	"github.com/openshift/gcp-project-operator/controllers/projectreference"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
 	//+kubebuilder:scaffold:imports
 )
@@ -92,14 +93,14 @@ func main() {
 	}
 
 	log.V(2).Info("Add controllers to Manager")
-	if err = (&controllers.ProjectClaimReconciler{
+	if err = (&projectclaim.ProjectClaimReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		log.Error(err, "unable to create controller", "controller", "ProjectClaim")
 		os.Exit(1)
 	}
-	if err = (&controllers.ProjectReferenceReconciler{
+	if err = (&projectreference.ProjectReferenceReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 		GcpClientBuilder: func(projectName string, authJSON []byte) (gcpclient.Client, error) {

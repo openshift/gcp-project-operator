@@ -1,4 +1,4 @@
-package controllers
+package projectclaim
 
 // This file contains the functions for handling a fake ProjectClaim, that doesn't actually allocate resources on GCP
 

@@ -1,4 +1,4 @@
-package controllers
+package projectreference
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/gcpclient"
+	"github.com/openshift/gcp-project-operator/pkg/util"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
@@ -21,7 +22,6 @@ import (
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/api/v1alpha1"
 	condition "github.com/openshift/gcp-project-operator/pkg/condition"
-	gcputil "github.com/openshift/gcp-project-operator/pkg/util"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -117,13 +117,13 @@ func NewReferenceAdapter(
 }
 
 // EnsureProjectClaimReady sets the ProjectClaim to Ready after the ProjectReference was reconciled correctly and gcp project has been created
-func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, error) {
+func EnsureProjectClaimReady(r *ReferenceAdapter) (util.OperationResult, error) {
 	if r.ProjectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
-		return gcputil.ContinueProcessing()
+		return util.ContinueProcessing()
 	}
 
 	if r.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusReady {
-		return gcputil.StopProcessing()
+		return util.StopProcessing()
 	}
 
 	res, err := r.ensureClaimAvailabilityZonesSet()
@@ -135,35 +135,35 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (gcputil.OperationResult, erro
 	if idModified {
 		err := r.kubeClient.Update(context.TODO(), r.ProjectClaim)
 		if err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
+			return util.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
 		}
 	}
 	r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
 	if err := r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim); err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim status"))
+		return util.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim status"))
 	}
-	return gcputil.StopProcessing()
+	return util.StopProcessing()
 }
 
 // VerifyProjectClaimPending waits until the ProjectClaim has been initialized, meaning is in state PendingProject
-func VerifyProjectClaimPending(r *ReferenceAdapter) (gcputil.OperationResult, error) {
+func VerifyProjectClaimPending(r *ReferenceAdapter) (util.OperationResult, error) {
 	if r.ProjectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
-		return gcputil.RequeueAfter(5*time.Second, nil)
+		return util.RequeueAfter(5*time.Second, nil)
 	}
-	return gcputil.ContinueProcessing()
+	return util.ContinueProcessing()
 }
 
-func EnsureProjectReferenceStatusCreating(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
+func EnsureProjectReferenceStatusCreating(adapter *ReferenceAdapter) (util.OperationResult, error) {
 	if adapter.ProjectReference.Status.State != "" {
-		return gcputil.ContinueProcessing()
+		return util.ContinueProcessing()
 	}
 	adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
 	err := adapter.kubeClient.Status().Update(context.TODO(), adapter.ProjectReference)
 	if err != nil {
 		err = operrors.Wrap(err, "error updating ProjectReference status")
-		return gcputil.RequeueWithError(err)
+		return util.RequeueWithError(err)
 	}
-	return gcputil.StopProcessing()
+	return util.StopProcessing()
 }
 
 func serviceNameAlreadyGenerated(projectReference *gcpv1alpha1.ProjectReference) bool {
@@ -180,38 +180,38 @@ func serviceAccountNameTemplate(suffix string) string {
 	return fmt.Sprintf("%s-%s", osdServiceAccountNameDefault, suffix)
 }
 
-func EnsureServiceAccountName(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
+func EnsureServiceAccountName(adapter *ReferenceAdapter) (util.OperationResult, error) {
 	if serviceNameAlreadyGenerated(adapter.ProjectReference) ||
 		serviceNameAlreadyFilled(adapter.ProjectReference) {
-		return gcputil.ContinueProcessing()
+		return util.ContinueProcessing()
 	}
 
 	adapter.logger.V(1).Info("Creating ServiceAccountName in ProjectReference CR")
 	err := adapter.UpdateServiceAccountName()
 	if err != nil {
 		err = operrors.Wrap(err, "could not update ServiceAccountName in Project Reference CR")
-		return gcputil.RequeueWithError(err)
+		return util.RequeueWithError(err)
 	}
-	return gcputil.StopProcessing()
+	return util.StopProcessing()
 
 }
 
-func EnsureProjectID(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
+func EnsureProjectID(adapter *ReferenceAdapter) (util.OperationResult, error) {
 	if adapter.ProjectReference.Spec.GCPProjectID != "" {
-		return gcputil.ContinueProcessing()
+		return util.ContinueProcessing()
 	}
 	adapter.logger.V(1).Info("Creating ProjectID in ProjectReference CR")
 	err := adapter.UpdateProjectID()
 	if err != nil {
 		err = operrors.Wrap(err, "could not update ProjectID in Project Reference CR")
-		return gcputil.RequeueWithError(err)
+		return util.RequeueWithError(err)
 	}
-	return gcputil.StopProcessing()
+	return util.StopProcessing()
 }
 
-func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) {
+func EnsureProjectCreated(r *ReferenceAdapter) (util.OperationResult, error) {
 	if r.isCCS() {
-		return gcputil.ContinueProcessing()
+		return util.ContinueProcessing()
 	}
 
 	err := r.createProject(r.OperatorConfig.ParentFolderID)
@@ -220,32 +220,32 @@ func EnsureProjectCreated(r *ReferenceAdapter) (gcputil.OperationResult, error) 
 			r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
 			err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
 			if err != nil {
-				return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectReference status"))
+				return util.RequeueWithError(operrors.Wrap(err, "error updating ProjectReference status"))
 			}
-			return gcputil.StopProcessing()
+			return util.StopProcessing()
 		}
-		return gcputil.RequeueWithError(operrors.Wrap(err, "could not create project"))
+		return util.RequeueWithError(operrors.Wrap(err, "could not create project"))
 	}
 
 	// should this be it's own function?
 	r.logger.V(1).Info("Configuring Billing APIS")
 	err = r.configureBillingAPI()
 	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring Billing APIS"))
+		return util.RequeueWithError(operrors.Wrap(err, "error configuring Billing APIS"))
 	}
 
-	return gcputil.ContinueProcessing()
+	return util.ContinueProcessing()
 }
 
 func (r *ReferenceAdapter) isCCS() bool {
 	return r.ProjectReference.Spec.CCS
 }
 
-func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, error) {
+func EnsureProjectConfigured(r *ReferenceAdapter) (util.OperationResult, error) {
 	r.logger.V(1).Info("Configuring APIS")
 	err := r.configureAPIS()
 	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "error configuring APIS"))
+		return util.RequeueWithError(operrors.Wrap(err, "error configuring APIS"))
 	}
 
 	osdServiceAccountName := r.ProjectReference.Spec.ServiceAccountName
@@ -266,27 +266,27 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (gcputil.OperationResult, erro
 		for _, email := range r.OperatorConfig.CCSConsoleAccess {
 			// TODO(yeya24): Use google API to check whether this email is
 			// for a group or a service account.
-			if err := r.SetIAMPolicy(email, OSDSREConsoleAccessRoles, gcputil.GoogleGroup); err != nil {
-				return gcputil.RequeueWithError(err)
+			if err := r.SetIAMPolicy(email, OSDSREConsoleAccessRoles, util.GoogleGroup); err != nil {
+				return util.RequeueWithError(err)
 			}
 		}
 
 		for _, email := range r.OperatorConfig.CCSReadOnlyConsoleAccess {
-			if err := r.SetIAMPolicy(email, OSDReadOnlyConsoleAccessRoles, gcputil.GoogleGroup); err != nil {
-				return gcputil.RequeueWithError(err)
+			if err := r.SetIAMPolicy(email, OSDReadOnlyConsoleAccessRoles, util.GoogleGroup); err != nil {
+				return util.RequeueWithError(err)
 			}
 		}
 	}
-	return gcputil.ContinueProcessing()
+	return util.ContinueProcessing()
 }
 
-func EnsureStateReady(r *ReferenceAdapter) (gcputil.OperationResult, error) {
+func EnsureStateReady(r *ReferenceAdapter) (util.OperationResult, error) {
 	if r.ProjectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
 		r.logger.V(1).Info("Setting Status on projectReference")
 		r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
-		return gcputil.RequeueOnErrorOrStop(r.kubeClient.Status().Update(context.TODO(), r.ProjectReference))
+		return util.RequeueOnErrorOrStop(r.kubeClient.Status().Update(context.TODO(), r.ProjectReference))
 	}
-	return gcputil.ContinueProcessing()
+	return util.ContinueProcessing()
 }
 
 func getMatchingClaimLink(projectReference *gcpv1alpha1.ProjectReference, client client.Client) (*gcpv1alpha1.ProjectClaim, error) {
@@ -318,16 +318,16 @@ func (r *ReferenceAdapter) UpdateServiceAccountName() error {
 	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
 }
 
-func EnsureDeletionProcessed(adapter *ReferenceAdapter) (gcputil.OperationResult, error) {
+func EnsureDeletionProcessed(adapter *ReferenceAdapter) (util.OperationResult, error) {
 	// Cleanup
 	if adapter.IsDeletionRequested() {
 		err := adapter.EnsureProjectCleanedUp()
 		if err != nil {
-			return gcputil.RequeueAfter(5*time.Second, err)
+			return util.RequeueAfter(5*time.Second, err)
 		}
-		return gcputil.StopProcessing()
+		return util.StopProcessing()
 	}
-	return gcputil.ContinueProcessing()
+	return util.ContinueProcessing()
 }
 
 // IsDeletionRequested checks the metadata.deletionTimestamp of ProjectReference instance, and returns if delete requested.
@@ -337,20 +337,20 @@ func (r *ReferenceAdapter) IsDeletionRequested() bool {
 }
 
 // EnsureFinalizerAdded parses the meta.Finalizers of ProjectReference instance and adds FinalizerName if not found.
-func EnsureFinalizerAdded(r *ReferenceAdapter) (gcputil.OperationResult, error) {
-	if !gcputil.Contains(r.ProjectReference.GetFinalizers(), FinalizerName) {
+func EnsureFinalizerAdded(r *ReferenceAdapter) (util.OperationResult, error) {
+	if !util.Contains(r.ProjectReference.GetFinalizers(), FinalizerName) {
 		r.ProjectReference.SetFinalizers(append(r.ProjectReference.GetFinalizers(), FinalizerName))
-		return gcputil.RequeueOnErrorOrStop(r.kubeClient.Update(context.TODO(), r.ProjectReference))
+		return util.RequeueOnErrorOrStop(r.kubeClient.Update(context.TODO(), r.ProjectReference))
 	}
-	return gcputil.ContinueProcessing()
+	return util.ContinueProcessing()
 }
 
 // EnsureFinalizerDeleted parses the meta.Finalizers of ProjectReference instance and removes FinalizerName if found;
 func (r *ReferenceAdapter) EnsureFinalizerDeleted() error {
 	r.logger.Info("Deleting Finalizer")
 	finalizers := r.ProjectReference.GetFinalizers()
-	if gcputil.Contains(finalizers, FinalizerName) {
-		r.ProjectReference.SetFinalizers(gcputil.Filter(finalizers, FinalizerName))
+	if util.Contains(finalizers, FinalizerName) {
+		r.ProjectReference.SetFinalizers(util.Filter(finalizers, FinalizerName))
 		return r.kubeClient.Update(context.TODO(), r.ProjectReference)
 	}
 	return nil
@@ -396,12 +396,12 @@ func (r *ReferenceAdapter) ensureCCSProjectCleanedUp(isCCS bool) error {
 	}
 	r.logger.Info("Deleting IAM Policy for console access")
 	for _, email := range r.OperatorConfig.CCSConsoleAccess {
-		if err := r.DeleteIAMPolicy(email, gcputil.GoogleGroup); err != nil {
+		if err := r.DeleteIAMPolicy(email, util.GoogleGroup); err != nil {
 			return err
 		}
 	}
 	for _, email := range r.OperatorConfig.CCSReadOnlyConsoleAccess {
-		if err := r.DeleteIAMPolicy(email, gcputil.GoogleGroup); err != nil {
+		if err := r.DeleteIAMPolicy(email, util.GoogleGroup); err != nil {
 			return err
 		}
 	}
@@ -529,7 +529,7 @@ func (r *ReferenceAdapter) configureBillingAPI() error {
 		return err
 	}
 
-	if !gcputil.Contains(enabledAPIs, "cloudbilling.googleapis.com") {
+	if !util.Contains(enabledAPIs, "cloudbilling.googleapis.com") {
 		r.logger.Info("Enabling Billing API")
 		err := r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, "cloudbilling.googleapis.com")
 		if err != nil {
@@ -552,7 +552,7 @@ func (r *ReferenceAdapter) configureAPIS() error {
 	}
 
 	for _, api := range OSDRequiredAPIS {
-		if !gcputil.Contains(enabledAPIs, api) {
+		if !util.Contains(enabledAPIs, api) {
 			err = r.gcpClient.EnableAPI(r.ProjectReference.Spec.GCPProjectID, api)
 			if err != nil {
 				return operrors.Wrap(err, fmt.Sprintf("error enabling %s api for project %s", api, r.ProjectReference.Spec.GCPProjectID))
@@ -563,7 +563,7 @@ func (r *ReferenceAdapter) configureAPIS() error {
 	return nil
 }
 
-func (r *ReferenceAdapter) configureServiceAccount(policies []string) (gcputil.OperationResult, error) {
+func (r *ReferenceAdapter) configureServiceAccount(policies []string) (util.OperationResult, error) {
 	// See if GCP service account exists if not create it
 	var serviceAccount *iam.ServiceAccount
 
@@ -576,25 +576,25 @@ func (r *ReferenceAdapter) configureServiceAccount(policies []string) (gcputil.O
 		if err != nil {
 			if matchesAlreadyExistsError(err) {
 				r.logger.V(2).Info("Service Account not yet fully initialized. Retrying in 30 seconds.")
-				return gcputil.RequeueAfter(30*time.Second, nil)
+				return util.RequeueAfter(30*time.Second, nil)
 			}
-			return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not create service account for %s", osdServiceAccountName)))
+			return util.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not create service account for %s", osdServiceAccountName)))
 		}
 		serviceAccount = account
 	}
 
 	r.logger.V(1).Info("Setting Service Account Policies")
-	err = r.SetIAMPolicy(serviceAccount.Email, policies, gcputil.ServiceAccount)
+	err = r.SetIAMPolicy(serviceAccount.Email, policies, util.ServiceAccount)
 	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not update policy on project for %s", r.ProjectReference.Spec.GCPProjectID)))
+		return util.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not update policy on project for %s", r.ProjectReference.Spec.GCPProjectID)))
 	}
 
-	return gcputil.ContinueProcessing()
+	return util.ContinueProcessing()
 }
 
-func (r *ReferenceAdapter) createCredentials() (gcputil.OperationResult, error) {
-	if gcputil.SecretExists(r.kubeClient, r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace) {
-		return gcputil.ContinueProcessing()
+func (r *ReferenceAdapter) createCredentials() (util.OperationResult, error) {
+	if util.SecretExists(r.kubeClient, r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace) {
+		return util.ContinueProcessing()
 	}
 
 	r.logger.Info("Creating credentials")
@@ -603,23 +603,23 @@ func (r *ReferenceAdapter) createCredentials() (gcputil.OperationResult, error) 
 	if err != nil {
 		if matchesNotFoundError(err) {
 			r.logger.V(1).Info("Service Account not yet fully initialized. Retrying in 30 seconds.")
-			return gcputil.RequeueAfter(30*time.Second, nil)
+			return util.RequeueAfter(30*time.Second, nil)
 		}
-		return gcputil.RequeueWithError(operrors.Wrap(err, "could not get service account"))
+		return util.RequeueWithError(operrors.Wrap(err, "could not get service account"))
 	}
 	r.logger.V(1).Info("Creating Service AccountKey")
 	key, err := r.gcpClient.CreateServiceAccountKey(serviceAccount.Email)
 	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not create service account key for %s", serviceAccount.Email)))
+		return util.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not create service account key for %s", serviceAccount.Email)))
 	}
 
 	r.logger.V(2).Info("Create secret for the key and store it")
 	privateKeyString, err := base64.StdEncoding.DecodeString(key.PrivateKeyData)
 	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "could not decode secret"))
+		return util.RequeueWithError(operrors.Wrap(err, "could not decode secret"))
 	}
 
-	secret := gcputil.NewGCPSecretCR(string(privateKeyString), types.NamespacedName{
+	secret := util.NewGCPSecretCR(string(privateKeyString), types.NamespacedName{
 		Namespace: r.ProjectClaim.Spec.GCPCredentialSecret.Namespace,
 		Name:      r.ProjectClaim.Spec.GCPCredentialSecret.Name,
 	})
@@ -627,10 +627,10 @@ func (r *ReferenceAdapter) createCredentials() (gcputil.OperationResult, error) 
 	r.logger.V(1).Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace))
 	createErr := r.kubeClient.Create(context.TODO(), secret)
 	if createErr != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(createErr, fmt.Sprintf("could not create service account secret for %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name)))
+		return util.RequeueWithError(operrors.Wrap(createErr, fmt.Sprintf("could not create service account secret for %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name)))
 	}
 
-	return gcputil.ContinueProcessing()
+	return util.ContinueProcessing()
 }
 
 func (r *ReferenceAdapter) deleteCredentials() error {
@@ -641,9 +641,9 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 	r.logger.Info("Deleting Credentials")
 
 	r.logger.V(2).Info("Check if the Secret exists")
-	if gcputil.SecretExists(r.kubeClient, secret.Name, secret.Namespace) {
+	if util.SecretExists(r.kubeClient, secret.Name, secret.Namespace) {
 		r.logger.V(2).Info("Getting Secret")
-		key, err := gcputil.GetSecret(r.kubeClient, secret.Name, secret.Namespace)
+		key, err := util.GetSecret(r.kubeClient, secret.Name, secret.Namespace)
 		if err != nil {
 			return operrors.Wrap(err, fmt.Sprintf("could not get the service account secret for %s", secret.Name))
 		}
@@ -660,10 +660,10 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 
 // ensureAvailabilityZonesSet sets the az in the projectclaim spec if necessary
 // returns true if the project claim has been modified
-func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (gcputil.OperationResult, error) {
+func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (util.OperationResult, error) {
 	r.logger.V(1).Info("enter ensureClaimProjectIDSet")
 	if len(r.ProjectClaim.Spec.AvailabilityZones) > 0 {
-		return gcputil.ContinueProcessing()
+		return util.ContinueProcessing()
 	}
 
 	zones, err := r.gcpClient.ListAvailabilityZones(r.ProjectReference.Spec.GCPProjectID, r.ProjectClaim.Spec.Region)
@@ -676,15 +676,15 @@ func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (gcputil.OperationR
 	r.ProjectClaim.Spec.AvailabilityZones = zones
 	err = r.kubeClient.Update(context.TODO(), r.ProjectClaim)
 	if err != nil {
-		return gcputil.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
+		return util.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
 	}
 	// as the ProjectClaim is modified, we need to requeue
-	return gcputil.Requeue()
+	return util.Requeue()
 }
 
-func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (gcputil.OperationResult, error) {
+func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (util.OperationResult, error) {
 	if !matchesComputeApiNotReadyError(err) {
-		return gcputil.RequeueWithError(err)
+		return util.RequeueWithError(err)
 	}
 
 	conditions := &r.ProjectReference.Status.Conditions
@@ -693,14 +693,14 @@ func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (gcputil.Oper
 	if found && apiCondition.LastTransitionTime.Before(&tenMinutesAgo) {
 		r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
 		_ = r.StatusUpdate()
-		return gcputil.RequeueWithError(err)
+		return util.RequeueWithError(err)
 	}
 	r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
 	if statusUpdateErr := r.StatusUpdate(); statusUpdateErr != nil {
-		return gcputil.RequeueWithError(statusUpdateErr)
+		return util.RequeueWithError(statusUpdateErr)
 	}
 	r.logger.V(2).Info("Compute API not yet fully initialized. Retrying in 30 seconds.")
-	return gcputil.RequeueAfter(30*time.Second, nil)
+	return util.RequeueAfter(30*time.Second, nil)
 }
 
 func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
@@ -712,16 +712,16 @@ func (r *ReferenceAdapter) ensureClaimProjectIDSet() bool {
 	return false
 }
 
-func EnsureProjectReferenceInitialized(r *ReferenceAdapter) (gcputil.OperationResult, error) {
+func EnsureProjectReferenceInitialized(r *ReferenceAdapter) (util.OperationResult, error) {
 	if r.ProjectReference.Status.Conditions == nil {
 		r.ProjectReference.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := r.StatusUpdate()
 		if err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize ProjectReference"))
+			return util.RequeueWithError(operrors.Wrap(err, "failed to initalize ProjectReference"))
 		}
-		return gcputil.StopProcessing()
+		return util.StopProcessing()
 	}
-	return gcputil.ContinueProcessing()
+	return util.ContinueProcessing()
 }
 
 // AddorUpdateBindingResponse contines the data that is returned by the AddOrUpdarteBindings function
@@ -731,14 +731,14 @@ type AddorUpdateBindingResponse struct {
 }
 
 // AddOrUpdateBindings gets the policy and checks if the bindings match the required roles
-func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string, policies []string, memberType gcputil.IamMemberType) (AddorUpdateBindingResponse, error) {
+func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string, policies []string, memberType util.IamMemberType) (AddorUpdateBindingResponse, error) {
 	policy, err := r.gcpClient.GetIamPolicy(r.ProjectReference.Spec.GCPProjectID)
 	if err != nil {
 		return AddorUpdateBindingResponse{}, err
 	}
 
 	//Checking if policy is modified
-	newBindings, modified := gcputil.AddOrUpdateBinding(policy.Bindings, policies, serviceAccountEmail, memberType)
+	newBindings, modified := util.AddOrUpdateBinding(policy.Bindings, policies, serviceAccountEmail, memberType)
 
 	// add new bindings to policy
 	policy.Bindings = newBindings
@@ -749,7 +749,7 @@ func (r *ReferenceAdapter) AddOrUpdateBindings(serviceAccountEmail string, polic
 }
 
 // SetIAMPolicy attempts to update policy if the policy needs to be modified
-func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []string, memberType gcputil.IamMemberType) error {
+func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []string, memberType util.IamMemberType) error {
 	// Checking if policy needs to be updated
 	var retry int
 	for {
@@ -782,7 +782,7 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []s
 	}
 }
 
-func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberType gcputil.IamMemberType) error {
+func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberType util.IamMemberType) error {
 	// Checking if policy needs to be updated
 	var retry int
 	for {
@@ -792,7 +792,7 @@ func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberTyp
 			return err
 		}
 
-		newBindings, modified := gcputil.RemoveOrUpdateBinding(policies.Bindings, serviceAccountEmail, memberType)
+		newBindings, modified := util.RemoveOrUpdateBinding(policies.Bindings, serviceAccountEmail, memberType)
 		if !modified {
 			return nil
 		}
