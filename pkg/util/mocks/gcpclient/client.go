@@ -5,11 +5,10 @@
 package gcpclient
 
 import (
-	reflect "reflect"
-
 	gomock "github.com/golang/mock/gomock"
 	cloudresourcemanager "google.golang.org/api/cloudresourcemanager/v1"
 	iam "google.golang.org/api/iam/v1"
+	reflect "reflect"
 )
 
 // MockClient is a mock of Client interface

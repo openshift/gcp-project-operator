@@ -3,7 +3,7 @@ package condition
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	gcpv1alpha1 "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	gcpv1alpha1 "github.com/openshift/gcp-project-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

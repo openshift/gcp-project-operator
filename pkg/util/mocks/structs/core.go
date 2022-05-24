@@ -22,8 +22,9 @@ func NewTestSecretBuilder(secretName, namespace, creds string) *testSecretBuilde
 				APIVersion: "v1",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretName,
-				Namespace: namespace,
+				Name:            secretName,
+				Namespace:       namespace,
+				ResourceVersion: "999",
 			},
 			Data: map[string][]byte{
 				"osServiceAccount.json": []byte(creds),

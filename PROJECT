@@ -1,0 +1,28 @@
+domain: managed.openshift.io
+layout:
+- go.kubebuilder.io/v3
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: gcp-project-operator
+repo: github.com/openshift/gcp-project-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: managed.openshift.io
+  group: gcp
+  kind: ProjectClaim
+  path: github.com/openshift/gcp-project-operator/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: managed.openshift.io
+  group: gcp
+  kind: ProjectReference
+  path: github.com/openshift/gcp-project-operator/api/v1alpha1
+  version: v1alpha1
+version: "3"

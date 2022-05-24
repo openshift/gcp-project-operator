@@ -3,7 +3,7 @@ package structs
 import (
 	"fmt"
 
-	api "github.com/openshift/gcp-project-operator/pkg/apis/gcp/v1alpha1"
+	api "github.com/openshift/gcp-project-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 

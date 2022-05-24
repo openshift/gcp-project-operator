@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/openshift/gcp-project-operator/pkg/util/errors"
-	builders "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	builders "github.com/openshift/gcp-project-operator/pkg/util/mocks/structs"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestSecretExists(t *testing.T) {
