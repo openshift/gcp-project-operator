@@ -1,3 +1,5 @@
+FIPS_ENABLED=true
+
 include boilerplate/generated-includes.mk
 
 SHELL := /usr/bin/env bash
