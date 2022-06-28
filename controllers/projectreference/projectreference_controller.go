@@ -44,7 +44,7 @@ const (
 	operatorNamespace = "gcp-project-operator"
 
 	// secret information
-	orgGcpSecretName = "gcp-project-operator-credentials"
+	orgGcpSecretName = "gcp-project-operator-credentials" //#nosec G101 -- not a secret, just name for it
 )
 
 // ProjectReferenceReconciler reconciles a ProjectReference object
