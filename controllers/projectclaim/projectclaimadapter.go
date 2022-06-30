@@ -36,7 +36,7 @@ const (
 )
 
 const ProjectClaimFinalizer string = "finalizer.gcp.managed.openshift.io"
-const CCSSecretFinalizer string = "finalizer.gcp.managed.openshift.io/ccs"
+const CCSSecretFinalizer string = "finalizer.gcp.managed.openshift.io/ccs" //#nosec G101 -- not a secret
 const RegionCheckFailed string = "RegionCheckFailed"
 const FakeProjectClaim string = "managed.openshift.com/fake"
 
