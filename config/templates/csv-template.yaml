@@ -41,5 +41,5 @@ spec:
         - name: gcp-project-operator
           # Deployment spec will be added here by the generate-operator-bundle.py script.
   customresourcedefinitions:
-    # CRD's will be added here by the generate-operator-bundle.py
     owned:
+    # CRD's will be added here by the generate-operator-bundle.py
