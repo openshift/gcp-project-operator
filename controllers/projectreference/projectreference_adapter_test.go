@@ -524,8 +524,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
+					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(fakeError)
 					_, err := EnsureProjectConfigured(adapter)
-					Expect(err).ToNot(HaveOccurred())
+					Expect(err).To(HaveOccurred())
 				})
 			})
 		})
@@ -552,6 +553,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
+					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).ToNot(HaveOccurred())
 				})
@@ -567,6 +569,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
 				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
+				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
 				adapter.OperatorConfig.CCSConsoleAccess = []string{"example-group@xxx.com"}
 			})
@@ -585,6 +588,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 				Context("When only one ccsConsoleAccessAccount are configured", func() {
 					It("It doesn't need to create a service account", func() {
+						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						_, err := EnsureProjectConfigured(adapter)
 						Expect(err).ToNot(HaveOccurred())
 					})
@@ -595,6 +600,10 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						adapter.OperatorConfig.CCSConsoleAccess = []string{"foo", "bar"}
 					})
 					It("repeat the process", func() {
+						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
+						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						_, err := EnsureProjectConfigured(adapter)
 						Expect(err).ToNot(HaveOccurred())
 					})
@@ -611,6 +620,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
 				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
+				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
 				adapter.OperatorConfig.CCSReadOnlyConsoleAccess = []string{"example-group@xxx.com"}
 			})
@@ -629,6 +639,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 				Context("When only one ccsReadOnlyConsoleAccessAccount are configured", func() {
 					It("It doesn't need to create a service account", func() {
+						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						_, err := EnsureProjectConfigured(adapter)
 						Expect(err).ToNot(HaveOccurred())
 					})
@@ -639,6 +651,10 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						adapter.OperatorConfig.CCSReadOnlyConsoleAccess = []string{"foo", "bar"}
 					})
 					It("repeat the process", func() {
+						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
+						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 						_, err := EnsureProjectConfigured(adapter)
 						Expect(err).ToNot(HaveOccurred())
 					})

@@ -21,7 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/api/v1alpha1"
-	"github.com/openshift/gcp-project-operator/pkg/condition"
+	condition "github.com/openshift/gcp-project-operator/pkg/condition"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -80,7 +80,7 @@ var OSDReadOnlyConsoleAccessRoles = []string{
 	"roles/viewer",
 }
 
-// ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
+//ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
 type ReferenceAdapter struct {
 	ProjectClaim     *gcpv1alpha1.ProjectClaim
 	ProjectReference *gcpv1alpha1.ProjectReference
@@ -611,12 +611,6 @@ func (r *ReferenceAdapter) createCredentials() (util.OperationResult, error) {
 	key, err := r.gcpClient.CreateServiceAccountKey(serviceAccount.Email)
 	if err != nil {
 		return util.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("could not create service account key for %s", serviceAccount.Email)))
-	}
-
-	// Validate the created service account is able to list projects and returns at least one result
-	if err := util.ValidateServiceAccountKey(context.TODO(), key); err != nil {
-		r.logger.V(1).Info("Service Account credentials not fully propagated. Retrying in 30 seconds.", "error", err)
-		return util.RequeueAfter(30*time.Second, nil)
 	}
 
 	r.logger.V(2).Info("Create secret for the key and store it")
