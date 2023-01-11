@@ -3,9 +3,11 @@ package util
 import (
 	"context"
 	"fmt"
-	"reflect"
-
+	"github.com/openshift/gcp-project-operator/pkg/util/errors"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	"google.golang.org/api/iam/v1"
+	"google.golang.org/api/option"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
@@ -124,8 +126,7 @@ func AddOrUpdateBinding(existingBindings []*cloudresourcemanager.Binding, requir
 		if rBinding, ok := requiredBindingMap[eBinding.Role]; ok {
 			// check if members list contains from existing contains members from required
 			for _, rMember := range rBinding.Members {
-				exist, _ := InArray(rMember, eBinding.Members)
-				if !exist {
+				if exist := Contains(eBinding.Members, rMember); !exist {
 					Modified = true
 					// If required member is not in existing member list add it
 					result[i].Members = append(result[i].Members, rMember)
@@ -164,25 +165,33 @@ func rolebindingMap(roles []string, member string, memberType IamMemberType) map
 	return requiredBindings
 }
 
-// InArray checks if a needle exists inside of the haystack
-func InArray(needle interface{}, haystack interface{}) (exists bool, index int) {
-	exists = false
-	index = -1
-
-	switch reflect.TypeOf(haystack).Kind() {
-	case reflect.Slice:
-		s := reflect.ValueOf(haystack)
-
-		for i := 0; i < s.Len(); i++ {
-			if reflect.DeepEqual(needle, s.Index(i).Interface()) {
-				index = i
-				exists = true
-				return
-			}
-		}
+// ValidateServiceAccountKey performs validation that a service account's keys can list at least 1 project to mirror the
+// check that the installer does:
+// https://github.com/openshift/installer/blob/ce13271664f492088048a2e90f208b8b51ea88ca/pkg/asset/installconfig/gcp/validation.go#L234-L248
+//
+// This check is necessary because GCP IAM is eventually consistent and in unfortunate times, eventually consistent
+// after a few hours.
+func ValidateServiceAccountKey(ctx context.Context, key *iam.ServiceAccountKey) error {
+	creds, err := google.CredentialsFromJSON(ctx, []byte(key.PrivateKeyData), "https://www.googleapis.com/auth/cloud-platform")
+	if err != nil {
+		return fmt.Errorf("could not parse service account credentials: %w", err)
 	}
 
-	return
+	client, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
+	if err != nil {
+		return fmt.Errorf("could not create cloudresourcemanager client with service account credentials: %w", err)
+	}
+
+	resp, err := client.Projects.List().Do()
+	if err != nil {
+		return fmt.Errorf("failed to list projects with service account credentials: %w", err)
+	}
+
+	if len(resp.Projects) == 0 {
+		return errors.New("can view 0 projects with these service account credentials")
+	}
+
+	return nil
 }
 
 // Contains returns true if a list contains a string.
