@@ -730,6 +730,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			projectState = "ACTIVE"
 			email = "Some Email"
 			mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: email}, nil).Times(1)
+            mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
+            mockGCPClient.EXPECT().SetIamPolicy(gomock.Any())
 			mockGCPClient.EXPECT().DeleteServiceAccount(gomock.Eq(email)).Return(nil).Times(1)
 		})
 		Context("When it's a non-CCS Project", func() {
