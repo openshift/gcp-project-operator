@@ -468,7 +468,7 @@ func (r *ReferenceAdapter) deleteServiceAccount() error {
 
 	r.logger.V(1).Info("after get")
 
-	if err := r.DeleteIAMPolicy(sa.Email, 0); err != nil {
+	if err := r.DeleteIAMPolicy(sa.Email, util.ServiceAccount); err != nil {
 		return operrors.Wrap(err, "could not delete the IAM policy, something happened")
 	}
 
