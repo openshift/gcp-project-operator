@@ -1,15 +1,29 @@
 reviewers:
 - boranx
 - NautiluX
-- ninabauer
 - pyates86
 - rafael-azevedo
-- Tessg22
 - sam-nguyen7
+- bng0y
+- typeid
+- Makdaam
+- Nikokolas3270
+- ninabauer
+- RaphaelBut
+- Tessg22
+- mjlshen
 approvers:
 - NautiluX
 - rafael-azevedo
 - boranx
+- bng0y
+- typeid
+- Makdaam
+- Nikokolas3270
+- ninabauer
+- RaphaelBut
+- Tessg22
 maintainers:
 - NautiluX
 - rafael-azevedo
+- bng0y
