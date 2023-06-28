@@ -26,6 +26,8 @@ objects:
     name: gcp-project-operator-catalog
   spec:
     sourceType: grpc
+    grpcPodConfig:
+      securityContextConfig: restricted
     image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
     displayName: gcp-project-operator Registry
     publisher: SRE 
