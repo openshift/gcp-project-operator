@@ -35,5 +35,4 @@ testbin/*
 
 # app-sre pipeline
 .docker/
-Dockerfile.olm-registry
 saas-gcp-project-operator-bundle/
