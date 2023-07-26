@@ -80,6 +80,13 @@ var OSDReadOnlyConsoleAccessRoles = []string{
 	"roles/viewer",
 }
 
+// OSDSharedVPCRoles is a list of Roles that a service account
+// required to get shared VPC access
+var OSDSharedVPCRoles = []string{
+	"roles/iam.securityReviewer",
+	"roles/compute.loadBalancerAdmin",
+}
+
 //ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
 type ReferenceAdapter struct {
 	ProjectClaim     *gcpv1alpha1.ProjectClaim
@@ -241,6 +248,10 @@ func (r *ReferenceAdapter) isCCS() bool {
 	return r.ProjectReference.Spec.CCS
 }
 
+// func (r *ReferenceAdapter) hasSharedVPCAccess() bool {
+// 	return r.ProjectReference.Spec.SharedVPCAccess
+// }
+
 func EnsureProjectConfigured(r *ReferenceAdapter) (util.OperationResult, error) {
 	r.logger.V(1).Info("Configuring APIS")
 	err := r.configureAPIS()
@@ -250,7 +261,14 @@ func EnsureProjectConfigured(r *ReferenceAdapter) (util.OperationResult, error) 
 
 	osdServiceAccountName := r.ProjectReference.Spec.ServiceAccountName
 	r.logger.V(1).Info("Configuring Service Account " + osdServiceAccountName)
-	result, err := r.configureServiceAccount(OSDRequiredRoles)
+
+	serviceAccountRoles := OSDRequiredRoles
+	if r.ProjectReference.Spec.SharedVPCAccess {
+		r.logger.V(1).Info("Adding shared VPC access " + osdServiceAccountName)
+		serviceAccountRoles = append(serviceAccountRoles, OSDSharedVPCRoles...)
+	}
+
+	result, err := r.configureServiceAccount(serviceAccountRoles)
 	if err != nil || result.RequeueRequest {
 		return result, err
 	}
