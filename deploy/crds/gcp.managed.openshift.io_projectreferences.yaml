@@ -94,6 +94,8 @@ spec:
                 type: object
               serviceAccountName:
                 type: string
+              sharedVPCAccess:
+                type: boolean
             required:
             - legalEntity
             - projectClaimCRLink

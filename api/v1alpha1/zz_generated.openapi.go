@@ -145,6 +145,12 @@ func schema_openshift_gcp_project_operator_api_v1alpha1_ProjectClaimSpec(ref com
 							Format: "",
 						},
 					},
+					"sharedVPCAccess": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
 				},
 				Required: []string{"legalEntity", "gcpCredentialSecret", "region"},
 			},
@@ -282,6 +288,12 @@ func schema_openshift_gcp_project_operator_api_v1alpha1_ProjectReferenceSpec(ref
 					"serviceAccountName": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"sharedVPCAccess": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
 							Format: "",
 						},
 					},

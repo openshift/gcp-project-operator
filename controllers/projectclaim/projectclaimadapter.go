@@ -66,6 +66,7 @@ func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1a
 			LegalEntity:  *projectClaim.Spec.LegalEntity.DeepCopy(),
 			CCS:          projectClaim.Spec.CCS,
 			CCSSecretRef: *projectClaim.Spec.CCSSecretRef.DeepCopy(),
+			SharedVPCAccess: projectClaim.Spec.SharedVPCAccess,
 		},
 	}
 }

@@ -29,6 +29,7 @@ type ProjectReferenceSpec struct {
 	CCS                bool           `json:"ccs,omitempty"`
 	CCSSecretRef       NamespacedName `json:"ccsSecretRef,omitempty"`
 	ServiceAccountName string         `json:"serviceAccountName,omitempty"`
+	SharedVPCAccess     bool          `json:"sharedVPCAccess,omitempty"`
 }
 
 // ProjectReferenceStatus defines the observed state of ProjectReference

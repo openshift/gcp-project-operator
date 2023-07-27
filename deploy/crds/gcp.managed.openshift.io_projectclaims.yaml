@@ -109,6 +109,8 @@ spec:
                 type: object
               region:
                 type: string
+              sharedVPCAccess:
+                type: boolean
             required:
             - gcpCredentialSecret
             - legalEntity
