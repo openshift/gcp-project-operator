@@ -248,10 +248,6 @@ func (r *ReferenceAdapter) isCCS() bool {
 	return r.ProjectReference.Spec.CCS
 }
 
-// func (r *ReferenceAdapter) hasSharedVPCAccess() bool {
-// 	return r.ProjectReference.Spec.SharedVPCAccess
-// }
-
 func EnsureProjectConfigured(r *ReferenceAdapter) (util.OperationResult, error) {
 	r.logger.V(1).Info("Configuring APIS")
 	err := r.configureAPIS()
