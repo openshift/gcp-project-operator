@@ -1,4 +1,4 @@
-FROM quay.io/app-sre/boilerplate:image-v3.0.3 AS builder
+FROM quay.io/app-sre/boilerplate:image-v3.0.4 AS builder
 ENV OPERATOR_PATH=/gcp-project-operator
 COPY . ${OPERATOR_PATH}
 WORKDIR ${OPERATOR_PATH}
@@ -6,7 +6,7 @@ WORKDIR ${OPERATOR_PATH}
 # Build
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.7-1085
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.8-1014
 ENV OPERATOR_PATH=/gcp-project-operator \
     OPERATOR_BIN=gcp-project-operator
 
