@@ -85,9 +85,10 @@ var OSDReadOnlyConsoleAccessRoles = []string{
 var OSDSharedVPCRoles = []string{
 	"roles/iam.securityReviewer",
 	"roles/compute.loadBalancerAdmin",
+	"roles/resourcemanager.tagUser",
 }
 
-//ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
+// ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
 type ReferenceAdapter struct {
 	ProjectClaim     *gcpv1alpha1.ProjectClaim
 	ProjectReference *gcpv1alpha1.ProjectReference
