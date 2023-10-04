@@ -86,6 +86,7 @@ var OSDSharedVPCRoles = []string{
 	"roles/iam.securityReviewer",
 	"roles/compute.loadBalancerAdmin",
 	"roles/resourcemanager.tagUser",
+	"roles/compute.networkAdmin",
 }
 
 // ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
