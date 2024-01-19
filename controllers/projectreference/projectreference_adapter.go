@@ -49,16 +49,17 @@ var OSDRequiredAPIS = []string{
 	"networksecurity.googleapis.com", // https://bugzilla.redhat.com/show_bug.cgi?id=2021731
 }
 
-// OSDRequiredRoles is a list of Roles that a service account
-// required to setup Openshift cluster
+// OSDRequiredRoles is a list of Roles for service account osd-managed-admin
+// used by the cloud-credential-operator to setup Openshift cluster
 var OSDRequiredRoles = []string{
-	"roles/storage.admin",
-	"roles/iam.serviceAccountUser",
-	"roles/iam.serviceAccountKeyAdmin",
-	"roles/iam.serviceAccountAdmin",
-	"roles/iam.securityAdmin",
-	"roles/dns.admin",
 	"roles/compute.admin",
+	"roles/dns.admin",
+        "roles/iam.roleAdmin",
+	"roles/iam.securityAdmin",
+	"roles/iam.serviceAccountAdmin",
+	"roles/iam.serviceAccountKeyAdmin",
+	"roles/iam.serviceAccountUser",
+        "roles/storage.admin",
 }
 
 // OSDSREConsoleAccessRoles is a list of Roles that a service account
