@@ -123,7 +123,7 @@ func (r *ProjectReferenceReconciler) ReconcileHandler(adapter *ReferenceAdapter,
 	}
 	for _, operation := range operations {
 		if log.Log.V(3).Enabled() {
-			log.Log.V(3).Info("func", strings.Split(goruntime.FuncForPC(reflect.ValueOf(operation).Pointer()).Name(), ".")[2])
+			log.Log.V(3).Info("func", "name", strings.Split(goruntime.FuncForPC(reflect.ValueOf(operation).Pointer()).Name(), ".")[2])
 		}
 		result, err := operation(adapter)
 		if err != nil || result.RequeueRequest {
