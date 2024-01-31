@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/api/v1alpha1"
-	condition "github.com/openshift/gcp-project-operator/pkg/condition"
+	"github.com/openshift/gcp-project-operator/pkg/condition"
 	operrors "github.com/openshift/gcp-project-operator/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
