@@ -75,7 +75,7 @@ type ProjectClaim struct {
 	Status ProjectClaimStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 // ProjectClaimList contains a list of ProjectClaim
 type ProjectClaimList struct {
 	metav1.TypeMeta `json:",inline"`

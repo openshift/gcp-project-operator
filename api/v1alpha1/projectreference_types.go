@@ -29,7 +29,7 @@ type ProjectReferenceSpec struct {
 	CCS                bool           `json:"ccs,omitempty"`
 	CCSSecretRef       NamespacedName `json:"ccsSecretRef,omitempty"`
 	ServiceAccountName string         `json:"serviceAccountName,omitempty"`
-	SharedVPCAccess     bool          `json:"sharedVPCAccess,omitempty"`
+	SharedVPCAccess    bool           `json:"sharedVPCAccess,omitempty"`
 }
 
 // ProjectReferenceStatus defines the observed state of ProjectReference
@@ -59,8 +59,8 @@ const (
 	ProjectReferenceStatusVerification ProjectReferenceState = "Verification"
 )
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // +k8s:openapi-gen=true
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state",description="Status of the ProjectReference"
 // +kubebuilder:printcolumn:name="ClaimName",type="string",JSONPath=".spec.projectClaimCRLink.name",description="Name of corresponding project claim CR"

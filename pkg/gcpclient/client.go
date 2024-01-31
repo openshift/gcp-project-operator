@@ -263,7 +263,7 @@ func (c *gcpClient) CreateServiceAccountKey(serviceAccountEmail string) (*iam.Se
 	return key, err
 }
 
-//DeleteServiceAccountKeys deletes all keys associated with the service account
+// DeleteServiceAccountKeys deletes all keys associated with the service account
 func (c *gcpClient) DeleteServiceAccountKeys(serviceAccountEmail string) error {
 	resource := fmt.Sprintf("projects/%s/serviceAccounts/%s", c.projectName, serviceAccountEmail)
 	response, err := c.iamClient.Projects.ServiceAccounts.Keys.List(resource).Do()
