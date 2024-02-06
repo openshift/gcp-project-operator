@@ -133,9 +133,7 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (util.OperationResult, error) 
 	}
 
 	if r.ProjectReference.Status.State == gcpv1alpha1.ProjectReferenceStatusReady && r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusReady {
-		// TODO: Revert back to util.StopProcessing().
-		// This is so that EnsureProjectConfigured will run for OSD-20579
-		return util.ContinueProcessing()
+		return util.StopProcessing()
 	}
 
 	res, err := r.ensureClaimAvailabilityZonesSet()
@@ -159,11 +157,6 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (util.OperationResult, error) 
 
 // VerifyProjectClaimPending waits until the ProjectClaim has been initialized, meaning is in state PendingProject
 func VerifyProjectClaimPending(r *ReferenceAdapter) (util.OperationResult, error) {
-	// TODO: Remove this block to continue processing when the ProjectClaim is Ready
-	// to ensure that EnsureProjectConfigured runs for OSD-20579
-	if r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusReady {
-		return util.ContinueProcessing()
-	}
 	if r.ProjectClaim.Status.State != gcpv1alpha1.ClaimStatusPendingProject {
 		return util.RequeueAfter(5*time.Second, nil)
 	}
