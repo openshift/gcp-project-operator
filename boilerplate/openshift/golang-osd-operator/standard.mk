@@ -21,17 +21,17 @@ endif
 # invocation; otherwise it could collide across jenkins jobs. We'll use
 # a .docker folder relative to pwd (the repo root).
 CONTAINER_ENGINE_CONFIG_DIR = .docker
-# But docker and podman use different options to configure it :eyeroll:
-# ==> Podman uses --authfile=PATH *after* the `login` subcommand; but
-# also accepts REGISTRY_AUTH_FILE from the env. See
-# https://www.mankier.com/1/podman-login#Options---authfile=path
 export REGISTRY_AUTH_FILE = ${CONTAINER_ENGINE_CONFIG_DIR}/config.json
+
 # If this configuration file doesn't exist, podman will error out. So
 # we'll create it if it doesn't exist.
 ifeq (,$(wildcard $(REGISTRY_AUTH_FILE)))
 $(shell mkdir -p $(CONTAINER_ENGINE_CONFIG_DIR))
-$(shell echo '{}' > $(REGISTRY_AUTH_FILE))
+# Copy the node container auth file so that we get access to the registries the
+# parent node has access to
+$(shell cp /var/lib/jenkins/.docker/config.json $(REGISTRY_AUTH_FILE))
 endif
+
 # ==> Docker uses --config=PATH *before* (any) subcommand; so we'll glue
 # that to the CONTAINER_ENGINE variable itself. (NOTE: I tried half a
 # dozen other ways to do this. This was the least ugly one that actually
@@ -41,9 +41,9 @@ CONTAINER_ENGINE=$(shell command -v podman 2>/dev/null || echo docker --config=$
 endif
 
 # Generate version and tag information from inputs
-COMMIT_NUMBER=$(shell git rev-list `git rev-list --parents HEAD | egrep "^[a-f0-9]{40}$$"`..HEAD --count)
+COMMIT_NUMBER=$(shell git rev-list `git rev-list --parents HEAD | grep -E "^[a-f0-9]{40}$$"`..HEAD --count)
 CURRENT_COMMIT=$(shell git rev-parse --short=7 HEAD)
-OPERATOR_VERSION=$(VERSION_MAJOR).$(VERSION_MINOR).$(COMMIT_NUMBER)-$(CURRENT_COMMIT)
+OPERATOR_VERSION=$(VERSION_MAJOR).$(VERSION_MINOR).$(COMMIT_NUMBER)-g$(CURRENT_COMMIT)
 
 OPERATOR_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)
 OPERATOR_IMAGE_TAG=v$(OPERATOR_VERSION)
@@ -52,6 +52,23 @@ OPERATOR_IMAGE_URI=${IMG}
 OPERATOR_IMAGE_URI_LATEST=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME):latest
 OPERATOR_DOCKERFILE ?=build/Dockerfile
 REGISTRY_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(IMAGE_NAME)-registry
+OPERATOR_REPO_NAME=$(shell git config --get remote.origin.url | sed 's,.*/,,; s/\.git$$//')
+
+ifeq ($(SUPPLEMENTARY_IMAGE_NAME),)
+# We need SUPPLEMENTARY_IMAGE to be defined for csv-generate.mk
+SUPPLEMENTARY_IMAGE=""
+else
+# If the configuration specifies a SUPPLEMENTARY_IMAGE_NAME
+# then append the image registry and generate the image URI.
+SUPPLEMENTARY_IMAGE=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(SUPPLEMENTARY_IMAGE_NAME)
+SUPPLEMENTARY_IMAGE_URI=$(IMAGE_REGISTRY)/$(IMAGE_REPOSITORY)/$(SUPPLEMENTARY_IMAGE_NAME):${OPERATOR_IMAGE_TAG}
+endif
+
+ifeq ($(EnableOLMSkipRange), true)
+SKIP_RANGE_ENABLED=true
+else
+SKIP_RANGE_ENABLED=false
+endif
 
 # Consumer can optionally define ADDITIONAL_IMAGE_SPECS like:
 #     define ADDITIONAL_IMAGE_SPECS
@@ -106,7 +123,7 @@ GOLANGCI_LINT_CACHE ?= /tmp/golangci-cache
 GOLANGCI_OPTIONAL_CONFIG ?=
 
 ifeq ($(origin TESTTARGETS), undefined)
-TESTTARGETS := $(shell ${GOENV} go list -e ./... | egrep -v "/(vendor)/" | egrep -v "/(osde2e)/")
+TESTTARGETS := $(shell ${GOENV} go list -e ./... | grep -E -v "/(vendor)/" | grep -E -v "/(osde2e)/")
 endif
 # ex, -v
 TESTOPTS :=
@@ -265,7 +282,7 @@ generate-check:
 
 .PHONY: yaml-validate
 yaml-validate: python-venv
-	${PYTHON} ${CONVENTION_DIR}/validate-yaml.py $(shell git ls-files | egrep -v '^(vendor|boilerplate)/' | egrep '.*\.ya?ml')
+	${PYTHON} ${CONVENTION_DIR}/validate-yaml.py $(shell git ls-files | grep -E -v '^(vendor|boilerplate)/' | grep -E '.*\.ya?ml')
 
 .PHONY: olm-deploy-yaml-validate
 olm-deploy-yaml-validate: python-venv
@@ -307,6 +324,7 @@ coverage:
 # TODO: Boilerplate this script.
 .PHONY: build-push
 build-push:
+	OPERATOR_VERSION="${OPERATOR_VERSION}" \
 	${CONVENTION_DIR}/app-sre-build-deploy.sh ${REGISTRY_IMAGE} ${CURRENT_COMMIT} "$$IMAGES_TO_BUILD"
 
 .PHONY: opm-build-push
@@ -364,3 +382,13 @@ container-validate:
 .PHONY: container-coverage
 container-coverage:
 	${BOILERPLATE_CONTAINER_MAKE} coverage
+
+.PHONY: rvmo-bundle
+rvmo-bundle:
+	RELEASE_BRANCH=$(RELEASE_BRANCH) \
+	REPO_NAME=$(OPERATOR_REPO_NAME) \
+	OPERATOR_NAME=$(OPERATOR_NAME) \
+	OPERATOR_VERSION=$(OPERATOR_VERSION) \
+	OPERATOR_OLM_REGISTRY_IMAGE=$(REGISTRY_IMAGE) \
+	TEMPLATE_DIR=$(abspath hack/release-bundle) \
+	bash ${CONVENTION_DIR}/rvmo-bundle.sh

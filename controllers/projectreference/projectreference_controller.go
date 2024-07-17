@@ -99,7 +99,7 @@ func (r *ProjectReferenceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	reason := "ReconcileError"
 	_ = adapter.SetProjectReferenceCondition(reason, err)
 
-	reqLogger.V(1).Info(fmt.Sprintf("Finished Reconcile. Error occured: %t, Requeing: %t, Delay: %d", err != nil, result.Requeue, result.RequeueAfter))
+	reqLogger.V(1).Info(fmt.Sprintf("Finished Reconcile. Error occurred: %t, Requeing: %t, Delay: %d", err != nil, result.Requeue, result.RequeueAfter))
 	return result, err
 }
 
