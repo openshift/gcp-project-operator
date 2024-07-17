@@ -184,7 +184,7 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (gcputil.Operation
 		c.projectClaim.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := c.client.Status().Update(context.TODO(), c.projectClaim)
 		if err != nil {
-			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initalize projectclaim"))
+			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initialize projectclaim"))
 		}
 		return gcputil.StopProcessing()
 	}

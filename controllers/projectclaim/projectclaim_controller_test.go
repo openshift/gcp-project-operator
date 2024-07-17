@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
+	"go.uber.org/mock/gomock"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"

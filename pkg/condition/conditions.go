@@ -63,7 +63,7 @@ func (c *ConditionManager) FindCondition(conditions *[]gcpv1alpha1.Condition, co
 	return &(*conditions)[len(*conditions)-1], false
 }
 
-// HasCondition checks for the existance of a given Condition type
+// HasCondition checks for the existence of a given Condition type
 func (c *ConditionManager) HasCondition(conditions *[]gcpv1alpha1.Condition, conditionType gcpv1alpha1.ConditionType) bool {
 	for _, condition := range *conditions {
 		if condition.Type == conditionType {

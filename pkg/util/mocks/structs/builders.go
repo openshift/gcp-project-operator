@@ -5,8 +5,8 @@ import (
 	//"github.com/stretchr/testify/assert"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	mockGCP "github.com/openshift/gcp-project-operator/pkg/util/mocks/gcpclient"
+	"go.uber.org/mock/gomock"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakekubeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"

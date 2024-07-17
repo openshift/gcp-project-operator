@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/mock/gomock"
 	"github.com/openshift/gcp-project-operator/pkg/configmap"
 	"github.com/openshift/gcp-project-operator/pkg/util"
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
+	"go.uber.org/mock/gomock"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iam/v1"
 	"k8s.io/apimachinery/pkg/types"

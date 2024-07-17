@@ -1,6 +1,6 @@
 module github.com/openshift/gcp-project-operator
 
-go 1.19
+go 1.22
 
 require (
 	github.com/cenkalti/backoff/v4 v4.1.3
@@ -10,6 +10,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.19.0
 	github.com/stretchr/testify v1.8.1
+	go.uber.org/mock v0.4.0
 	golang.org/x/oauth2 v0.11.0
 	google.golang.org/api v0.126.0
 	gopkg.in/yaml.v2 v2.4.0

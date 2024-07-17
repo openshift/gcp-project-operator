@@ -739,14 +739,14 @@ func EnsureProjectReferenceInitialized(r *ReferenceAdapter) (util.OperationResul
 		r.ProjectReference.Status.Conditions = []gcpv1alpha1.Condition{}
 		err := r.StatusUpdate()
 		if err != nil {
-			return util.RequeueWithError(operrors.Wrap(err, "failed to initalize ProjectReference"))
+			return util.RequeueWithError(operrors.Wrap(err, "failed to initialize ProjectReference"))
 		}
 		return util.StopProcessing()
 	}
 	return util.ContinueProcessing()
 }
 
-// AddorUpdateBindingResponse contines the data that is returned by the AddOrUpdarteBindings function
+// AddorUpdateBindingResponse contains the data that is returned by the AddOrUpdarteBindings function
 type AddorUpdateBindingResponse struct {
 	modified bool
 	policy   *cloudresourcemanager.Policy
