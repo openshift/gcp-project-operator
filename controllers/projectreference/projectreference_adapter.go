@@ -47,6 +47,7 @@ var OSDRequiredAPIS = []string{
 	"iamcredentials.googleapis.com",
 	"servicemanagement.googleapis.com",
 	"networksecurity.googleapis.com", // https://bugzilla.redhat.com/show_bug.cgi?id=2021731
+	"iap.googleapis.com ",            // https://issues.redhat.com/browse/OSD-25439 - required for PSC ssh access
 }
 
 // OSDRequiredRoles is a list of Roles for service account osd-managed-admin
@@ -73,6 +74,7 @@ var OSDSREConsoleAccessRoles = []string{
 	"roles/serviceusage.serviceUsageAdmin",
 	"roles/iam.roleAdmin",
 	"roles/cloudsupport.techSupportEditor",
+	"roles/iap.tunnelResourceAccessor", // https://issues.redhat.com/browse/OSD-25439 PSC SSH access
 }
 
 // OSDReadOnlyConsoleAccessRoles is a list of Roles that a service account
