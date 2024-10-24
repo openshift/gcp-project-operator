@@ -1,6 +1,5 @@
 reviewers:
 - boranx
-- NautiluX
 - pyates86
 - rafael-azevedo
 - sam-nguyen7
@@ -12,7 +11,6 @@ reviewers:
 - RaphaelBut
 - Tessg22
 approvers:
-- NautiluX
 - rafael-azevedo
 - boranx
 - bng0y
@@ -23,6 +21,5 @@ approvers:
 - RaphaelBut
 - Tessg22
 maintainers:
-- NautiluX
 - rafael-azevedo
 - bng0y
