@@ -1,4 +1,5 @@
 reviewers:
+- bergmannf
 - boranx
 - pyates86
 - rafael-azevedo
@@ -11,6 +12,7 @@ reviewers:
 - RaphaelBut
 - Tessg22
 approvers:
+- bergmannf
 - rafael-azevedo
 - boranx
 - bng0y
