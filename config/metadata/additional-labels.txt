@@ -1,0 +1,1 @@
+LABEL com.redhat.component="openshift-gcp-project-operator"       io.k8s.description="..."       description="..."       distribution-scope="public"       name="openshift/gcp-project-operator"       url="https://github.com/openshift/gcp-project-operator"       vendor="Red Hat, Inc."       release="v0.0.0"       version="v0.0.0"

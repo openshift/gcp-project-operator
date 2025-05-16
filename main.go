@@ -18,20 +18,16 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -75,11 +71,12 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		//TODO(): Fix this
+		//MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
 		HealthProbeBindAddress: probeAddr,
-		MapperProvider:         func(cfg *rest.Config) (meta.RESTMapper, error) { return apiutil.NewDynamicRESTMapper(cfg) },
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "f463560a.example.com",
+		//MapperProvider:         func(cfg *rest.Config) (meta.RESTMapper, error) { return apiutil.NewDynamicRESTMapper(cfg) },
+		LeaderElection:   enableLeaderElection,
+		LeaderElectionID: "f463560a.example.com",
 	})
 	if err != nil {
 		log.Error(err, "unable to start manager")
