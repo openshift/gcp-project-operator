@@ -605,9 +605,13 @@ type stubStatus struct{}
 
 var _ client.StatusWriter = stubStatus{}
 
-func (stubStatus) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (stubStatus) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
 	return nil
 }
-func (stubStatus) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
+func (stubStatus) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	return nil
+}
+
+func (stubStatus) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
 	return nil
 }

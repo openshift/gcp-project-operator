@@ -1,4 +1,4 @@
-FROM quay.io/app-sre/boilerplate:image-v5.0.1 AS builder
+FROM quay.io/redhat-services-prod/openshift/boilerplate:image-v7.3.0 AS builder
 ENV OPERATOR_PATH=/gcp-project-operator
 COPY . ${OPERATOR_PATH}
 WORKDIR ${OPERATOR_PATH}

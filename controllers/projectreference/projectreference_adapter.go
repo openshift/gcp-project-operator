@@ -47,7 +47,7 @@ var OSDRequiredAPIS = []string{
 	"iamcredentials.googleapis.com",
 	"servicemanagement.googleapis.com",
 	"networksecurity.googleapis.com", // https://bugzilla.redhat.com/show_bug.cgi?id=2021731
-	"iap.googleapis.com",            // https://issues.redhat.com/browse/OSD-25439 - required for PSC ssh access
+	"iap.googleapis.com",             // https://issues.redhat.com/browse/OSD-25439 - required for PSC ssh access
 }
 
 // OSDRequiredRoles is a list of Roles for service account osd-managed-admin
@@ -520,7 +520,7 @@ func (r *ReferenceAdapter) createProject(parentFolderID string) error {
 
 	r.logger.Info("Creating Project")
 	// If we cannot create the project clear the projectID from spec so we can try again with another unique key
-	_, creationFailed := r.gcpClient.CreateProject(parentFolderID, r.ProjectClaim.ObjectMeta.Name)
+	_, creationFailed := r.gcpClient.CreateProject(parentFolderID, r.ProjectClaim.Name)
 	if creationFailed != nil {
 		r.logger.V(1).Info("Clearing gcpProjectID from ProjectReferenceSpec")
 		//Todo() We need to requeue here ot it will continue to the next step.

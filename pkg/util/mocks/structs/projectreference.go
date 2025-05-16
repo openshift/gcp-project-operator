@@ -44,8 +44,8 @@ func NewProjectReferenceBuilder() *testProjectReferenceBuilder {
 }
 
 func (t *testProjectReferenceBuilder) WithNamespacedName(namespacedName types.NamespacedName) *testProjectReferenceBuilder {
-	t.p.ObjectMeta.Name = namespacedName.Name
-	t.p.ObjectMeta.Namespace = namespacedName.Namespace
+	t.p.Name = namespacedName.Name
+	t.p.Namespace = namespacedName.Namespace
 	return t
 }
 

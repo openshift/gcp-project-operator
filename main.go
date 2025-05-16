@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -34,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	gcpv1alpha1 "github.com/openshift/gcp-project-operator/api/v1alpha1"
 	"github.com/openshift/gcp-project-operator/controllers/projectclaim"
@@ -75,11 +77,15 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		MetricsBindAddress:     fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		Metrics: server.Options{
+			BindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		},
 		HealthProbeBindAddress: probeAddr,
-		MapperProvider:         func(cfg *rest.Config) (meta.RESTMapper, error) { return apiutil.NewDynamicRESTMapper(cfg) },
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "f463560a.example.com",
+		MapperProvider: func(cfg *rest.Config, httpClient *http.Client) (meta.RESTMapper, error) {
+			return apiutil.NewDynamicRESTMapper(cfg, httpClient)
+		},
+		LeaderElection:   enableLeaderElection,
+		LeaderElectionID: "gcp-project-operator.openshift.io",
 	})
 	if err != nil {
 		log.Error(err, "unable to start manager")

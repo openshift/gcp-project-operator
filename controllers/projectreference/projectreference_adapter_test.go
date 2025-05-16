@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	fakeError            = errors.New("fakeError")
+	errMock              = errors.New("mockError")
 	stopProcessingResult = util.OperationResult{
 		RequeueDelay:   0,
 		RequeueRequest: false,
@@ -309,7 +309,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 
 				Context("When it fails to get project", func() {
 					It("It requeues with error", func() {
-						mockGCPClient.EXPECT().ListProjects().Return(nil, fakeError)
+						mockGCPClient.EXPECT().ListProjects().Return(nil, errMock)
 						_, err := EnsureProjectCreated(adapter)
 						Expect(err).To(HaveOccurred())
 					})
@@ -327,7 +327,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					It("It requeues with error", func() {
 						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "DELETE_REQUESTED", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 						mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
-						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError)
+						mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errMock)
 						_, err := EnsureProjectCreated(adapter)
 						Expect(err).To(HaveOccurred())
 					})
@@ -349,8 +349,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					Context("When fails to clear projectID", func() {
 						It("It requeues with error", func() {
 							mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: "foo"}}, nil)
-							mockGCPClient.EXPECT().CreateProject(gomock.Any(), gomock.Any()).Return(nil, fakeError)
-							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(fakeError)
+							mockGCPClient.EXPECT().CreateProject(gomock.Any(), gomock.Any()).Return(nil, errMock)
+							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(errMock)
 							_, err := EnsureProjectCreated(adapter)
 							Expect(err).To(HaveOccurred())
 							Expect(strings.Contains(err.Error(), "could not clear project ID")).To(BeTrue())
@@ -360,7 +360,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					Context("When it clears projectID successfully", func() {
 						It("It requeues with error", func() {
 							mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: "foo"}}, nil)
-							mockGCPClient.EXPECT().CreateProject(gomock.Any(), gomock.Any()).Return(nil, fakeError)
+							mockGCPClient.EXPECT().CreateProject(gomock.Any(), gomock.Any()).Return(nil, errMock)
 							mockKubeClient.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 							_, err := EnsureProjectCreated(adapter)
 							Expect(err).To(HaveOccurred())
@@ -375,7 +375,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				Context("When it fails to list APIs", func() {
 					It("It requeues with error", func() {
 						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
-						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(nil, fakeError)
+						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(nil, errMock)
 						_, err := EnsureProjectCreated(adapter)
 						Expect(err).To(HaveOccurred())
 					})
@@ -385,7 +385,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					It("It requeues with error", func() {
 						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return([]string{"foo"}, nil)
-						mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).Return(fakeError)
+						mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).Return(errMock)
 						_, err := EnsureProjectCreated(adapter)
 						Expect(err).To(HaveOccurred())
 						Expect(strings.Contains(err.Error(), "Error enabling cloudbilling.googleapis.com api for project")).To(BeTrue())
@@ -396,7 +396,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					It("It requeues with error", func() {
 						mockGCPClient.EXPECT().ListProjects().Return([]*cloudresourcemanager.Project{{LifecycleState: "ACTIVE", ProjectId: projectReference.Spec.GCPProjectID}}, nil)
 						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return([]string{"cloudbilling.googleapis.com"}, nil)
-						mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(fakeError)
+						mockGCPClient.EXPECT().CreateCloudBillingAccount(gomock.Any(), gomock.Any()).Return(errMock)
 						_, err := EnsureProjectCreated(adapter)
 						Expect(err).To(HaveOccurred())
 						Expect(strings.Contains(err.Error(), "error creating CloudBilling")).To(BeTrue())
@@ -417,7 +417,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 		Context("When it fails to configure APIS", func() {
 			Context("When it fails to list APIs", func() {
 				It("It requeues with error", func() {
-					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return([]string{}, fakeError)
+					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return([]string{}, errMock)
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
@@ -426,7 +426,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Context("When it fails to enable APIs", func() {
 				It("It requeues with error", func() {
 					mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return([]string{}, nil)
-					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).Return(fakeError)
+					mockGCPClient.EXPECT().EnableAPI(gomock.Any(), gomock.Any()).Return(errMock)
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
@@ -439,8 +439,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					Context("When it fails to create Service Account with fakeError", func() {
 						It("It requeues with error", func() {
 							mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-							mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(nil, fakeError)
-							mockGCPClient.EXPECT().CreateServiceAccount(gomock.Any(), gomock.Any()).Return(nil, fakeError)
+							mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(nil, errMock)
+							mockGCPClient.EXPECT().CreateServiceAccount(gomock.Any(), gomock.Any()).Return(nil, errMock)
 							_, err := EnsureProjectConfigured(adapter)
 							Expect(err).To(HaveOccurred())
 						})
@@ -449,7 +449,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					Context("When it fails to create Service Account with matchesAlreadyExistsError", func() {
 						It("It requeues with delay", func() {
 							mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
-							mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(nil, fakeError)
+							mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(nil, errMock)
 							mockGCPClient.EXPECT().CreateServiceAccount(gomock.Any(), gomock.Any()).Return(nil, errors.New("googleapi: Error 409:foo"))
 							result, err := EnsureProjectConfigured(adapter)
 							Expect(err).ToNot(HaveOccurred())
@@ -468,7 +468,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					It("It requeues with error", func() {
 						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
 						mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(nil, fakeError)
+						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(nil, errMock)
 						_, err := EnsureProjectConfigured(adapter)
 						Expect(err).To(HaveOccurred())
 					})
@@ -479,7 +479,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 						mockGCPClient.EXPECT().ListAPIs(gomock.Any()).Return(OSDRequiredAPIS, nil)
 						mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 						mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
-						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, fakeError)
+						mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, errMock)
 						_, err := EnsureProjectConfigured(adapter)
 						Expect(err).To(HaveOccurred())
 					})
@@ -494,8 +494,8 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
-					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(nil, fakeError)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errMock)
+					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(nil, errMock)
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
@@ -507,9 +507,9 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errMock)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
-					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(nil, fakeError)
+					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(nil, errMock)
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
@@ -521,10 +521,10 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errMock)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
-					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(fakeError)
+					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(errMock)
 					_, err := EnsureProjectConfigured(adapter)
 					Expect(err).To(HaveOccurred())
 				})
@@ -550,7 +550,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 					mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
+					mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errMock)
 					mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 					mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
 					mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
@@ -566,7 +566,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 				mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 				mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errMock)
 				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
 				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
@@ -617,7 +617,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 				mockGCPClient.EXPECT().GetIamPolicy(gomock.Any()).Return(&cloudresourcemanager.Policy{}, nil)
 				mockGCPClient.EXPECT().SetIamPolicy(gomock.Any()).Return(nil, nil)
-				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(fakeError)
+				mockKubeClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(errMock)
 				mockGCPClient.EXPECT().GetServiceAccount(gomock.Any()).Return(&iam.ServiceAccount{Email: "foo"}, nil)
 				mockGCPClient.EXPECT().CreateServiceAccountKey(gomock.Any()).Return(&iam.ServiceAccountKey{PrivateKeyData: "YWRtaW4="}, nil)
 				mockKubeClient.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
