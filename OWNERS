@@ -1,27 +1,22 @@
 reviewers:
 - bergmannf
-- boranx
-- pyates86
 - rafael-azevedo
-- sam-nguyen7
 - bng0y
 - typeid
 - Makdaam
 - Nikokolas3270
-- ninabauer
 - RaphaelBut
-- Tessg22
+- srep-functional-team-aurora
 approvers:
 - bergmannf
 - rafael-azevedo
-- boranx
 - bng0y
 - typeid
 - Makdaam
 - Nikokolas3270
-- ninabauer
 - RaphaelBut
-- Tessg22
+- srep-functional-team-aurora
 maintainers:
+- srep-functional-team-aurora
 - rafael-azevedo
 - bng0y

@@ -24,7 +24,7 @@ func getCallerInfo() (string, int, string) {
 func Wrap(err error, message string) error {
 	f, l, fn := getCallerInfo()
 	if err != nil {
-		return fmt.Errorf("File: %v \nLine: %v \nCaller: %v \nMessage: %s \n%w\n\n", f, l, fn, message, err)
+		return fmt.Errorf("file: %v \nLine: %v \nCaller: %v \nMessage: %s \n%w", f, l, fn, message, err)
 	}
 	return nil
 }
