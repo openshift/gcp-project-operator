@@ -39,6 +39,7 @@ objects:
   spec:
     targetNamespaces:
     - gcp-project-operator
+    upgradeStrategy: TechPreviewUnsafeFailForward 
 
 - apiVersion: operators.coreos.com/v1alpha1
   kind: Subscription

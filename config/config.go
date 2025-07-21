@@ -15,6 +15,7 @@
 package config
 
 const (
-	OperatorName      string = "gcp-project-operator"
-	OperatorNamespace string = "gcp-project-operator"
+	OperatorName      	string = "gcp-project-operator"
+	OperatorNamespace 	string = "gcp-project-operator"
+	EnableOLMSkipRange 	string = "true"
 )
