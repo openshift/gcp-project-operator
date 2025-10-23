@@ -66,7 +66,7 @@ resources:
 tests:
 - as: e2e-binary-build-success
   commands: |
-    make e2e-harness-build
+    make e2e-binary-build
   container:
     from: src
   run_if_changed: ^(test/e2e/\.*|go\.mod|go\.sum)$
@@ -76,6 +76,7 @@ tests:
     make coverage
   container:
     from: src
+  skip_if_only_changed: ^(?:\.tekton|\.github)|\.md$|^(?:\.gitignore|OWNERS|LICENSE)$
   secret:
     mount_path: /tmp/secret
     name: ${CONSUMER_NAME}-codecov-token
@@ -93,14 +94,17 @@ tests:
   commands: make lint
   container:
     from: src
+  skip_if_only_changed: ^(?:\.tekton|\.github)|\.md$|^(?:\.gitignore|OWNERS|LICENSE)$
 - as: test
   commands: make test
   container:
     from: src
+  skip_if_only_changed: ^(?:\.tekton|\.github)|\.md$|^(?:\.gitignore|OWNERS|LICENSE)$
 - as: validate
   commands: make validate
   container:
     from: src
+  skip_if_only_changed: ^(?:\.tekton|\.github)|\.md$|^(?:\.gitignore|OWNERS|LICENSE)$
 zz_generated_metadata:
   branch: ${DEFAULT_BRANCH}
   org: ${CONSUMER_ORG}

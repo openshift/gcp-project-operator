@@ -1,4 +1,4 @@
-FROM quay.io/redhat-services-prod/openshift/boilerplate:image-v7.3.0 AS builder
+FROM quay.io/redhat-services-prod/openshift/boilerplate:image-v8.2.0 AS builder
 ENV OPERATOR_PATH=/gcp-project-operator
 COPY . ${OPERATOR_PATH}
 WORKDIR ${OPERATOR_PATH}
@@ -6,7 +6,7 @@ WORKDIR ${OPERATOR_PATH}
 # Build
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1752564239
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6-1760515502
 ENV OPERATOR_PATH=/gcp-project-operator \
     OPERATOR_BIN=gcp-project-operator
 
