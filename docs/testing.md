@@ -5,14 +5,14 @@ It is expected from PRs to add, modify or delete tests on case by case scenario.
 To contribute you need to be familiar with:
 
 * [Ginkgo](https://github.com/onsi/ginkgo) - BDD Testing Framework for Go
-* [GoMock](https://github.com/golang/mock) - a mocking framework for Go
+* [GoMock](https://github.com/uber-go/mock) - a mocking framework for Go
 
 ## GoMock
 
 To get the latest released version of `mockgen` tool use:
 
 ```zsh
-GO111MODULE=on go get github.com/golang/mock/mockgen@latest
+go install go.uber.org/mock/mockgen@v0.6.0
 ```
 
 ## Ginkgo
