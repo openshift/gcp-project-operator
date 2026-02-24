@@ -257,12 +257,6 @@ setup-envtest:
 		GOBIN=$(GOPATH)/bin go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest; \
 	fi
 
-.PHONY: download-envtest-assets
-download-envtest-assets: setup-envtest
-	@mkdir -p .testbin
-	@echo "Downloading kubebuilder test assets for linux/amd64..."
-	@$(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir $(shell pwd)/.testbin --os linux --arch amd64 >/dev/null
-
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
@@ -270,14 +264,26 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 .PHONY: go-test
-go-test: download-envtest-assets
+go-test: setup-envtest
 	# If for any reason we've made it this far and TESTTARGETS is still empty, fail early.
 	@if [ -z "$(TESTTARGETS)" ]; then \
 		echo "ERROR: TESTTARGETS is empty"; \
 		exit 1; \
 	fi
 
-	@ASSETS_PATH=$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir $(shell pwd)/.testbin --os linux --arch amd64); \
+	@echo "Setting up kubebuilder test assets..."; \
+	if [ -d "/usr/local/kubebuilder/k8s" ]; then \
+		ASSETS_PATH=$$(find /usr/local/kubebuilder/k8s -type d -name "*-linux-amd64" | head -1); \
+		echo "Using pre-installed test assets: $$ASSETS_PATH"; \
+	else \
+		echo "Pre-installed assets not found, downloading..."; \
+		ASSETS_PATH=$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path 2>&1); \
+		if [ $$? -ne 0 ]; then \
+			echo "ERROR: Could not obtain kubebuilder test assets: $$ASSETS_PATH"; \
+			exit 1; \
+		fi; \
+		echo "Downloaded test assets to: $$ASSETS_PATH"; \
+	fi; \
 	${GOENV} KUBEBUILDER_ASSETS="$$ASSETS_PATH" go test $(TESTOPTS) $(TESTTARGETS)
 
 .PHONY: python-venv
@@ -377,7 +383,7 @@ endif
 # If the command fails, starts a shell in the container so you can debug.
 # Set NONINTERACTIVE=true to skip the debug shell for CI/automation.
 .PHONY: container-test
-container-test: download-envtest-assets
+container-test:
 	${BOILERPLATE_CONTAINER_MAKE} test
 
 .PHONY: container-generate
