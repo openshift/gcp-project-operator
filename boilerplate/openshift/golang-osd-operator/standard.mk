@@ -272,9 +272,9 @@ go-test: setup-envtest
 	fi
 
 	@echo "Setting up kubebuilder test assets..."; \
-	ASSETS_PATH=$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) --arch amd64 --os linux -p path 2>&1); \
-	if [ $$? -ne 0 ]; then \
-		echo "ERROR: Could not obtain kubebuilder test assets: $$ASSETS_PATH"; \
+	if ! ASSETS_PATH=$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) --arch amd64 --os linux --bin-dir /tmp/envtest-binaries -p path 2>&1); then \
+		echo "ERROR: Could not obtain kubebuilder test assets"; \
+		echo "Output: $$ASSETS_PATH"; \
 		exit 1; \
 	fi; \
 	echo "Using test assets: $$ASSETS_PATH"; \
