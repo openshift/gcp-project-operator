@@ -246,12 +246,22 @@ go-build: ## Build binary
 	${GOENV} go build ${GOBUILDFLAGS} -o build/_output/bin/$(OPERATOR_NAME) .
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.23
-SETUP_ENVTEST = setup-envtest
+ENVTEST_K8S_VERSION = 1.28.0
+GOPATH ?= $(shell go env GOPATH)
+SETUP_ENVTEST = $(GOPATH)/bin/setup-envtest
 
 .PHONY: setup-envtest
 setup-envtest:
-	$(eval KUBEBUILDER_ASSETS := "$(shell $(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir /tmp/envtest/bin)")
+	@if [ ! -f "$(SETUP_ENVTEST)" ]; then \
+		echo "Installing setup-envtest..."; \
+		GOBIN=$(GOPATH)/bin go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest; \
+	fi
+
+.PHONY: download-envtest-assets
+download-envtest-assets: setup-envtest
+	@mkdir -p .testbin
+	@echo "Downloading kubebuilder test assets for linux/amd64..."
+	@$(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir $(shell pwd)/.testbin --os linux --arch amd64 >/dev/null
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
@@ -260,14 +270,15 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 .PHONY: go-test
-go-test: setup-envtest
+go-test: download-envtest-assets
 	# If for any reason we've made it this far and TESTTARGETS is still empty, fail early.
 	@if [ -z "$(TESTTARGETS)" ]; then \
 		echo "ERROR: TESTTARGETS is empty"; \
 		exit 1; \
 	fi
 
-	${GOENV} KUBEBUILDER_ASSETS=$(KUBEBUILDER_ASSETS) go test $(TESTOPTS) $(TESTTARGETS)
+	@ASSETS_PATH=$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path --bin-dir $(shell pwd)/.testbin --os linux --arch amd64); \
+	${GOENV} KUBEBUILDER_ASSETS="$$ASSETS_PATH" go test $(TESTOPTS) $(TESTTARGETS)
 
 .PHONY: python-venv
 python-venv:
@@ -366,7 +377,7 @@ endif
 # If the command fails, starts a shell in the container so you can debug.
 # Set NONINTERACTIVE=true to skip the debug shell for CI/automation.
 .PHONY: container-test
-container-test:
+container-test: download-envtest-assets
 	${BOILERPLATE_CONTAINER_MAKE} test
 
 .PHONY: container-generate
