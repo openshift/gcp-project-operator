@@ -272,18 +272,12 @@ go-test: setup-envtest
 	fi
 
 	@echo "Setting up kubebuilder test assets..."; \
-	if [ -d "/usr/local/kubebuilder/k8s" ]; then \
-		ASSETS_PATH=$$(find /usr/local/kubebuilder/k8s -type d -name "*-linux-amd64" | head -1); \
-		echo "Using pre-installed test assets: $$ASSETS_PATH"; \
-	else \
-		echo "Pre-installed assets not found, downloading..."; \
-		ASSETS_PATH=$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path 2>&1); \
-		if [ $$? -ne 0 ]; then \
-			echo "ERROR: Could not obtain kubebuilder test assets: $$ASSETS_PATH"; \
-			exit 1; \
-		fi; \
-		echo "Downloaded test assets to: $$ASSETS_PATH"; \
+	ASSETS_PATH=$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) --arch amd64 --os linux -p path 2>&1); \
+	if [ $$? -ne 0 ]; then \
+		echo "ERROR: Could not obtain kubebuilder test assets: $$ASSETS_PATH"; \
+		exit 1; \
 	fi; \
+	echo "Using test assets: $$ASSETS_PATH"; \
 	${GOENV} KUBEBUILDER_ASSETS="$$ASSETS_PATH" go test $(TESTOPTS) $(TESTTARGETS)
 
 .PHONY: python-venv
