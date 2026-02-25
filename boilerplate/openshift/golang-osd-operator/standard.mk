@@ -245,8 +245,8 @@ endif
 go-build: ## Build binary
 	${GOENV} go build ${GOBUILDFLAGS} -o build/_output/bin/$(OPERATOR_NAME) .
 
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.28.0
+SETUP_ENVTEST_VERSION = release-0.23
 GOPATH ?= $(shell go env GOPATH)
 SETUP_ENVTEST = $(GOPATH)/bin/setup-envtest
 
@@ -254,7 +254,7 @@ SETUP_ENVTEST = $(GOPATH)/bin/setup-envtest
 setup-envtest:
 	@if [ ! -f "$(SETUP_ENVTEST)" ]; then \
 		echo "Installing setup-envtest..."; \
-		GOBIN=$(GOPATH)/bin go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest; \
+		GOBIN=$(GOPATH)/bin go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(SETUP_ENVTEST_VERSION); \
 	fi
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
