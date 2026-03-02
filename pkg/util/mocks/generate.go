@@ -7,5 +7,5 @@ package mocks
 // Dependency: mockgen, via:
 //    go install go.uber.org/mock/mockgen@v0.6.0
 
-//go:generate mockgen -destination ./cr-client.go -package mocks sigs.k8s.io/controller-runtime/pkg/client Client
-//go:generate mockgen -destination ./status-writer.go -package mocks sigs.k8s.io/controller-runtime/pkg/client StatusWriter
+//go:generate go run go.uber.org/mock/mockgen -destination ./cr-client.go -package mocks sigs.k8s.io/controller-runtime/pkg/client Client
+//go:generate go run go.uber.org/mock/mockgen -destination ./status-writer.go -package mocks sigs.k8s.io/controller-runtime/pkg/client StatusWriter

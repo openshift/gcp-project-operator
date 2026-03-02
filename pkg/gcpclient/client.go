@@ -1,6 +1,6 @@
 package gcpclient
 
-//go:generate mockgen -destination=../util/mocks/$GOPACKAGE/client.go -package=$GOPACKAGE -source client.go
+//go:generate go run go.uber.org/mock/mockgen -destination=../util/mocks/$GOPACKAGE/client.go -package=$GOPACKAGE -source client.go
 //go:generate gofmt -s -l -w ../util/mocks/$GOPACKAGE/client.go
 
 import (
