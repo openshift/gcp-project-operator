@@ -9,35 +9,23 @@ parameters:
     required: true
   - name: IMAGE_DIGEST
     required: true
+  - name: OPERATOR_IMAGE
+    required: true
   - name: NAMESPACE
     value: openshift-gcp-project-operator
   - name: REPO_NAME
     value: gcp-project-operator
     required: true
 metadata:
-  name: selectorsyncset-template
+  name: clusterpackage-template
 objects:
-  - apiVersion: hive.openshift.io/v1
-    kind: SelectorSyncSet
+  - apiVersion: package-operator.run/v1alpha1
+    kind: ClusterPackage
     metadata:
-      labels:
-        managed.openshift.io/gitHash: ${IMAGE_TAG}
-        managed.openshift.io/gitRepoName: ${REPO_NAME}
-        managed.openshift.io/osd: "true"
-      name: gcp-project-operator-stage
+      name: "${REPO_NAME}"
+      annotations:
+        package-operator.run/collision-protection: IfNoController
     spec:
-      clusterDeploymentSelector:
-        matchLabels:
-          api.openshift.com/managed: "true"
-      resourceApplyMode: Sync
-      resources:
-        - apiVersion: package-operator.run/v1alpha1
-          kind: ClusterPackage
-          metadata:
-            name: "${REPO_NAME}"
-            annotations:
-              package-operator.run/collision-protection: IfNoController
-          spec:
-            image: ${PKO_IMAGE}:${IMAGE_TAG}
-            config:
-              image: ${OPERATOR_IMAGE}:${IMAGE_TAG}
+      image: ${PKO_IMAGE}:${IMAGE_TAG}
+      config:
+        image: ${OPERATOR_IMAGE}:${IMAGE_TAG}
