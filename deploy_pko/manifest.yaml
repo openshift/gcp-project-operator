@@ -33,4 +33,16 @@ spec:
           description: Operator image to deploy
           type: string
           default: None
-        type: object
+        billingAccount:
+          description: GCP billing account ID
+          type: string
+        parentFolderID:
+          description: GCP parent folder ID for project organization
+          type: string
+        ccsConsoleAccess:
+          description: Console access configuration (YAML array format)
+          type: string
+        disabledRegions:
+          description: Regions where project creation is disabled (YAML array format)
+          type: string
+      type: object

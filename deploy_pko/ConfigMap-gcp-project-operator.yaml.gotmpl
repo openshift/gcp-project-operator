@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gcp-project-operator
+  namespace: gcp-project-operator
+  annotations:
+    package-operator.run/phase: namespace
+    package-operator.run/collision-protection: IfNoController
+data:
+  config.yaml: |
+    billingAccount: "{{ .config.billingAccount }}"
+    parentFolderID: "{{ .config.parentFolderID }}"
+    ccsConsoleAccess: {{ .config.ccsConsoleAccess }}
+    disabledRegions: {{ .config.disabledRegions }}
