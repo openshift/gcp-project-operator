@@ -16,6 +16,14 @@ parameters:
   - name: REPO_NAME
     value: gcp-project-operator
     required: true
+  - name: PARENT_FOLDER_ID
+    required: true
+  - name: BILLING_ACCOUNT
+    required: true
+  - name: CCS_CONSOLE_ACCESS
+    required: true
+  - name: DISABLED_REGIONS
+    required: true
 metadata:
   name: clusterpackage-template
 objects:
@@ -29,3 +37,7 @@ objects:
       image: ${PKO_IMAGE}:${IMAGE_TAG}
       config:
         image: ${OPERATOR_IMAGE}:${IMAGE_TAG}
+        billingAccount: ${BILLING_ACCOUNT}
+        parentFolderID: ${PARENT_FOLDER_ID}
+        ccsConsoleAccess: ${CCS_CONSOLE_ACCESS}
+        disabledRegions: ${DISABLED_REGIONS}
