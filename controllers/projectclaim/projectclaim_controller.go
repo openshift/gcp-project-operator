@@ -30,7 +30,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-//go:generate mockgen -destination=../../pkg/util/mocks/$GOPACKAGE/customeresourceadapter.go -package=$GOPACKAGE github.com/openshift/gcp-project-operator/controllers/projectclaim CustomResourceAdapter
+//go:generate go run go.uber.org/mock/mockgen -destination=../../pkg/util/mocks/$GOPACKAGE/customeresourceadapter.go -package=$GOPACKAGE github.com/openshift/gcp-project-operator/controllers/projectclaim CustomResourceAdapter
 type CustomResourceAdapter interface {
 	EnsureProjectClaimFakeProcessed() (gcputil.OperationResult, error)
 	EnsureProjectClaimDeletionProcessed() (gcputil.OperationResult, error)

@@ -1,16 +1,15 @@
 module github.com/openshift/gcp-project-operator
 
-go 1.23
+go 1.23.0
 
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/go-logr/logr v1.2.4
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.1
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.10
-	github.com/stretchr/testify v1.8.2
-	go.uber.org/mock v0.4.0
+	github.com/stretchr/testify v1.9.0
+	go.uber.org/mock v0.6.0
 	golang.org/x/oauth2 v0.11.0
 	google.golang.org/api v0.126.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -65,15 +64,16 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.25.0 // indirect
-	golang.org/x/crypto v0.33.0 // indirect
+	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
-	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/term v0.29.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/mod v0.27.0 // indirect
+	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/term v0.34.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	golang.org/x/tools v0.36.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect

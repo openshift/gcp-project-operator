@@ -21,6 +21,7 @@ import (
 type MockConditions struct {
 	ctrl     *gomock.Controller
 	recorder *MockConditionsMockRecorder
+	isgomock struct{}
 }
 
 // MockConditionsMockRecorder is the mock recorder for MockConditions.
