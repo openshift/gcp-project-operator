@@ -45,4 +45,4 @@ spec:
         disabledRegions:
           description: Regions where project creation is disabled (YAML array format)
           type: string
-      type: object
+    type: object
