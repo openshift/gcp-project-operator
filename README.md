@@ -15,7 +15,7 @@ GCP Project Operator is one of the operators used for provisioning [OpenShift De
 
 > You can get a quick overview of what's happening inside the Operator by watching [this video](https://www.youtube.com/watch?v=BQmvN9248sI).
 
-If you like to contribute to GCP Project Operator, please be so kind to read our [Contribution Policy](./docs/CONTRIBUTING.md) first.
+If you like to contribute to GCP Project Operator, please be so kind to read our [Contributing Guide](./CONTRIBUTING.md) first.
 
 ----
 

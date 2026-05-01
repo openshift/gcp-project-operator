@@ -30,7 +30,7 @@ objects:
       securityContextConfig: restricted
     image: ${REGISTRY_IMG}@${IMAGE_DIGEST}
     displayName: gcp-project-operator Registry
-    publisher: SRE 
+    publisher: SRE
 
 - apiVersion: operators.coreos.com/v1
   kind: OperatorGroup
@@ -39,7 +39,7 @@ objects:
   spec:
     targetNamespaces:
     - gcp-project-operator
-    upgradeStrategy: TechPreviewUnsafeFailForward 
+    upgradeStrategy: TechPreviewUnsafeFailForward
 
 - apiVersion: operators.coreos.com/v1alpha1
   kind: Subscription

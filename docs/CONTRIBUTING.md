@@ -28,6 +28,6 @@ As a best practice, the project requires tests to be submitted at the same PR wi
 
 ## An example PR template
 
-Here is a [PR template](./PULL_REQUEST_TEMPLATE.md) which can be used by contributors. 
+Here is a [PR template](./PULL_REQUEST_TEMPLATE.md) which can be used by contributors.
 After having both `/lgtm` and `/approve` labels from approvers and reviewers, your PR will be merged by `Openshift Merge Bot`
 To prevent any accidental merge, marking the PR as `work in progress` by adding the `[WIP]` tag would be nice

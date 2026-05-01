@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development Workflow
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for complete setup instructions, validation commands, and testing procedures.
+
+**Note for Claude Code users:** The stop hook automatically runs `prek run --all-files` before Claude stops, catching validation issues early. Human developers should follow the setup in CONTRIBUTING.md to install pre-commit hooks.
+
 ## Common Development Commands
 
 ### Building and Testing

@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(prek run --all-files)",
+      "Bash(make go-check)",
+      "Bash(make lint)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/stop-prek-validation.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,4 +1,4 @@
-### What type of PR is this? 
+### What type of PR is this?
 _(bug/feature/cleanup/docs/design/test/chore/refactor..)_
 
 ### What this PR does / why we need it:
