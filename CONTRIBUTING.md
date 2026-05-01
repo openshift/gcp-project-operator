@@ -161,20 +161,16 @@ make
 ### Running Tests
 
 ```bash
-# Run all tests
+# Preferred: use make target (includes envtest setup)
 make go-test
 
-# Run tests directly with go
-go test ./...
-
-# Run specific package tests
-go test ./controllers/projectclaim/
-
-# Run with verbose output
-go test -v ./...
-
-# Run with coverage
-go test -cover ./...
+# Advanced: run go test directly only after envtest setup
+# The repository requires kubebuilder test assets to be set up first.
+# If you've already run make go-test once, you can use:
+go test ./...                          # Run all tests
+go test ./controllers/projectclaim/    # Run specific package tests
+go test -v ./...                       # Run with verbose output
+go test -cover ./...                   # Run with coverage
 ```
 
 ### Writing Tests
