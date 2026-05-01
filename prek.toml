@@ -1,0 +1,18 @@
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "trailing-whitespace", exclude = "^boilerplate/" },
+  { id = "end-of-file-fixer", exclude = "^boilerplate/" },
+  { id = "check-added-large-files" },
+  { id = "check-case-conflict" },
+  { id = "check-merge-conflict" },
+  { id = "check-json", exclude = "^boilerplate/" },
+  { id = "check-yaml", args = ["--allow-multiple-documents"], exclude = "^boilerplate/" },
+  { id = "check-toml", exclude = "^boilerplate/" },
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "golangci-lint", name = "golangci-lint", language = "system", entry = "make go-check", always_run = false, pass_filenames = false },
+]

@@ -29,6 +29,9 @@ testbin/*
 *.swo
 *~
 
+# Claude Code logs
+claude_logs.txt
+
 ### boilerplate
 .operator-sdk/
 .venv

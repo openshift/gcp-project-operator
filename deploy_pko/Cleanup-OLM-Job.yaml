@@ -1,7 +1,7 @@
 ---
 # This Job cleans up old OLM resources after migrating to PKO
 # IMPORTANT: Review and customize this template before deploying!
-# 
+#
 # Things to customize:
 # 1. Adjust the namespace if needed
 # 2. Modify resource filters (CSV names, labels, etc.)

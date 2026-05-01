@@ -18,7 +18,7 @@ panic: no matches for kind "ProjectClaim" in version "gcp.managed.openshift.io/v
 
 goroutine 1 [running]:
 main.main()
-        FATA[0001] Failed to run operator locally: failed to run operator locally: failed to exec []string{"build/_output/bin/gcp-project-operator-local"}: exit status 2 
+        FATA[0001] Failed to run operator locally: failed to run operator locally: failed to exec []string{"build/_output/bin/gcp-project-operator-local"}: exit status 2
 ```
 
 ### Explanation

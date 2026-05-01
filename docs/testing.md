@@ -62,4 +62,3 @@ For instance, if you make any modification to the file `./pkg/gcpclient/client.g
 The `mockgen` binary helps us by doing this task for us, by running `mockgen -destination=../util/mocks/$GOPACKAGE/client.go -package=$GOPACKAGE -source client.go`.
 
 The same stands for the other packages, such as `./pkg/controller/projectclaim/projectclaim_controller.go` where we need to run `mockgen -destination=../../util/mocks/$GOPACKAGE/customeresourceadapter.go -package=$GOPACKAGE github.com/openshift/gcp-project-operator/pkg/controller/projectclaim CustomResourceAdapter`.
-

@@ -47,4 +47,3 @@ https://cloud.google.com/iam/docs/creating-managing-service-account-keys#creatin
 uploading service account keys [sa-test] to [gcp-project-operator:secret/gcp-project-operator-credentials]
 secret/gcp-project-operator-credentials created
 ```
-
