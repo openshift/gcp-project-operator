@@ -82,7 +82,7 @@ func (r *ProjectClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	conditionManager := condition.NewConditionManager()
-	adapter := NewProjectClaimAdapter(instance, reqLogger, r.Client, conditionManager)
+	adapter := NewProjectClaimAdapter(ctx, instance, reqLogger, r.Client, conditionManager)
 	result, err := r.ReconcileHandler(adapter)
 	reason := "ReconcileError"
 	_, _ = adapter.SetProjectClaimCondition(gcpv1alpha1.ConditionError, reason, err)

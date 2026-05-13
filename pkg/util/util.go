@@ -22,18 +22,18 @@ const (
 )
 
 // SecretExists returns a boolean to the caller based on the secretName and namespace args.
-func SecretExists(kubeClient client.Client, secretName, namespace string) bool {
+func SecretExists(ctx context.Context, kubeClient client.Client, secretName, namespace string) bool {
 	s := &corev1.Secret{}
 
-	err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: secretName, Namespace: namespace}, s)
+	err := kubeClient.Get(ctx, kubetypes.NamespacedName{Name: secretName, Namespace: namespace}, s)
 	return err == nil
 }
 
 // GetSecret returns a secret based on a secretName and namespace.
-func GetSecret(kubeClient client.Client, secretName, namespace string) (*corev1.Secret, error) {
+func GetSecret(ctx context.Context, kubeClient client.Client, secretName, namespace string) (*corev1.Secret, error) {
 	s := &corev1.Secret{}
 
-	err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: secretName, Namespace: namespace}, s)
+	err := kubeClient.Get(ctx, kubetypes.NamespacedName{Name: secretName, Namespace: namespace}, s)
 
 	if err != nil {
 		return &corev1.Secret{}, err
@@ -60,9 +60,9 @@ func NewGCPSecretCR(creds string, namespacedNamed kubetypes.NamespacedName) *cor
 }
 
 // GetGCPCredentialsFromSecret extracts the gcp credentials from a secret. return value is a bytearray
-func GetGCPCredentialsFromSecret(kubeClient client.Client, namespace, name string) ([]byte, error) {
+func GetGCPCredentialsFromSecret(ctx context.Context, kubeClient client.Client, namespace, name string) ([]byte, error) {
 	secret := &corev1.Secret{}
-	err := kubeClient.Get(context.TODO(),
+	err := kubeClient.Get(ctx,
 		kubetypes.NamespacedName{
 			Namespace: namespace,
 			Name:      name,
@@ -169,7 +169,7 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 	exists = false
 	index = -1
 
-	switch reflect.TypeOf(haystack).Kind() {
+	switch reflect.TypeOf(haystack).Kind() { //nolint:exhaustive
 	default:
 
 	case reflect.Slice:

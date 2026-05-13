@@ -21,7 +21,9 @@ import (
 )
 
 type ProjectClaimAdapter struct {
-	projectClaim     *gcpv1alpha1.ProjectClaim
+	projectClaim *gcpv1alpha1.ProjectClaim
+	ctx          context.Context //nolint:containedctx
+
 	logger           logr.Logger
 	client           client.Client
 	projectReference *gcpv1alpha1.ProjectReference
@@ -40,9 +42,9 @@ const CCSSecretFinalizer string = "finalizer.gcp.managed.openshift.io/ccs" //#no
 const RegionCheckFailed string = "RegionCheckFailed"
 const FakeProjectClaim string = "managed.openshift.com/fake"
 
-func NewProjectClaimAdapter(projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, manager condition.Conditions) *ProjectClaimAdapter {
+func NewProjectClaimAdapter(ctx context.Context, projectClaim *gcpv1alpha1.ProjectClaim, logger logr.Logger, client client.Client, manager condition.Conditions) *ProjectClaimAdapter {
 	projectReference := newMatchingProjectReference(projectClaim)
-	return &ProjectClaimAdapter{projectClaim, logger, client, projectReference, manager}
+	return &ProjectClaimAdapter{projectClaim, ctx, logger, client, projectReference, manager}
 }
 
 // newMatchingProjectReference creates a ProjectReference CR from a ProjectClaim
@@ -74,7 +76,7 @@ func newMatchingProjectReference(projectClaim *gcpv1alpha1.ProjectClaim) *gcpv1a
 // ProjectReferenceExists checks whether a matching ProjectReference already exists
 func (c *ProjectClaimAdapter) ProjectReferenceExists() (bool, error) {
 	found := &gcpv1alpha1.ProjectReference{}
-	err := c.client.Get(context.TODO(), types.NamespacedName{Name: c.projectReference.Name, Namespace: c.projectReference.Namespace}, found)
+	err := c.client.Get(c.ctx, types.NamespacedName{Name: c.projectReference.Name, Namespace: c.projectReference.Namespace}, found)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return false, nil
@@ -140,7 +142,7 @@ func (c *ProjectClaimAdapter) deleteFinalizer(object client.Object, finalizer st
 	finalizers := metadata.GetFinalizers()
 	if gcputil.Contains(finalizers, finalizer) {
 		metadata.SetFinalizers(gcputil.Filter(finalizers, finalizer))
-		return c.client.Update(context.TODO(), object)
+		return c.client.Update(c.ctx, object)
 	}
 	return nil
 }
@@ -154,7 +156,7 @@ func (c *ProjectClaimAdapter) FinalizeProjectClaim() (ObjectState, error) {
 
 	projectReferenceDeletionRequested := c.IsProjectReferenceDeletion()
 	if projectReferenceExists && !projectReferenceDeletionRequested {
-		err := c.client.Delete(context.TODO(), c.projectReference)
+		err := c.client.Delete(c.ctx, c.projectReference)
 		if err != nil {
 			return ObjectUnchanged, err
 		}
@@ -182,7 +184,7 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimInitialized() (gcputil.Operation
 
 	if c.projectClaim.Status.Conditions == nil {
 		c.projectClaim.Status.Conditions = []gcpv1alpha1.Condition{}
-		err := c.client.Status().Update(context.TODO(), c.projectClaim)
+		err := c.client.Status().Update(c.ctx, c.projectClaim)
 		if err != nil {
 			return gcputil.RequeueWithError(operrors.Wrap(err, "failed to initialize projectclaim"))
 		}
@@ -201,7 +203,7 @@ func (c *ProjectClaimAdapter) EnsureProjectReferenceLink() (gcputil.OperationRes
 		return gcputil.ContinueProcessing()
 	}
 	c.projectClaim.Spec.ProjectReferenceCRLink = expectedLink
-	err := c.client.Update(context.TODO(), c.projectClaim)
+	err := c.client.Update(c.ctx, c.projectClaim)
 	if err != nil {
 		return gcputil.RequeueWithError(err)
 	}
@@ -241,7 +243,7 @@ func (c *ProjectClaimAdapter) addFinalizer(object client.Object, finalizer strin
 	finalizers := metadata.GetFinalizers()
 	if !gcputil.Contains(finalizers, finalizer) {
 		metadata.SetFinalizers(append(finalizers, finalizer))
-		return c.client.Update(context.TODO(), object)
+		return c.client.Update(c.ctx, object)
 	}
 	return nil
 }
@@ -253,7 +255,7 @@ func (c *ProjectClaimAdapter) getCCSSecret() (*corev1.Secret, error) {
 		Namespace: c.projectClaim.Spec.CCSSecretRef.Namespace,
 		Name:      c.projectClaim.Spec.CCSSecretRef.Name,
 	}
-	err := c.client.Get(context.TODO(), secretName, secret)
+	err := c.client.Get(c.ctx, secretName, secret)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +271,7 @@ func (c *ProjectClaimAdapter) EnsureProjectReferenceExists() (gcputil.OperationR
 
 	if !projectReferenceExists {
 		return gcputil.RequeueOnErrorOrContinue(
-			c.client.Create(context.TODO(), c.projectReference))
+			c.client.Create(c.ctx, c.projectReference))
 	}
 	return gcputil.ContinueProcessing()
 }
@@ -331,7 +333,7 @@ func (c *ProjectClaimAdapter) IsRegionSupported() (bool, error) {
 		return true, nil
 	}
 
-	operatorConfigMap, err := configmap.GetOperatorConfigMap(c.client)
+	operatorConfigMap, err := configmap.GetOperatorConfigMap(c.ctx, c.client)
 	if err != nil {
 		return true, operrors.Wrap(err, "could not find the OperatorConfigMap")
 	}
@@ -362,7 +364,7 @@ func (c *ProjectClaimAdapter) EnsureRegionSupported() (gcputil.OperationResult, 
 
 // StatusUpdate updates the project claim status
 func (c *ProjectClaimAdapter) StatusUpdate() error {
-	if err := c.client.Status().Update(context.TODO(), c.projectClaim); err != nil {
+	if err := c.client.Status().Update(c.ctx, c.projectClaim); err != nil {
 		return operrors.Wrap(err, fmt.Sprintf("failed to update ProjectClaim state for %s", c.projectClaim.Name))
 	}
 

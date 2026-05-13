@@ -1,6 +1,8 @@
 package projectreference_test
 
 import (
+	"context"
+
 	"errors"
 	"strings"
 	"time"
@@ -74,7 +76,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 	JustBeforeEach(func() {
 		claimLink := types.NamespacedName{Name: projectReference.Spec.ProjectClaimCRLink.Name, Namespace: projectReference.Spec.ProjectClaimCRLink.Namespace}
 		mockKubeClient.EXPECT().Get(gomock.Any(), claimLink, gomock.Any()).SetArg(2, *projectClaim)
-		adapter, err = NewReferenceAdapter(projectReference, logf.Log.WithName("Test Logger"), mockKubeClient, mockGCPClient, mockConditions, configMap)
+		adapter, err = NewReferenceAdapter(context.TODO(), projectReference, logf.Log.WithName("Test Logger"), mockKubeClient, mockGCPClient, mockConditions, configMap)
 		Expect(err).NotTo(HaveOccurred())
 	})
 	Context("generated project names", func() {

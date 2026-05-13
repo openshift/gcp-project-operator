@@ -16,7 +16,7 @@ import (
 )
 
 func (c *ProjectClaimAdapter) CreateFakeSecret() error {
-	if !gcputil.SecretExists(c.client, c.projectClaim.Spec.GCPCredentialSecret.Name, c.projectClaim.Spec.GCPCredentialSecret.Namespace) {
+	if !gcputil.SecretExists(c.ctx, c.client, c.projectClaim.Spec.GCPCredentialSecret.Name, c.projectClaim.Spec.GCPCredentialSecret.Namespace) {
 		privateKeyString, err := base64.StdEncoding.DecodeString("SS1hbS1mYWtlLXBhc3M=")
 		if err != nil {
 			return err
