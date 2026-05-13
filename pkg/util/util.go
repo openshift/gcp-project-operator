@@ -69,7 +69,7 @@ func GetGCPCredentialsFromSecret(kubeClient client.Client, namespace, name strin
 		},
 		secret)
 	if err != nil {
-		return []byte{}, fmt.Errorf("GetGCPCredentialsFromSecret.Get %v", err)
+		return []byte{}, fmt.Errorf("GetGCPCredentialsFromSecret.Get %w", err)
 	}
 	var osServiceAccountJSON []byte
 	var ok bool
@@ -170,7 +170,10 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 	index = -1
 
 	switch reflect.TypeOf(haystack).Kind() {
+	default:
+
 	case reflect.Slice:
+
 		s := reflect.ValueOf(haystack)
 
 		for i := 0; i < s.Len(); i++ {

@@ -45,7 +45,7 @@ func GetOperatorConfigMap(kubeClient client.Client) (OperatorConfigMap, error) {
 	var operatorConfigMap OperatorConfigMap
 	configmap := &corev1.ConfigMap{}
 	if err := kubeClient.Get(context.TODO(), kubetypes.NamespacedName{Name: OperatorConfigMapName, Namespace: OperatorConfigMapNamespace}, configmap); err != nil {
-		return operatorConfigMap, fmt.Errorf("unable to get configmap: %v", err)
+		return operatorConfigMap, fmt.Errorf("unable to get configmap: %w", err)
 	}
 
 	if data, ok := configmap.Data[OperatorConfigMapKey]; !ok {

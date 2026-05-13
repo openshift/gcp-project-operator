@@ -67,7 +67,7 @@ func (r *ProjectReferenceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	reqLogger := log.FromContext(ctx)
 
 	projectReference := &gcpv1alpha1.ProjectReference{}
-	err := r.Get(context.TODO(), req.NamespacedName, projectReference)
+	err := r.Get(ctx, req.NamespacedName, projectReference)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -78,7 +78,7 @@ func (r *ProjectReferenceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	gcpClient, err := r.getGcpClient(projectReference, reqLogger)
+	gcpClient, err := r.getGcpClient(projectReference)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -137,7 +137,7 @@ func (r *ProjectReferenceReconciler) ReconcileHandler(adapter *ReferenceAdapter,
 }
 
 // Returns a gcpClient, that uses the access credential Secret in the CCS project namespace or the operator namespace
-func (r *ProjectReferenceReconciler) getGcpClient(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger) (gcpclient.Client, error) {
+func (r *ProjectReferenceReconciler) getGcpClient(projectReference *gcpv1alpha1.ProjectReference) (gcpclient.Client, error) {
 	credSecretNamespace := operatorNamespace
 	credSecretName := orgGcpSecretName
 	if projectReference.Spec.CCS {

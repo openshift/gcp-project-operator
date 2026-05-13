@@ -222,7 +222,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 								Type:               gcpv1alpha1.ConditionComputeApiReady,
 								Status:             corev1.ConditionFalse,
 								LastProbeTime:      metav1.NewTime(time.Now()),
-								LastTransitionTime: metav1.NewTime(time.Now().Add(time.Duration(-9 * time.Minute))),
+								LastTransitionTime: metav1.NewTime(time.Now().Add(-9 * time.Minute)),
 								Reason:             "fake-reason",
 								Message:            "fake-message",
 							}
@@ -240,7 +240,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 								Type:               gcpv1alpha1.ConditionComputeApiReady,
 								Status:             corev1.ConditionFalse,
 								LastProbeTime:      metav1.NewTime(time.Now()),
-								LastTransitionTime: metav1.NewTime(time.Now().Add(time.Duration(-11 * time.Minute))),
+								LastTransitionTime: metav1.NewTime(time.Now().Add(-11 * time.Minute)),
 								Reason:             "fake-reason",
 								Message:            "fake-message",
 							}

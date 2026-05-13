@@ -1,6 +1,8 @@
 package projectreference
 
 import (
+	"errors"
+
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -228,7 +230,7 @@ func EnsureProjectCreated(r *ReferenceAdapter) (util.OperationResult, error) {
 
 	err := r.createProject(r.OperatorConfig.ParentFolderID)
 	if err != nil {
-		if err == operrors.ErrInactiveProject {
+		if errors.Is(err, operrors.ErrInactiveProject) {
 			r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
 			err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
 			if err != nil {
@@ -713,7 +715,7 @@ func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (util.Operati
 
 	conditions := &r.ProjectReference.Status.Conditions
 	apiCondition, found := r.conditionManager.FindCondition(conditions, gcpv1alpha1.ConditionComputeApiReady)
-	tenMinutesAgo := metav1.NewTime(time.Now().Add(time.Duration(-10 * time.Minute)))
+	tenMinutesAgo := metav1.NewTime(time.Now().Add(-10 * time.Minute))
 	if found && apiCondition.LastTransitionTime.Before(&tenMinutesAgo) {
 		r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
 		_ = r.StatusUpdate()
@@ -790,7 +792,8 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []s
 			}
 			_, err = r.gcpClient.SetIamPolicy(setIamPolicyRequest)
 			if err != nil {
-				ae, ok := err.(*googleapi.Error)
+				var ae *googleapi.Error
+				ok := errors.As(err, &ae)
 				// retry rules below:
 
 				if ok && ae.Code == http.StatusConflict && retry < 3 {
@@ -827,7 +830,8 @@ func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberTyp
 		}
 		_, err = r.gcpClient.SetIamPolicy(setIamPolicyRequest)
 		if err != nil {
-			ae, ok := err.(*googleapi.Error)
+			var ae *googleapi.Error
+			ok := errors.As(err, &ae)
 			// retry rules below:
 
 			if ok && ae.Code == http.StatusConflict && retry < 3 {
