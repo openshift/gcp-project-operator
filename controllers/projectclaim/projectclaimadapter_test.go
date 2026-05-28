@@ -57,7 +57,7 @@ var _ = Describe("Customresourceadapter", func() {
 		}
 	})
 	JustBeforeEach(func() {
-		adapter = NewProjectClaimAdapter(projectClaim, logf.Log.WithName("Test Logger"), mockClient, mockConditions)
+		adapter = NewProjectClaimAdapter(context.TODO(), projectClaim, logf.Log.WithName("Test Logger"), mockClient, mockConditions)
 	})
 
 	AfterEach(func() {

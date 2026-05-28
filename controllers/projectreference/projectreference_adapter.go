@@ -1,6 +1,8 @@
 package projectreference
 
 import (
+	"errors"
+
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -94,7 +96,9 @@ var OSDSharedVPCRoles = []string{
 
 // ReferenceAdapter is used to do all the processing of the ProjectReference type inside the reconcile loop
 type ReferenceAdapter struct {
-	ProjectClaim     *gcpv1alpha1.ProjectClaim
+	ProjectClaim *gcpv1alpha1.ProjectClaim
+	ctx          context.Context //nolint:containedctx
+
 	ProjectReference *gcpv1alpha1.ProjectReference
 	logger           logr.Logger
 	kubeClient       client.Client
@@ -105,13 +109,15 @@ type ReferenceAdapter struct {
 
 // NewReferenceAdapter creates an adapter to turn what is requested in a ProjectReference into a GCP project and write the output back.
 func NewReferenceAdapter(
+	ctx context.Context,
+
 	projectReference *gcpv1alpha1.ProjectReference,
 	logger logr.Logger, client client.Client,
 	gcpClient gcpclient.Client,
 	manager condition.Conditions,
 	cm configmap.OperatorConfigMap,
 ) (*ReferenceAdapter, error) {
-	projectClaim, err := getMatchingClaimLink(projectReference, client)
+	projectClaim, err := getMatchingClaimLink(ctx, projectReference, client)
 	if err != nil {
 		return &ReferenceAdapter{}, err
 	}
@@ -145,13 +151,13 @@ func EnsureProjectClaimReady(r *ReferenceAdapter) (util.OperationResult, error) 
 
 	idModified := r.ensureClaimProjectIDSet()
 	if idModified {
-		err := r.kubeClient.Update(context.TODO(), r.ProjectClaim)
+		err := r.kubeClient.Update(r.ctx, r.ProjectClaim)
 		if err != nil {
 			return util.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
 		}
 	}
 	r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusReady
-	if err := r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim); err != nil {
+	if err := r.kubeClient.Status().Update(r.ctx, r.ProjectClaim); err != nil {
 		return util.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim status"))
 	}
 	return util.StopProcessing()
@@ -170,7 +176,7 @@ func EnsureProjectReferenceStatusCreating(adapter *ReferenceAdapter) (util.Opera
 		return util.ContinueProcessing()
 	}
 	adapter.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusCreating
-	err := adapter.kubeClient.Status().Update(context.TODO(), adapter.ProjectReference)
+	err := adapter.kubeClient.Status().Update(adapter.ctx, adapter.ProjectReference)
 	if err != nil {
 		err = operrors.Wrap(err, "error updating ProjectReference status")
 		return util.RequeueWithError(err)
@@ -228,9 +234,9 @@ func EnsureProjectCreated(r *ReferenceAdapter) (util.OperationResult, error) {
 
 	err := r.createProject(r.OperatorConfig.ParentFolderID)
 	if err != nil {
-		if err == operrors.ErrInactiveProject {
+		if errors.Is(err, operrors.ErrInactiveProject) {
 			r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
+			err := r.kubeClient.Status().Update(r.ctx, r.ProjectReference)
 			if err != nil {
 				return util.RequeueWithError(operrors.Wrap(err, "error updating ProjectReference status"))
 			}
@@ -303,14 +309,14 @@ func EnsureStateReady(r *ReferenceAdapter) (util.OperationResult, error) {
 	if r.ProjectReference.Status.State != gcpv1alpha1.ProjectReferenceStatusReady {
 		r.logger.V(1).Info("Setting Status on projectReference")
 		r.ProjectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusReady
-		return util.RequeueOnErrorOrStop(r.kubeClient.Status().Update(context.TODO(), r.ProjectReference))
+		return util.RequeueOnErrorOrStop(r.kubeClient.Status().Update(r.ctx, r.ProjectReference))
 	}
 	return util.ContinueProcessing()
 }
 
-func getMatchingClaimLink(projectReference *gcpv1alpha1.ProjectReference, client client.Client) (*gcpv1alpha1.ProjectClaim, error) {
+func getMatchingClaimLink(ctx context.Context, projectReference *gcpv1alpha1.ProjectReference, client client.Client) (*gcpv1alpha1.ProjectClaim, error) {
 	projectClaim := &gcpv1alpha1.ProjectClaim{}
-	err := client.Get(context.TODO(), types.NamespacedName{Name: projectReference.Spec.ProjectClaimCRLink.Name, Namespace: projectReference.Spec.ProjectClaimCRLink.Namespace}, projectClaim)
+	err := client.Get(ctx, types.NamespacedName{Name: projectReference.Spec.ProjectClaimCRLink.Name, Namespace: projectReference.Spec.ProjectClaimCRLink.Namespace}, projectClaim)
 	if err != nil {
 		return &gcpv1alpha1.ProjectClaim{}, err
 
@@ -325,7 +331,7 @@ func (r *ReferenceAdapter) UpdateProjectID() error {
 		return err
 	}
 	r.ProjectReference.Spec.GCPProjectID = projectID
-	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
+	return r.kubeClient.Update(r.ctx, r.ProjectReference)
 }
 
 func (r *ReferenceAdapter) UpdateServiceAccountName() error {
@@ -334,7 +340,7 @@ func (r *ReferenceAdapter) UpdateServiceAccountName() error {
 	serviceAccountNameSuffix := utilrand.String(serviceAccountNameSuffixLength)
 
 	r.ProjectReference.Spec.ServiceAccountName = serviceAccountNameTemplate(serviceAccountNameSuffix)
-	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
+	return r.kubeClient.Update(r.ctx, r.ProjectReference)
 }
 
 func EnsureDeletionProcessed(adapter *ReferenceAdapter) (util.OperationResult, error) {
@@ -359,7 +365,7 @@ func (r *ReferenceAdapter) IsDeletionRequested() bool {
 func EnsureFinalizerAdded(r *ReferenceAdapter) (util.OperationResult, error) {
 	if !util.Contains(r.ProjectReference.GetFinalizers(), FinalizerName) {
 		r.ProjectReference.SetFinalizers(append(r.ProjectReference.GetFinalizers(), FinalizerName))
-		return util.RequeueOnErrorOrStop(r.kubeClient.Update(context.TODO(), r.ProjectReference))
+		return util.RequeueOnErrorOrStop(r.kubeClient.Update(r.ctx, r.ProjectReference))
 	}
 	return util.ContinueProcessing()
 }
@@ -370,7 +376,7 @@ func (r *ReferenceAdapter) EnsureFinalizerDeleted() error {
 	finalizers := r.ProjectReference.GetFinalizers()
 	if util.Contains(finalizers, FinalizerName) {
 		r.ProjectReference.SetFinalizers(util.Filter(finalizers, FinalizerName))
-		return r.kubeClient.Update(context.TODO(), r.ProjectReference)
+		return r.kubeClient.Update(r.ctx, r.ProjectReference)
 	}
 	return nil
 }
@@ -441,7 +447,7 @@ func GenerateProjectID() (string, error) {
 
 func (r *ReferenceAdapter) clearProjectID() error {
 	r.ProjectReference.Spec.GCPProjectID = ""
-	return r.kubeClient.Update(context.TODO(), r.ProjectReference)
+	return r.kubeClient.Update(r.ctx, r.ProjectReference)
 }
 
 // deleteProject checks the Project's lifecycle state of the projectReference.Spec.GCPProjectID instance in Google GCP
@@ -617,7 +623,7 @@ func (r *ReferenceAdapter) configureServiceAccount(policies []string) (util.Oper
 }
 
 func (r *ReferenceAdapter) createCredentials() (util.OperationResult, error) {
-	if util.SecretExists(r.kubeClient, r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace) {
+	if util.SecretExists(r.ctx, r.kubeClient, r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace) {
 		return util.ContinueProcessing()
 	}
 
@@ -649,7 +655,7 @@ func (r *ReferenceAdapter) createCredentials() (util.OperationResult, error) {
 	})
 
 	r.logger.V(1).Info(fmt.Sprintf("Creating Secret %s in namespace %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name, r.ProjectClaim.Spec.GCPCredentialSecret.Namespace))
-	createErr := r.kubeClient.Create(context.TODO(), secret)
+	createErr := r.kubeClient.Create(r.ctx, secret)
 	if createErr != nil {
 		return util.RequeueWithError(operrors.Wrap(createErr, fmt.Sprintf("could not create service account secret for %s", r.ProjectClaim.Spec.GCPCredentialSecret.Name)))
 	}
@@ -665,15 +671,15 @@ func (r *ReferenceAdapter) deleteCredentials() error {
 	r.logger.Info("Deleting Credentials")
 
 	r.logger.V(2).Info("Check if the Secret exists")
-	if util.SecretExists(r.kubeClient, secret.Name, secret.Namespace) {
+	if util.SecretExists(r.ctx, r.kubeClient, secret.Name, secret.Namespace) {
 		r.logger.V(2).Info("Getting Secret")
-		key, err := util.GetSecret(r.kubeClient, secret.Name, secret.Namespace)
+		key, err := util.GetSecret(r.ctx, r.kubeClient, secret.Name, secret.Namespace)
 		if err != nil {
 			return operrors.Wrap(err, fmt.Sprintf("could not get the service account secret for %s", secret.Name))
 		}
 
 		r.logger.V(2).Info("Deleting secret")
-		err = r.kubeClient.Delete(context.TODO(), key)
+		err = r.kubeClient.Delete(r.ctx, key)
 		if err != nil {
 			return operrors.Wrap(err, fmt.Sprintf("could not delete service account secret for %s", secret.Name))
 		}
@@ -698,7 +704,7 @@ func (r *ReferenceAdapter) ensureClaimAvailabilityZonesSet() (util.OperationResu
 	r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionTrue, "QueryAvailabilityZonesSucceeded", "ComputeAPI ready, successfully queried availability zones")
 
 	r.ProjectClaim.Spec.AvailabilityZones = zones
-	err = r.kubeClient.Update(context.TODO(), r.ProjectClaim)
+	err = r.kubeClient.Update(r.ctx, r.ProjectClaim)
 	if err != nil {
 		return util.RequeueWithError(operrors.Wrap(err, "error updating ProjectClaim spec"))
 	}
@@ -713,7 +719,7 @@ func (r *ReferenceAdapter) handleAvailabilityZonesError(err error) (util.Operati
 
 	conditions := &r.ProjectReference.Status.Conditions
 	apiCondition, found := r.conditionManager.FindCondition(conditions, gcpv1alpha1.ConditionComputeApiReady)
-	tenMinutesAgo := metav1.NewTime(time.Now().Add(time.Duration(-10 * time.Minute)))
+	tenMinutesAgo := metav1.NewTime(time.Now().Add(-10 * time.Minute))
 	if found && apiCondition.LastTransitionTime.Before(&tenMinutesAgo) {
 		r.conditionManager.SetCondition(conditions, gcpv1alpha1.ConditionComputeApiReady, corev1.ConditionFalse, "QueryAvailabilityZonesFailed", "ComputeAPI not yet ready, couldn't query availability zones")
 		_ = r.StatusUpdate()
@@ -790,7 +796,8 @@ func (r *ReferenceAdapter) SetIAMPolicy(serviceAccountEmail string, policies []s
 			}
 			_, err = r.gcpClient.SetIamPolicy(setIamPolicyRequest)
 			if err != nil {
-				ae, ok := err.(*googleapi.Error)
+				var ae *googleapi.Error
+				ok := errors.As(err, &ae)
 				// retry rules below:
 
 				if ok && ae.Code == http.StatusConflict && retry < 3 {
@@ -827,7 +834,8 @@ func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberTyp
 		}
 		_, err = r.gcpClient.SetIamPolicy(setIamPolicyRequest)
 		if err != nil {
-			ae, ok := err.(*googleapi.Error)
+			var ae *googleapi.Error
+			ok := errors.As(err, &ae)
 			// retry rules below:
 
 			if ok && ae.Code == http.StatusConflict && retry < 3 {
@@ -864,7 +872,7 @@ func (r *ReferenceAdapter) SetProjectReferenceCondition(reason string, err error
 
 // StatusUpdate updates the project reference status
 func (r *ReferenceAdapter) StatusUpdate() error {
-	err := r.kubeClient.Status().Update(context.TODO(), r.ProjectReference)
+	err := r.kubeClient.Status().Update(r.ctx, r.ProjectReference)
 	if err != nil {
 		return operrors.Wrap(err, fmt.Sprintf("failed to update ProjectReference status of %s", r.ProjectReference.Name))
 	}

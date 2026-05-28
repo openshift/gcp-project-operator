@@ -74,32 +74,32 @@ func NewClient(projectName string, authJSON []byte) (Client, error) {
 	// since we're using a single creds var, we should specify all the required scopes when initializing
 	creds, err := google.CredentialsFromJSON(ctx, authJSON, "https://www.googleapis.com/auth/cloud-platform")
 	if err != nil {
-		return nil, fmt.Errorf("gcpclient.NewClient.google.CredentialsFromJSON %v", err)
+		return nil, fmt.Errorf("gcpclient.NewClient.google.CredentialsFromJSON %w", err)
 	}
 
 	cloudResourceManagerClient, err := cloudresourcemanager.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
-		return nil, fmt.Errorf("gcpclient.NewClient.cloudresourcemanager.NewService %v", err)
+		return nil, fmt.Errorf("gcpclient.NewClient.cloudresourcemanager.NewService %w", err)
 	}
 
 	iamClient, err := iam.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
-		return nil, fmt.Errorf("gcpclient.iam.NewService %v", err)
+		return nil, fmt.Errorf("gcpclient.iam.NewService %w", err)
 	}
 
 	serviceUsageClient, err := serviceusage.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
-		return nil, fmt.Errorf("gcpclient.serviceUsageClient.NewService %v", err)
+		return nil, fmt.Errorf("gcpclient.serviceUsageClient.NewService %w", err)
 	}
 
 	cloudBillingClient, err := cloudbilling.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
-		return nil, fmt.Errorf("gcpclient.cloudBillingClient.NewService %v", err)
+		return nil, fmt.Errorf("gcpclient.cloudBillingClient.NewService %w", err)
 	}
 
 	computeService, err := compute.NewService(ctx, option.WithCredentials(creds))
 	if err != nil {
-		return nil, fmt.Errorf("gcpclient.compute.NewService %v", err)
+		return nil, fmt.Errorf("gcpclient.compute.NewService %w", err)
 	}
 
 	return &gcpClient{
@@ -161,7 +161,7 @@ func (c *gcpClient) CreateProjectLabels(project *cloudresourcemanager.Project, l
 
 	_, err := c.cloudResourceManagerClient.Projects.Update(project.ProjectId, project).Do()
 	if err != nil {
-		return fmt.Errorf("gcpclient.CreateProject.Projects.Update %v", err)
+		return fmt.Errorf("gcpclient.CreateProject.Projects.Update %w", err)
 	}
 	time.Sleep(3 * time.Second) //Wait 3 seconds to make it more probable the project is updated after returning
 
@@ -186,13 +186,14 @@ func (c *gcpClient) CreateProject(parentFolderID string, claimName string) (*clo
 	}
 	operation, err := c.cloudResourceManagerClient.Projects.Create(&project).Do()
 	if err != nil {
-		ae, ok := err.(*googleapi.Error)
+		var ae *googleapi.Error
+		ok := errors.As(err, &ae)
 		// google uses 409 for "already exists"
 		// we continue as it was created
 		if ok && ae.Code == http.StatusConflict {
 			return &cloudresourcemanager.Operation{}, nil
 		}
-		return &cloudresourcemanager.Operation{}, fmt.Errorf("gcpclient.CreateProject.Projects.Create %v", err)
+		return &cloudresourcemanager.Operation{}, fmt.Errorf("gcpclient.CreateProject.Projects.Create %w", err)
 	}
 	time.Sleep(3 * time.Second) //Wait 3 seconds to make it more probable the project is created after returning
 	return operation, nil
@@ -202,7 +203,7 @@ func (c *gcpClient) CreateProject(parentFolderID string, claimName string) (*clo
 func (c *gcpClient) DeleteProject(parentFolder string) (*cloudresourcemanager.Empty, error) {
 	empty, err := c.cloudResourceManagerClient.Projects.Delete(c.projectName).Do()
 	if err != nil {
-		return &cloudresourcemanager.Empty{}, fmt.Errorf("gcpclient.DeleteProject.Projects.Delete %v", err)
+		return &cloudresourcemanager.Empty{}, fmt.Errorf("gcpclient.DeleteProject.Projects.Delete %w", err)
 	}
 	return empty, nil
 }
@@ -238,7 +239,7 @@ func (c *gcpClient) CreateServiceAccount(name, displayName string) (*iam.Service
 func (c *gcpClient) DeleteServiceAccount(accountEmail string) error {
 	_, err := c.iamClient.Projects.ServiceAccounts.Delete(fmt.Sprintf("projects/%s/serviceAccounts/%s", c.projectName, accountEmail)).Do()
 	if err != nil {
-		return fmt.Errorf("gcpclient.DeleteServiceAccount.Projects.ServiceAccounts.Delete: %v", err)
+		return fmt.Errorf("gcpclient.DeleteServiceAccount.Projects.ServiceAccounts.Delete: %w", err)
 	}
 
 	return nil
@@ -247,7 +248,7 @@ func (c *gcpClient) DeleteServiceAccount(accountEmail string) error {
 func (c *gcpClient) CreateServiceAccountKey(serviceAccountEmail string) (*iam.ServiceAccountKey, error) {
 	key, err := c.iamClient.Projects.ServiceAccounts.Keys.Create(fmt.Sprintf("projects/%s/serviceAccounts/%s", c.projectName, serviceAccountEmail), &iam.CreateServiceAccountKeyRequest{}).Do()
 	if err != nil {
-		return &iam.ServiceAccountKey{}, fmt.Errorf("gcpclient.CreateServiceAccountKey.Projects.ServiceAccounts.Keys.Create: %v", err)
+		return &iam.ServiceAccountKey{}, fmt.Errorf("gcpclient.CreateServiceAccountKey.Projects.ServiceAccounts.Keys.Create: %w", err)
 	}
 
 	exp := backoff.NewExponentialBackOff()
@@ -268,7 +269,7 @@ func (c *gcpClient) DeleteServiceAccountKeys(serviceAccountEmail string) error {
 	resource := fmt.Sprintf("projects/%s/serviceAccounts/%s", c.projectName, serviceAccountEmail)
 	response, err := c.iamClient.Projects.ServiceAccounts.Keys.List(resource).Do()
 	if err != nil {
-		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.List: %v", err)
+		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.List: %w", err)
 	}
 
 	if len(response.Keys) <= 1 {
@@ -282,11 +283,11 @@ func (c *gcpClient) DeleteServiceAccountKeys(serviceAccountEmail string) error {
 	// ensure only one key exits
 	newResponse, err := c.iamClient.Projects.ServiceAccounts.Keys.List(resource).Do()
 	if err != nil {
-		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.List: %v", err)
+		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.List: %w", err)
 	}
 
 	if len(newResponse.Keys) > 1 {
-		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.Delete: %v", errors.New("could not delete all keys"))
+		return fmt.Errorf("gcpclient.DeleteServiceAccountKeys.Projects.ServiceAccounts.Keys.Delete: %w", errors.New("could not delete all keys"))
 	}
 
 	return nil
@@ -295,7 +296,7 @@ func (c *gcpClient) DeleteServiceAccountKeys(serviceAccountEmail string) error {
 func (c *gcpClient) GetIamPolicy(projectName string) (*cloudresourcemanager.Policy, error) {
 	policy, err := c.cloudResourceManagerClient.Projects.GetIamPolicy(projectName, &cloudresourcemanager.GetIamPolicyRequest{}).Do()
 	if err != nil {
-		return nil, fmt.Errorf("gcpclient.GetIamPolicy.Projects.ServiceAccounts.GetIamPolicy %v", err)
+		return nil, fmt.Errorf("gcpclient.GetIamPolicy.Projects.ServiceAccounts.GetIamPolicy %w", err)
 	}
 
 	return policy, nil
@@ -336,7 +337,8 @@ func (c *gcpClient) EnableAPI(projectID, api string) error {
 
 		_, err := req.Do()
 		if err != nil {
-			ae, ok := err.(*googleapi.Error)
+			var ae *googleapi.Error
+			ok := errors.As(err, &ae)
 			// Retry rules below:
 
 			// sometimes we get 403 - Permission denied when even project

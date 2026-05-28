@@ -67,7 +67,7 @@ func (r *ProjectReferenceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	reqLogger := log.FromContext(ctx)
 
 	projectReference := &gcpv1alpha1.ProjectReference{}
-	err := r.Get(context.TODO(), req.NamespacedName, projectReference)
+	err := r.Get(ctx, req.NamespacedName, projectReference)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -78,18 +78,18 @@ func (r *ProjectReferenceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	gcpClient, err := r.getGcpClient(projectReference, reqLogger)
+	gcpClient, err := r.getGcpClient(ctx, projectReference)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	cm, err := r.getConfigMap()
+	cm, err := r.getConfigMap(ctx)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	conditionManager := condition.NewConditionManager()
-	adapter, err := NewReferenceAdapter(projectReference, reqLogger, r.Client, gcpClient, conditionManager, cm)
+	adapter, err := NewReferenceAdapter(ctx, projectReference, reqLogger, r.Client, gcpClient, conditionManager, cm)
 	if err != nil {
 		err = operrors.Wrap(err, "could not create ReferenceAdapter")
 		return ctrl.Result{}, err
@@ -137,7 +137,7 @@ func (r *ProjectReferenceReconciler) ReconcileHandler(adapter *ReferenceAdapter,
 }
 
 // Returns a gcpClient, that uses the access credential Secret in the CCS project namespace or the operator namespace
-func (r *ProjectReferenceReconciler) getGcpClient(projectReference *gcpv1alpha1.ProjectReference, logger logr.Logger) (gcpclient.Client, error) {
+func (r *ProjectReferenceReconciler) getGcpClient(ctx context.Context, projectReference *gcpv1alpha1.ProjectReference) (gcpclient.Client, error) {
 	credSecretNamespace := operatorNamespace
 	credSecretName := orgGcpSecretName
 	if projectReference.Spec.CCS {
@@ -145,7 +145,7 @@ func (r *ProjectReferenceReconciler) getGcpClient(projectReference *gcpv1alpha1.
 		credSecretName = projectReference.Spec.CCSSecretRef.Name
 	}
 	// Get org creds from secret
-	creds, err := util.GetGCPCredentialsFromSecret(r.Client, credSecretNamespace, credSecretName)
+	creds, err := util.GetGCPCredentialsFromSecret(ctx, r.Client, credSecretNamespace, credSecretName)
 	if err != nil {
 		err = operrors.Wrap(err, fmt.Sprintf("could not get Creds from secret: %s, for namespace %s", credSecretName, credSecretNamespace))
 		return nil, err
@@ -160,8 +160,8 @@ func (r *ProjectReferenceReconciler) getGcpClient(projectReference *gcpv1alpha1.
 	return gcpClient, nil
 }
 
-func (r *ProjectReferenceReconciler) getConfigMap() (configmap.OperatorConfigMap, error) {
-	operatorConfigMap, err := configmap.GetOperatorConfigMap(r.Client)
+func (r *ProjectReferenceReconciler) getConfigMap(ctx context.Context) (configmap.OperatorConfigMap, error) {
+	operatorConfigMap, err := configmap.GetOperatorConfigMap(ctx, r.Client)
 	if err != nil {
 		return operatorConfigMap, operrors.Wrap(err, "could not find the OperatorConfigMap")
 	}

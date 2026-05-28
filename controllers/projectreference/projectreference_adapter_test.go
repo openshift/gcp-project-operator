@@ -1,6 +1,8 @@
 package projectreference_test
 
 import (
+	"context"
+
 	"errors"
 	"strings"
 	"time"
@@ -74,7 +76,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 	JustBeforeEach(func() {
 		claimLink := types.NamespacedName{Name: projectReference.Spec.ProjectClaimCRLink.Name, Namespace: projectReference.Spec.ProjectClaimCRLink.Namespace}
 		mockKubeClient.EXPECT().Get(gomock.Any(), claimLink, gomock.Any()).SetArg(2, *projectClaim)
-		adapter, err = NewReferenceAdapter(projectReference, logf.Log.WithName("Test Logger"), mockKubeClient, mockGCPClient, mockConditions, configMap)
+		adapter, err = NewReferenceAdapter(context.TODO(), projectReference, logf.Log.WithName("Test Logger"), mockKubeClient, mockGCPClient, mockConditions, configMap)
 		Expect(err).NotTo(HaveOccurred())
 	})
 	Context("generated project names", func() {
@@ -222,7 +224,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 								Type:               gcpv1alpha1.ConditionComputeApiReady,
 								Status:             corev1.ConditionFalse,
 								LastProbeTime:      metav1.NewTime(time.Now()),
-								LastTransitionTime: metav1.NewTime(time.Now().Add(time.Duration(-9 * time.Minute))),
+								LastTransitionTime: metav1.NewTime(time.Now().Add(-9 * time.Minute)),
 								Reason:             "fake-reason",
 								Message:            "fake-message",
 							}
@@ -240,7 +242,7 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 								Type:               gcpv1alpha1.ConditionComputeApiReady,
 								Status:             corev1.ConditionFalse,
 								LastProbeTime:      metav1.NewTime(time.Now()),
-								LastTransitionTime: metav1.NewTime(time.Now().Add(time.Duration(-11 * time.Minute))),
+								LastTransitionTime: metav1.NewTime(time.Now().Add(-11 * time.Minute)),
 								Reason:             "fake-reason",
 								Message:            "fake-message",
 							}
