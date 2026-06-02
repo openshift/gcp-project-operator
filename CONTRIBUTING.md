@@ -1,349 +1,154 @@
-# Contributing to GCP Project Operator
+# Contributing to Gcp Project
 
-Thank you for your interest in contributing to the GCP Project Operator! This guide provides comprehensive instructions for setting up your development environment, running tests, and contributing code.
+Thank you for your interest in contributing to the Gcp Project project.
 
-## Table of Contents
+## Quick Start
 
-- [Code of Conduct](#code-of-conduct)
-- [Prerequisites](#prerequisites)
-- [Development Environment Setup](#development-environment-setup)
-- [Pre-commit Hooks with prek](#pre-commit-hooks-with-prek)
-- [Validation and Linting](#validation-and-linting)
-- [Testing](#testing)
-- [Boilerplate Framework](#boilerplate-framework)
-- [Development Workflow](#development-workflow)
-- [Claude Code Integration](#claude-code-integration)
-- [CI/CD Integration](#cicd-integration)
-- [Finding Issues to Work On](#finding-issues-to-work-on)
-- [Submitting Pull Requests](#submitting-pull-requests)
+1. **Setup**: Install Go 1.22.7+, operator-sdk v1.21.0
+2. **Install tools**: `make tools`
+3. **Run pre-commit**: `pip install pre-commit && pre-commit install`
+4. **Build**: `make go-build`
+5. **Test**: `make go-test`
+6. **Lint**: `make go-check`
 
-## Code of Conduct
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed setup instructions.
 
-As contributors and maintainers of this GCP Project Operator, we respect all people who contribute through reporting issues, posting feature requests, updating documentation, submitting pull requests or patches, and other activities.
+## Before Submitting a PR
 
-We are committed to making participation in this project a harassment-free experience for everyone, regardless of level of experience, gender, gender identity and expression, sexual orientation, disability, personal appearance, body size, race, ethnicity, age, religion, or nationality. In short, be excellent to each other.
+All contributions must pass:
 
-## Prerequisites
-
-Before contributing, ensure you have the following tools installed:
-
-### Required Tools
-
-- **Go 1.22+**: [Installation guide](https://golang.org/doc/install)
-- **golangci-lint**: Used for Go code linting
-  ```bash
-  # macOS
-  brew install golangci-lint
-
-  # Linux
-  curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
-  ```
-
-- **prek**: Git hook manager for pre-commit validation
-  ```bash
-  # macOS
-  brew install prek
-
-  # Linux
-  curl -fsSL https://prek.j178.dev/install.sh | bash
-  ```
-
-- **operator-sdk**: Required for local operator development
-  - [Installation guide](https://sdk.operatorframework.io/docs/installation/)
-
-### Optional Tools (for Claude Code integration)
-
-- **jq**: JSON processor used by Claude Code stop hooks
-  ```bash
-  # macOS
-  brew install jq
-
-  # Linux
-  sudo apt-get install jq  # Debian/Ubuntu
-  sudo dnf install jq      # Fedora/RHEL
-  ```
-
-## Development Environment Setup
-
-1. **Fork and clone the repository**:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/gcp-project-operator.git
-   cd gcp-project-operator
-   ```
-
-2. **Install pre-commit hooks**:
-   ```bash
-   prek install
-   ```
-
-   This installs git hooks that automatically run validation checks before each commit.
-
-3. **Verify your setup**:
-   ```bash
-   make go-check    # Run linting
-   make go-test     # Run tests
-   ```
-
-## Pre-commit Hooks with prek
-
-This project uses [prek](https://prek.j178.dev/) to manage pre-commit hooks. The prek configuration is defined in [`prek.toml`](prek.toml).
-
-### prek Version
-
-The project pins a specific prek version in [`.prek-version`](.prek-version). This ensures consistent behavior across all contributors and CI environments.
-
-### What prek Checks
-
-Pre-commit hooks automatically check for:
-
-- **File hygiene**: Trailing whitespace, end-of-file newlines
-- **File format validation**: JSON, YAML, TOML syntax
-- **Large files**: Prevents accidentally committing large binary files
-- **Merge conflicts**: Detects unresolved merge conflict markers
-- **Go linting**: Runs `make go-check` when Go files are modified
-
-### Important: Boilerplate File Exclusions
-
-The prek configuration **excludes** the `boilerplate/` directory from auto-fixing. This is intentional:
-
-- Boilerplate files come from upstream and may contain trailing whitespace
-- The CI system has a separate `boilerplate-freeze-check` that validates these files
-- If prek accidentally modifies boilerplate files, restore them with:
-  ```bash
-  git checkout boilerplate/
-  ```
-
-### Running Validation Manually
-
-```bash
-# Run all pre-commit checks on all files
-prek run --all-files
-
-# Run all pre-commit checks on staged files only
-prek run
-
-# Run via CI script (same as what runs in CI)
-./hack/ci.sh
-```
-
-## Validation and Linting
-
-The project uses the [boilerplate framework](#boilerplate-framework) for standardized validation and linting.
-
-### Available Make Targets
-
-```bash
-# Run Go linting with golangci-lint
-make go-check
-
-# Run Go tests
-make go-test
-
-# Run YAML validation and Go linting
-make lint
-
-# Verify code generation is up-to-date
-make validate
-
-# Run all checks (linting, testing, building)
-make
-```
-
-### What Gets Validated
-
-- **Go code**: golangci-lint checks for code quality issues, style violations, and potential bugs
-- **YAML files**: Syntax validation for Kubernetes manifests
-- **Generated code**: Ensures CRDs, OpenAPI specs, and Go code are up-to-date
-- **Boilerplate headers**: Verifies copyright and license headers are present
-
-## Testing
-
-### Running Tests
-
-```bash
-# Preferred: use make target (includes envtest setup)
-make go-test
-
-# Advanced: run go test directly only after envtest setup
-# The repository requires kubebuilder test assets to be set up first.
-# If you've already run make go-test once, you can use:
-go test ./...                          # Run all tests
-go test ./controllers/projectclaim/    # Run specific package tests
-go test -v ./...                       # Run with verbose output
-go test -cover ./...                   # Run with coverage
-```
-
-### Writing Tests
-
-When contributing new features, please include tests. See the [testing documentation](./docs/testing.md) for detailed guidance.
-
-## Boilerplate Framework
-
-This project uses the [OpenShift boilerplate framework](https://github.com/openshift/boilerplate) for standardized build, test, and validation workflows.
-
-### What is Boilerplate?
-
-Boilerplate provides:
-- Standardized Makefiles for common operations
-- Code generation utilities
-- CI/CD configuration templates
-- Validation and linting rules
-
-### Key Boilerplate Commands
-
-```bash
-# Update boilerplate to latest version
-make boilerplate-update
-
-# Generate all code (CRDs, Go types, OpenAPI)
-make generate
-
-# Validate that generated code is up-to-date
-make validate
-
-# Build the operator binary
-make go-build
-```
-
-### Boilerplate Files Are Protected
-
-The `boilerplate/` directory contains generated files from upstream. Do not modify these files manually:
-- Changes will be rejected by CI (`boilerplate-freeze-check`)
-- prek excludes these files from auto-fixing
-- Update boilerplate via `make boilerplate-update` if needed
+1. **Formatting & linting**: `pre-commit run --all-files`
+2. **Unit tests**: `make go-test`
+3. **Build verification**: `make go-build`
+4. **Security scan**: Automatic via pre-commit (gitleaks)
 
 ## Development Workflow
 
-### Typical Development Cycle
-
-1. **Create a feature branch**:
-   ```bash
-   git checkout -b feat/my-feature
-   ```
-
-2. **Make your changes** and commit frequently:
-   ```bash
-   git add .
-   git commit -m "Add feature X"
-   # Pre-commit hooks run automatically
-   ```
-
-3. **Run validation before pushing**:
-   ```bash
-   prek run --all-files
-   make validate
-   make go-test
-   ```
-
-4. **Push and create a pull request**:
-   ```bash
-   git push origin feat/my-feature
-   ```
-
-### Local Operator Development
-
-To run the operator locally against a cluster:
+### Human Contributors
 
 ```bash
-# Create project and apply CRDs
-oc new-project gcp-project-operator
-oc apply -f deploy/crds/gcp.managed.openshift.io_projectclaims.yaml
-oc apply -f deploy/crds/gcp.managed.openshift.io_projectreferences.yaml
+# Create a feature branch
+git checkout -b feature/my-change
 
-# Run operator locally
-operator-sdk up local --namespace gcp-project-operator
+# Make changes, following existing code patterns
+# Add/update tests for your changes
+
+# Run validation locally
+pre-commit run --all-files
+make go-test
+
+# Commit with descriptive message
+git commit -m "feat: add support for X"
+
+# Push and create PR
+git push origin feature/my-change
 ```
 
-See [docs/development.md](./docs/development.md) for more detailed development instructions.
+### AI-Assisted Development
 
-## Claude Code Integration
+When using AI coding agents (Claude Code, GitHub Copilot, Cursor, etc.):
 
-This project includes integration with [Claude Code](https://claude.ai/code), an AI-powered development tool.
+**Agents MUST:**
+- Run `pre-commit run` on changed files before committing
+- Execute relevant tests after code changes: `make go-test`
+- Preserve existing code style and patterns
+- Avoid editing generated files (`**/zz_generated.*.go`, `go.sum` without `go.mod`)
+- Never bypass hooks with `--no-verify`
+- Never commit secrets, tokens, or credentials
+- Reuse existing utilities and abstractions
+- Make incremental, focused changes
 
-### Stop Hook Validation
+**Validation expectations:**
+1. Format check: `go fmt ./...`
+2. Lint: `make go-check` (or `pre-commit run golangci-lint`)
+3. Type safety: Verified by `go build ./...` in pre-commit
+4. Tests: `make go-test` for affected packages
+5. Secret scan: Automatic via pre-commit gitleaks hook
 
-Claude Code users benefit from an automatic **stop hook** that runs `prek run --all-files` before Claude stops working. This catches validation issues early in the development cycle.
+**Required checks before PR:**
+- [ ] All pre-commit hooks pass
+- [ ] Unit tests pass for modified packages
+- [ ] No new linter warnings introduced
+- [ ] No secrets or credentials in diff
+- [ ] Mocks regenerated if interfaces changed: `boilerplate/_lib/container-make generate`
 
-**How it works**:
-1. When Claude Code is about to stop, the hook runs validation
-2. If validation fails, Claude is blocked from stopping and shown the errors
-3. Claude fixes the issues and tries again
-4. Once validation passes, Claude can stop normally
+## Code Style
 
-**Setup for Claude Code users**:
-- The stop hook is configured in [`.claude/settings.json`](.claude/settings.json)
-- The hook script is at [`.claude/hooks/stop-prek-validation.sh`](.claude/hooks/stop-prek-validation.sh)
-- Requires `jq` and `prek` to be installed (see [Prerequisites](#prerequisites))
+Follow existing patterns:
+- Standard Go formatting (`gofmt`)
+- golangci-lint rules in `boilerplate/openshift/golang-osd-operator/golangci.yml`
+- Ginkgo/Gomega for tests
+- GoMock for interface mocking
 
-**Human developers** should follow the standard setup in this guide and rely on pre-commit hooks instead.
+## Testing Requirements
 
-## CI/CD Integration
+- **Unit tests required** for all new functionality
+- Use Ginkgo BDD style: `Describe`, `Context`, `It`
+- Mock external dependencies with GoMock
+- Aim for meaningful test coverage, not just metrics
 
-The project uses [OpenShift PROW](https://docs.ci.openshift.org/docs/) for continuous integration.
+See [TESTING.md](./TESTING.md) for testing guidelines.
 
-### CI Checks
+## Regenerating Code
 
-Every pull request runs:
-- `prek` validation (via `hack/ci.sh`)
-- Go linting (`make go-check`)
-- Unit tests (`make go-test`)
-- Code generation validation (`make validate`)
-- Boilerplate freeze check
+After modifying API types or interfaces:
 
-### CI Configuration
+```bash
+# Regenerate deepcopy, OpenAPI, mocks (in container for consistency)
+boilerplate/_lib/container-make generate
+```
 
-CI configuration is maintained in the [openshift/release](https://github.com/openshift/release) repository:
-- **Config file**: `ci-operator/config/openshift/gcp-project-operator/openshift-gcp-project-operator-master.yaml`
-- **prek runner image**: Built from the operator image with prek binary added
-- **Test jobs**: Run validation, linting, and tests
+## Security
 
-## Finding Issues to Work On
+**Never commit:**
+- API keys, tokens, passwords
+- AWS credentials, kubeconfig files
+- Private keys, certificates
+- `.env` files with secrets
+- Debug statements printing sensitive data
 
-* ["good-first-issue"](https://github.com/openshift/gcp-project-operator/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) - Issues that are easy to complete even for beginners
+The pre-commit gitleaks hook will block commits containing secrets.
 
-* ["help wanted"](https://github.com/openshift/gcp-project-operator/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22) - Issues where we currently have no resources to work on them
+**High-risk changes** (requiring extra review):
+- Authentication/authorization logic
+- RBAC manifests with wildcard permissions
+- Network policies
+- CI/CD pipeline modifications
+- Dockerfile changes
 
-Once you've discovered an issue to work on:
-1. Add a comment mentioning that you plan to work on this issue
-2. Assign the issue to yourself
-3. Reference the issue in your commit messages and PR description
+## Commit Message Format
 
-## Submitting Pull Requests
+Use conventional commits style:
 
-### PR Guidelines
+```text
+<type>: <short summary>
 
-1. **Include tests**: New features and bug fixes should include appropriate tests
-2. **Update documentation**: Update docs if you're changing user-facing behavior
-3. **Follow code style**: Run `make go-check` before submitting
-4. **Write clear commit messages**: Follow [conventional commits](https://www.conventionalcommits.org/) format
-5. **Reference issues**: Mention related issues in your PR description
+<optional body>
 
-### PR Process
+<optional footer>
+```
 
-1. All tests must pass in CI
-2. Code review required from maintainers (`/lgtm` label)
-3. Approval required from approvers (`/approve` label)
-4. PRs are merged automatically by the OpenShift Merge Bot
-5. Mark PRs as work-in-progress with `[WIP]` in the title to prevent accidental merges
+Types: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`
 
-### PR Template
+Examples:
+- `feat: add support for fleet notification filtering`
+- `fix: correct RBAC permissions for service monitor`
+- `test: add unit tests for network policy handler`
 
-See [docs/PULL_REQUEST_TEMPLATE.md](./docs/PULL_REQUEST_TEMPLATE.md) for the PR template.
+## Pull Request Process
 
-## Additional Resources
+1. **Title**: Clear, descriptive summary
+2. **Description**: Explain what changed and why
+3. **Testing**: Describe how you tested the changes
+4. **CI**: All Tekton pipeline checks must pass
+5. **Review**: Address review feedback promptly
 
-- **User documentation**: [docs/userstory.md](./docs/userstory.md)
-- **API documentation**: [docs/api.md](./docs/api.md)
-- **Design documentation**: [docs/design.md](./docs/design.md)
-- **Building guide**: [docs/building.md](./docs/building.md)
-- **Testing guide**: [docs/testing.md](./docs/testing.md)
-- **Troubleshooting**: [docs/troubleshooting.md](./docs/troubleshooting.md)
+## Questions?
 
-## Getting Help
+- Check existing documentation in [docs/](./docs/)
+- Review similar PRs for patterns
+- Ask in PR comments for clarification
 
-If you need help or have questions:
-- Open an issue on [GitHub](https://github.com/openshift/gcp-project-operator/issues)
-- Check existing [documentation](./docs/)
-- Ask in your pull request comments
+## License
 
-Thank you for contributing to GCP Project Operator!
+All contributions are licensed under Apache 2.0. See [LICENSE](./LICENSE).
