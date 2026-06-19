@@ -3,7 +3,7 @@ module github.com/openshift/gcp-project-operator
 go 1.26.0
 
 require (
-	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/go-logr/logr v1.4.3
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
