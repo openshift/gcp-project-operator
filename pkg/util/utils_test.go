@@ -73,6 +73,8 @@ func TestGetSecret(t *testing.T) {
 			expectedSecret: builders.NewTestSecretBuilder("testName", "testNamespace", "testCreds").GetTestSecret(),
 			expectedErr:    false,
 			validateResult: func(t *testing.T, expected, result *corev1.Secret) {
+				// The fake client does not populate TypeMeta on Get.
+				expected.TypeMeta = result.TypeMeta
 				assert.Equal(t, expected, result)
 			},
 		},
