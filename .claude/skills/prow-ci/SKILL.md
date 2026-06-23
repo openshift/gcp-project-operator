@@ -354,4 +354,4 @@ This repository uses Codecov for coverage tracking:
 - Use with **test-agent** to compare local test results with CI
 - Use with **ci-agent** to validate CI configuration
 - Use with **lint-agent** when investigating lint failures in CI
-- Use with **security-agent** when investigating pre-commit hook failures
+- Use with **security-agent** when investigating prek validation failures

@@ -58,8 +58,14 @@ def analyze_build_log(log_file):
         analysis['patterns'][pattern_name] = 0
 
     # Stream and process line-by-line to avoid memory pressure
-    with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
-        for line in f:
+    try:
+        fh = open(log_file, 'r', encoding='utf-8', errors='replace')
+    except OSError as e:
+        print(f"Warning: Could not read {log_file}: {e}", file=sys.stderr)
+        return None
+
+    with fh:
+        for line in fh:
             line_stripped = line.strip()
 
             # Count pattern matches
