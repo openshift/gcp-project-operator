@@ -106,17 +106,12 @@ oc new-project gcp-project-operator
 oc apply -f deploy/crds/gcp.managed.openshift.io_projectclaims.yaml
 oc apply -f deploy/crds/gcp.managed.openshift.io_projectreferences.yaml
 
-operator-sdk up local --namespace gcp-project-operator
-```
-
-NOTE: The above command works with operator-sdk v0.11.0. If it fails to run, try using one of the older commands:
-
-```
-operator-sdk run --local --namespace gcp-project-operator
-operator-sdk run local --watch-namespace gcp-project-operator
+operator-sdk run local --namespace gcp-project-operator
 ```
 
 If everything went ok, you should see some startup logs from the operator in your terminal window.
+
+See [DEVELOPMENT.md](./DEVELOPMENT.md) for detailed development instructions.
 
 There are example CRs in `deploy/crds/` you might want to use to see how the operator reacts to their presence (and absence if you delete them).
 

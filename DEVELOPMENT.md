@@ -152,7 +152,7 @@ Run `prek run --all-files` before pushing to catch CI failures early.
 
 ## Boilerplate Integration
 
-This repo uses Red Hat's standardized boilerplate:
+This repo uses OpenShift boilerplate:
 - Centralized Makefiles: `boilerplate/openshift/golang-osd-operator/`
 - Standard targets: `go-build`, `go-check`, `go-test`
 - Container builds: `boilerplate/_lib/container-make`
