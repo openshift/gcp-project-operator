@@ -1,6 +1,6 @@
 ---
 name: ci-agent
-description: CI/CD validation and workflow integrity. Use when validating Tekton pipelines, checking local/CI parity, debugging CI failures, or ensuring pre-commit hooks mirror CI checks.
+description: CI/CD validation and workflow integrity. Use when validating Tekton pipelines, checking local/CI parity, debugging CI failures, or ensuring prek hooks mirror CI checks.
 tools: Bash, Read, Grep, WebFetch, WebSearch
 model: sonnet
 ---
@@ -16,7 +16,7 @@ CI/CD validation and workflow integrity for this operator.
 - Ensure local/CI parity
 - Detect missing CI checks
 - Optimize pipeline execution ordering
-- Verify pre-commit mirrors CI
+- Verify prek mirrors CI
 
 ### CI/CD Components
 
@@ -37,9 +37,9 @@ CI/CD validation and workflow integrity for this operator.
 
 ## Local/CI Parity
 
-### Pre-commit ↔ CI Mapping
+### Prek ↔ CI Mapping
 
-| Pre-commit Hook | CI Equivalent | Purpose |
+| Prek Hook | CI Equivalent | Purpose |
 |----------------|---------------|---------|
 | `go-build` | Tekton compile check | Ensure code compiles |
 | `golangci-lint` | Tekton lint job | Static analysis |
@@ -49,12 +49,11 @@ CI/CD validation and workflow integrity for this operator.
 
 **Parity validation:**
 ```bash
-# Check pre-commit uses same golangci-lint version as CI
-grep "rev:" .pre-commit-config.yaml | grep golangci-lint
-# Should match version in boilerplate pipeline
+# Verify shared hooks use matching versions (rev fields must agree)
+diff <(grep 'rev' prek.toml) <(grep 'rev' hack/prek.ci.toml)
 
-# Check gitleaks version
-grep "rev:" .pre-commit-config.yaml | grep gitleaks
+# Verify golangci-lint args are identical
+diff <(grep -A5 'golangci-lint' prek.toml) <(grep -A5 'golangci-lint' hack/prek.ci.toml)
 ```
 
 ### Running Full CI Locally
@@ -70,7 +69,7 @@ boilerplate/_lib/container-make go-test
 make docker-build
 
 # Full validation
-pre-commit run --all-files
+prek run --all-files
 make go-test
 make go-build
 ```
@@ -129,7 +128,7 @@ done
 
 Invoke when:
 - Tekton pipelines modified
-- Pre-commit hooks changed
+- Prek hooks changed
 - New validation steps added
 - CI failures need investigation
 - Optimization needed
@@ -143,8 +142,8 @@ yamllint .tekton/*.yaml
 # Check pipeline references
 grep "pipelineRef:" .tekton/*.yaml
 
-# Compare pre-commit and CI tools
-diff <(grep "rev:" .pre-commit-config.yaml) <(echo "# CI versions from boilerplate")
+# Compare prek tool versions between local and CI configs
+diff <(grep -E '(rev|additional_dependencies)' prek.toml) <(grep -E '(rev|additional_dependencies)' hack/prek.ci.toml)
 
 # Test container build (same as CI)
 make docker-build
@@ -155,7 +154,7 @@ boilerplate/_lib/container-make
 
 ## Execution Ordering Optimization
 
-**Current order (fastest first per pre-commit golden rule 13):**
+**Current order (fastest first):**
 1. File hygiene (2s) - check-merge-conflict, trailing-whitespace, EOF
 2. YAML syntax (2s) - validate deploy/ manifests
 3. Secret scan (5s) - gitleaks
@@ -172,7 +171,7 @@ boilerplate/_lib/container-make
 
 ## Integration with Boilerplate
 
-This operator uses Red Hat boilerplate:
+This operator uses OpenShift boilerplate:
 - **Pipeline source**: `https://github.com/openshift/boilerplate`
 - **Pipeline path**: `pipelines/docker-build-oci-ta/pipeline.yaml`
 - **Updates**: `make boilerplate-update`
@@ -180,7 +179,7 @@ This operator uses Red Hat boilerplate:
 When boilerplate updates:
 - Check for breaking changes
 - Test locally before merging
-- Update pre-commit hooks to match
+- Update prek hooks to match
 
 ## CI Failure Investigation
 

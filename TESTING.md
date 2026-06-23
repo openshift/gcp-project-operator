@@ -1,6 +1,6 @@
 # Testing Guide
 
-Testing guidelines for the Gcp Project.
+Testing guidelines for GCP Project Operator.
 
 ## Framework
 
@@ -100,7 +100,6 @@ boilerplate/_lib/container-make generate
 ### E2E Tests
 - Full operator deployment
 - Real cluster interaction
-- Located in `test/e2e/`
 - Run in CI via Tekton
 
 ## Agent-Driven Validation
@@ -129,7 +128,6 @@ make go-test
 ### Testing Controllers
 
 ```go
-```go
 It("should reconcile resource", func() {
     // Create custom resource
     resource := &v1alpha1.CustomResource{...}
@@ -143,7 +141,6 @@ It("should reconcile resource", func() {
     Expect(k8sClient.Get(ctx, resourceKey, resource)).To(Succeed())
     Expect(resource.Status.Conditions).ToNot(BeEmpty())
 })
-```
 ```
 
 ### Testing Error Conditions
@@ -262,17 +259,14 @@ boilerplate/_lib/container-make go-test
 - Avoid hardcoded delays
 - Ensure test isolation (clean up resources)
 
-## Pre-commit Integration
+## Prek Integration
 
-Tests run automatically in pre-commit when Go files change:
-```yaml
-- id: go-test
-  entry: make go-test
-  files: '\.go$'
+Tests are **not** included in the prek pre-commit hooks because `make go-test` is
+too slow for a commit hook. Run tests manually before pushing:
+
+```bash
+make go-test
 ```
-
-This is NOT in current pre-commit config (too slow for pre-commit).
-Run manually before pushing: `make go-test`
 
 ## Further Reading
 

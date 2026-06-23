@@ -11,6 +11,25 @@ import sys
 from pathlib import Path
 
 
+SENSITIVE_PATTERN = re.compile(
+    r'(?i)('
+    r'password\s*[:=]\s*\S+'
+    r'|token\s*[:=]\s*\S+'
+    r'|api[_-]?key\s*[:=]\s*\S+'
+    r'|secret\s*[:=]\s*\S+'
+    r'|bearer\s+[a-zA-Z0-9_.~+/=-]{20,}'
+    r'|-----BEGIN\s+(?:RSA\s+)?PRIVATE KEY-----'
+    r'|mongodb(?:\+srv)?://[^\s]+'
+    r'|postgres(?:ql)?://[^\s]+'
+    r')',
+)
+
+
+def _redact(line):
+    """Redact sensitive patterns from log lines before including in output."""
+    return SENSITIVE_PATTERN.sub('[REDACTED]', line)
+
+
 def analyze_build_log(log_file):
     """Analyze build-log.txt for common failure patterns."""
     if not os.path.exists(log_file):
@@ -51,11 +70,11 @@ def analyze_build_log(log_file):
             # Extract error lines (limit collection to avoid memory issues)
             # Use independent if statements to allow capturing multiple categories per line
             if len(analysis['errors']) < 10 and re.search(r'\bERROR\b', line, re.IGNORECASE):
-                analysis['errors'].append(line_stripped)
+                analysis['errors'].append(_redact(line_stripped))
             if len(analysis['failures']) < 10 and re.search(r'\bFAIL(ED)?\b', line, re.IGNORECASE):
-                analysis['failures'].append(line_stripped)
+                analysis['failures'].append(_redact(line_stripped))
             if len(analysis['warnings']) < 5 and re.search(r'\bWARNING\b', line, re.IGNORECASE):
-                analysis['warnings'].append(line_stripped)
+                analysis['warnings'].append(_redact(line_stripped))
 
     # Remove patterns with zero occurrences
     analysis['patterns'] = {k: v for k, v in analysis['patterns'].items() if v > 0}
@@ -198,8 +217,13 @@ def main():
 
     # Write output
     if args.output:
-        with open(args.output, 'w') as f:
-            f.write(output)
+        try:
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(output, encoding='utf-8')
+        except OSError as e:
+            print(f"Error: Could not write output file {args.output}: {e}", file=sys.stderr)
+            return 1
         print(f"Analysis saved to: {args.output}")
     else:
         print(output)

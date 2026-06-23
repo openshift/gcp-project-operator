@@ -19,11 +19,11 @@ Automated linting and code quality enforcement for this operator.
 - Report unfixable issues with context
 
 ### Validation Flow
-1. Check if Go files have changed
-2. Run `go fmt -l .` to detect formatting issues
-3. Auto-fix formatting: `go fmt ./...`
+1. Identify changed Go files: `git diff --name-only HEAD | grep '\.go$'`
+2. Run `gofmt -l` on changed files to detect formatting issues
+3. Auto-fix formatting: `gofmt -w` on changed files only
 4. Run `make go-check` (golangci-lint)
-5. Attempt auto-fixes: `golangci-lint run --fix`
+5. Attempt auto-fixes on changed packages: `golangci-lint run --fix ./changed/pkg/...`
 6. Report remaining issues with file:line references
 
 ### Auto-Fix Criteria
@@ -43,7 +43,7 @@ DO NOT auto-fix:
 ## Usage
 
 Invoke when:
-- Pre-commit validation needed
+- Prek validation needed
 - After code generation
 - Before creating PR
 - CI lint failures need investigation
@@ -52,7 +52,7 @@ Invoke when:
 
 ```bash
 # Format check only
-go fmt -l . | grep -v "^$"
+gofmt -l . | grep -v "^$"
 
 # Format and fix
 go fmt ./...
@@ -98,7 +98,7 @@ Escalate to human when:
 
 ## Integration Points
 
-- Runs as part of `pre-commit run golangci-lint`
+- Runs as part of `prek run golangci-lint`
 - Mirrors Tekton CI lint job
 - Should complete in <30s on typical changeset
 - Uses same config as CI (no drift)

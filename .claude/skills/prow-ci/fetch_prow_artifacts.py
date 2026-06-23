@@ -33,6 +33,8 @@ def parse_prow_url(url):
         raise ValueError("Could not parse test-platform-results path")
 
     bucket_path = match.group(1).rstrip('/')
+    # Normalize file-level URLs (user may paste links to specific files)
+    bucket_path = re.sub(r'/(?:build-log\.txt|prowjob\.json)$', '', bucket_path)
 
     # Extract build ID (10+ digits)
     build_match = re.search(r'/(\d{10,})/?', bucket_path)
@@ -68,10 +70,17 @@ def download_from_gcs(gcs_path, local_path):
             local_path,
             '--no-user-output-enabled'
         ]
-        subprocess.run(cmd, check=True, capture_output=True)
+        subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=300)
         return True
+    except FileNotFoundError:
+        print("Error: gcloud CLI not found. Install Google Cloud SDK first.", file=sys.stderr)
+        return False
+    except subprocess.TimeoutExpired:
+        print(f"Warning: Timed out while downloading {gcs_path}", file=sys.stderr)
+        return False
     except subprocess.CalledProcessError as e:
-        print(f"Warning: Could not download {gcs_path}: {e.stderr.decode()}", file=sys.stderr)
+        err = (e.stderr or "").strip()
+        print(f"Warning: Could not download {gcs_path}: {err}", file=sys.stderr)
         return False
 
 

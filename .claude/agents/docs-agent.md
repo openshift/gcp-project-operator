@@ -32,8 +32,8 @@ Update docs when:
 - **Make targets added/removed**: Update `DEVELOPMENT.md` and `CLAUDE.md`
 - **API types changed**: Update `docs/design.md`
 - **Test framework changes**: Update `TESTING.md`
-- **New dependencies**: Update `docs/development.md`
-- **Pre-commit hooks changed**: Update `CONTRIBUTING.md`
+- **New dependencies**: Update `DEVELOPMENT.md`
+- **Prek hooks changed**: Update `CONTRIBUTING.md`
 - **Claude Code hooks changed** (`.claude/settings.json`): Update `.claude/hooks/README.md`
 - **Build process changed**: Update `DEVELOPMENT.md` and `CLAUDE.md`
 
@@ -57,7 +57,7 @@ go help test      # Verify go commands
 # - Inconsistent formatting
 # - Missing code block language tags
 
-grep -E '```$' *.md  # Code blocks without language
+grep -nE '^```[[:space:]]*$' *.md  # Bare fences missing language tags
 grep -E '\[.*\]\(\./' *.md  # Relative links to check
 ```
 
@@ -91,7 +91,7 @@ When `prek.toml`, `hack/prek.ci.toml`, or `.claude/settings.json` changes, sync:
 
 ### Dependencies
 When `go.mod` changes (major versions), sync:
-- `docs/development.md` prerequisites
+- `DEVELOPMENT.md` prerequisites
 - `README.md` badges/requirements
 
 ## Documentation Style
@@ -179,7 +179,7 @@ Escalate to human when:
 find . -name "*.md" -not -path "./vendor/*" -not -path "./.git/*"
 
 # Verify make targets exist
-grep '```bash' *.md | grep 'make ' | sed 's/.*make \([a-z-]*\).*/\1/' | sort -u
+grep -RhoE 'make [a-zA-Z0-9_.-]+' --include="*.md" . | awk '{print $2}' | sort -u
 
 # Check for dead links (manual review)
 grep -r '\[.*\](' *.md docs/*.md

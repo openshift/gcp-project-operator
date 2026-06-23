@@ -2,7 +2,7 @@
 #
 # Session Start Hook: Prek Setup
 #
-# Ensures prek (pre-commit) is installed and configured when Claude Code starts
+# Ensures prek is installed and configured when Claude Code starts
 #
 # What it does:
 #   1. Checks if prek is installed
@@ -41,7 +41,8 @@ EOF
 fi
 
 # Prek is installed - check if git hooks are configured
-if [[ ! -f .git/hooks/pre-commit ]] || ! grep -q "prek" .git/hooks/pre-commit 2>/dev/null; then
+GIT_HOOKS_DIR="$(git rev-parse --git-common-dir)/hooks"
+if [[ ! -f "$GIT_HOOKS_DIR/pre-commit" ]] || ! grep -q "prek" "$GIT_HOOKS_DIR/pre-commit" 2>/dev/null; then
   echo "⚙️  Setting up prek pre-commit hooks..." >&2
 
   if prek install >/dev/null 2>&1; then

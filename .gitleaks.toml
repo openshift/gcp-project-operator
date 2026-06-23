@@ -6,10 +6,13 @@
 #
 # Usage:
 #   gitleaks detect --source . --verbose
-#   pre-commit run gitleaks
+#   prek run gitleaks
 #
 
 title = "gitleaks config for this operator"
+
+[extend]
+useDefault = true
 
 # =============================================================================
 # GLOBAL ALLOWLIST
@@ -63,10 +66,10 @@ stopwords = [
 # =============================================================================
 
 [[rules]]
-id = "operator-service-token"
-description = "Operator service token"
-regex = '''(?i)ocm[_-]?agent[_-]?token\s*[:=]\s*['"]?[a-zA-Z0-9]{32,}'''
-tags = ["token", "ocm", "critical"]
+id = "gcp-service-account-key"
+description = "GCP service account key"
+regex = '''(?i)("type"\s*:\s*"service_account")'''
+tags = ["gcp", "service-account", "critical"]
 
 [[rules]]
 id = "openshift-pull-secret"
@@ -109,7 +112,7 @@ tags = ["private-key", "pem", "critical"]
 # RULE CUSTOMIZATION
 # =============================================================================
 
-# Extend default gitleaks rules with custom allowlists
+# Custom rules (in addition to default gitleaks rules enabled via [extend] above)
 
 # Example: Allow specific AWS key format used in test fixtures
 # [[rules]]
@@ -137,7 +140,7 @@ tags = ["private-key", "pem", "critical"]
 # NOTES
 # =============================================================================
 
-# 1. This config extends gitleaks default rules
+# 1. Default gitleaks rules are enabled via [extend] useDefault = true above
 # 2. False positives should be added to allowlist with justification
 # 3. Never disable gitleaks entirely (security critical)
 # 4. Review allowlist periodically for stale entries

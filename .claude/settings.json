@@ -4,15 +4,13 @@
       "Bash(make go-build)",
       "Bash(make go-test)",
       "Bash(make go-check)",
-      "Bash(make tools)",
+      "Bash(make generate)",
       "Bash(make lint)",
       "Bash(go build ./...)",
       "Bash(go test ./...)",
       "Bash(go fmt ./...)",
       "Bash(go mod tidy)",
       "Bash(ginkgo -r ./...)",
-      "Bash(pre-commit run)",
-      "Bash(pre-commit run --all-files)",
       "Bash(prek run)",
       "Bash(prek run *)",
       "Bash(prek install)",
@@ -24,9 +22,9 @@
       "Bash(git log)",
       "Bash(git branch)",
       "Bash(grep *)",
-      "Bash(find *)",
+      "Bash(find . *)",
       "Bash(ls *)",
-      "Bash(cat *)"
+      "Bash(wc *)"
     ],
     "ask": [
       "Bash(git commit *)",

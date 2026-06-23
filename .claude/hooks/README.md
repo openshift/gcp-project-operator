@@ -187,7 +187,7 @@ Prek runs automatically:
 ### Manual Validation
 ```bash
 # Run all checks
-prek run --config hack/prek.ci.toml
+prek run --config hack/prek.ci.toml --all-files
 
 # Run specific check
 prek run gitleaks

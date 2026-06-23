@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+
 if ! command -v prek &>/dev/null; then
   echo "Error: prek is not installed. Install with: uv tool install prek" >&2
   exit 1

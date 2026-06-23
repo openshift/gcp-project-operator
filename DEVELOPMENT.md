@@ -1,13 +1,13 @@
 # Development Guide
 
-Quick reference for developing the Gcp Project.
+Quick reference for developing GCP Project Operator.
 
 ## Prerequisites
 
 - **Go**: 1.22.7 or later
 - **operator-sdk**: v1.21.0
 - **kubectl**: For cluster interaction
-- **pre-commit**: `pip install pre-commit`
+- **prek**: Git hook manager (`brew install prek` or see [prek docs](https://prek.j178.dev/))
 
 ## Initial Setup
 
@@ -16,11 +16,8 @@ Quick reference for developing the Gcp Project.
 git clone https://github.com/openshift/gcp-project-operator.git
 cd gcp-project-operator
 
-# Install development tools
-make tools
-
 # Install pre-commit hooks
-pre-commit install
+prek install
 ```
 
 ## Common Commands
@@ -41,8 +38,7 @@ ginkgo -r ./controllers/      # Run controller tests with Ginkgo
 ### Lint
 ```bash
 make go-check                 # Full linting (golangci-lint)
-pre-commit run --all-files    # Run all pre-commit hooks
-pre-commit run golangci-lint  # Lint only
+prek run --all-files          # Run all prek hooks
 ```
 
 ### Code Generation
@@ -59,18 +55,18 @@ boilerplate/_lib/container-make generate
 
 ### Run Locally
 ```bash
-# Run against cluster in ~/.kube/config
-make run
+# Apply CRDs first
+oc apply -f deploy/crds/gcp.managed.openshift.io_projectclaims.yaml
+oc apply -f deploy/crds/gcp.managed.openshift.io_projectreferences.yaml
 
-# Run with verbose logging
-make run-verbose
+# Run operator locally against cluster in ~/.kube/config
+operator-sdk run local --namespace gcp-project-operator
 ```
 
 ### Container-based Build
 ```bash
 # Run make targets inside boilerplate container
 # (ensures consistent environment with CI)
-boilerplate/_lib/container-make
 boilerplate/_lib/container-make go-test
 boilerplate/_lib/container-make generate
 ```
@@ -82,12 +78,13 @@ boilerplate/_lib/container-make generate
 # After code changes
 go build ./...                # Fast compile check (~5s)
 go test ./pkg/mypackage       # Run affected tests
-pre-commit run                # Lint staged files
+prek run                      # Lint staged files
 ```
 
 **Full validation (pre-PR):**
 ```bash
-pre-commit run --all-files    # All hooks (~15-30s)
+prek run --all-files          # All hooks (~15-30s)
+make validate                 # Generated code / manifest / boilerplate checks
 make go-test                  # Full test suite
 ```
 
@@ -107,9 +104,6 @@ ginkgo -skip="E2E" -r ./...
 ## Debugging
 
 ```bash
-# Verbose operator logs
-make run-verbose
-
 # Print specific package logs
 go test -v ./pkg/... 2>&1 | grep "MyFunction"
 
@@ -133,7 +127,7 @@ go mod tidy
 go mod verify
 ```
 
-**Note**: `go.sum` changes automatically trigger validation in pre-commit.
+**Note**: `go.sum` changes automatically trigger validation in prek hooks.
 
 ## Architecture Pointers
 
@@ -142,17 +136,19 @@ go mod verify
 - **Business Logic**: `controllers/projectclaim/` - Resource management
 - **Tests**: `*_test.go` alongside source, `*_suite_test.go` for Ginkgo
 - **Mocks**: `pkg/util/test/generated/` - Generated mocks
-- **E2E**: `test/e2e/` - End-to-end tests
+- **Config**: `config/` - Operator deployment configuration
 
 ## CI Parity
 
-Local pre-commit hooks mirror Tekton CI checks:
+Local prek hooks mirror Tekton CI checks:
 - **go-check** ↔ Tekton lint job
 - **go-build** ↔ Compilation in CI
 - **go-test** ↔ Unit test job
 - **gitleaks** ↔ Security scanning
+- **go-mod-tidy** ↔ Dependency consistency checks
+- **rbac-wildcard-check** ↔ RBAC policy checks
 
-Run `pre-commit run --all-files` before pushing to catch CI failures early.
+Run `prek run --all-files` before pushing to catch CI failures early.
 
 ## Boilerplate Integration
 
@@ -170,7 +166,7 @@ This repo uses Red Hat's standardized boilerplate:
 boilerplate/_lib/container-make generate
 ```
 
-**Pre-commit hook timeout:**
+**Prek hook timeout:**
 ```bash
 # macOS: Install GNU timeout
 brew install coreutils
@@ -194,5 +190,5 @@ boilerplate/_lib/container-make go-test
 
 - [Testing Guide](./TESTING.md)
 - [Design Documentation](./docs/design.md)
-- [How to Test](./docs/how-to-test.md)
+- [Testing Documentation](./docs/testing.md)
 - [Operator SDK Docs](https://sdk.operatorframework.io/)

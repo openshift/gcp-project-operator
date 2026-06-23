@@ -27,16 +27,23 @@ Automated testing and test quality assurance for this operator.
 ### Test Selection Logic
 
 ```bash
-# Changed Go files
-CHANGED_FILES=$(git diff --name-only HEAD | grep "\.go$")
+# Changed Go files (tracked modifications + new untracked files)
+CHANGED_FILES=$(
+  {
+    git diff --name-only HEAD
+    git ls-files --others --exclude-standard
+  } | grep "\.go$" || true
+)
 
-# Extract packages
-PACKAGES=$(echo "$CHANGED_FILES" | xargs -n1 dirname | sort -u | tr '\n' ' ')
+if [ -n "$CHANGED_FILES" ]; then
+  # Extract packages
+  PACKAGES=$(echo "$CHANGED_FILES" | xargs -n1 dirname | sort -u | tr '\n' ' ')
 
-# Run targeted tests
-for pkg in $PACKAGES; do
-    go test -v ./$pkg/...
-done
+  # Run targeted tests
+  for pkg in $PACKAGES; do
+      go test -v ./$pkg/...
+  done
+fi
 ```
 
 ## Usage

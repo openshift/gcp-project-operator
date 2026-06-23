@@ -44,9 +44,9 @@ fi
 # If realpath/readlink failed, fall back to python
 if [[ -z "$CANONICAL" ]]; then
   if command -v python3 >/dev/null 2>&1; then
-    CANONICAL=$(python3 -c "import os.path; print(os.path.relpath(os.path.normpath('$FILE'), '$REPO_ROOT'))" 2>/dev/null || echo "")
+    CANONICAL=$(python3 -c "import os,sys;p=os.path.realpath(os.path.join(sys.argv[2],sys.argv[1]));r=os.path.realpath(sys.argv[2]);print(os.path.relpath(p,r) if os.path.commonpath([p,r])==r else '')" "$FILE" "$REPO_ROOT" 2>/dev/null || echo "")
   elif command -v python >/dev/null 2>&1; then
-    CANONICAL=$(python -c "import os.path; print(os.path.relpath(os.path.normpath('$FILE'), '$REPO_ROOT'))" 2>/dev/null || echo "")
+    CANONICAL=$(python -c "import os,sys;p=os.path.realpath(os.path.join(sys.argv[2],sys.argv[1]));r=os.path.realpath(sys.argv[2]);print(os.path.relpath(p,r) if os.path.commonpath([p,r])==r else '')" "$FILE" "$REPO_ROOT" 2>/dev/null || echo "")
   fi
 fi
 

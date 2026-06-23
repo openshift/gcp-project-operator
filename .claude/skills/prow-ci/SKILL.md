@@ -75,10 +75,10 @@ https://prow.ci.openshift.org/view/gs/test-platform-results/pr-logs/pull/openshi
 
 ### Step 2: Fetch and Analyze
 
-Run the fetch script from repository root:
+Run the fetch script from any working directory:
 ```bash
-# From repository root
-python3 .claude/skills/prow-ci/fetch_prow_artifacts.py "<prow-job-url>" -o .work/prow-artifacts
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+python3 "$REPO_ROOT/.claude/skills/prow-ci/fetch_prow_artifacts.py" "<prow-job-url>" -o "$REPO_ROOT/.work/prow-artifacts"
 ```
 
 This downloads only the essential files:
@@ -178,7 +178,6 @@ gh pr checks PR_NUMBER | grep -i "fail"
 
 **Tekton Pipelines** (configured in `.tekton/`):
 - `gcp-project-operator-pull-request` - Main PR pipeline (docker build with OCI-TA)
-- `gcp-project-operator-e2e-pull-request` - E2E testing pipeline
 - `gcp-project-operator-pko-pull-request` - PKO (Package Operator) pipeline
 - Corresponding `-push` pipelines for merged commits
 
@@ -240,7 +239,7 @@ This repo uses **both Prow and Tekton** for comprehensive CI:
 
 **Tekton Pipelines** (`.tekton/`):
 - Primary build pipeline using Pipelines as Code
-- Three pipeline types: main, e2e, pko
+- Two pipeline types: main, pko
 - Builds container images to Quay (gcp-project-operator-tenant)
 - Pull request images expire after 5 days
 - Uses boilerplate framework from `openshift/boilerplate` (docker-build-oci-ta pipeline)
@@ -337,8 +336,8 @@ git clone https://github.com/openshift/ci-search.git
 - Files:
   - `gcp-project-operator-pull-request.yaml` - Main PR pipeline
   - `gcp-project-operator-push.yaml` - Post-merge pipeline
-  - `gcp-project-operator-e2e-pull-request.yaml` - E2E testing
   - `gcp-project-operator-pko-pull-request.yaml` - PKO validation
+  - `gcp-project-operator-pko-push.yaml` - PKO post-merge pipeline
 - Triggered by: Pipelines as Code (via Tekton)
 - Uses: Boilerplate docker-build-oci-ta pipeline from openshift/boilerplate
 
