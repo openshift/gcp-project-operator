@@ -6,7 +6,7 @@ WORKDIR ${OPERATOR_PATH}
 # Build
 RUN make go-build
 
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.8-1780378819
+FROM registry.access.redhat.com/ubi9/ubi-minimal:1782366456
 ENV OPERATOR_PATH=/gcp-project-operator \
     OPERATOR_BIN=gcp-project-operator
 
