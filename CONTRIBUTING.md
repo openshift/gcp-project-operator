@@ -242,19 +242,7 @@ The `boilerplate/` directory contains generated files from upstream. Do not modi
 
 ### Local Operator Development
 
-To run the operator locally against a cluster:
-
-```bash
-# Create project and apply CRDs
-oc new-project gcp-project-operator
-oc apply -f deploy/crds/gcp.managed.openshift.io_projectclaims.yaml
-oc apply -f deploy/crds/gcp.managed.openshift.io_projectreferences.yaml
-
-# Run operator locally
-operator-sdk up local --namespace gcp-project-operator
-```
-
-See [docs/development.md](./docs/development.md) for more detailed development instructions.
+See [DEVELOPMENT.md](./DEVELOPMENT.md#run-locally) for CRD setup and running the operator locally.
 
 ## Claude Code Integration
 

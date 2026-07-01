@@ -10,6 +10,7 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	"go.uber.org/mock/gomock"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -613,5 +614,9 @@ func (stubStatus) Update(ctx context.Context, obj client.Object, opts ...client.
 }
 
 func (stubStatus) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	return nil
+}
+
+func (stubStatus) Apply(ctx context.Context, obj runtime.ApplyConfiguration, opts ...client.SubResourceApplyOption) error {
 	return nil
 }

@@ -38,8 +38,8 @@ The operator can run either:
 No matter which option you choose, before running the Operator you have to create the following Custom Resource Definitions on the cluster:
 
 ```shell
-kubectl create -f deploy/crds/gcp.managed.openshift.io_projectclaims_crd.yaml
-kubectl create -f deploy/crds/gcp.managed.openshift.io_projectreferences_crd.yaml
+kubectl create -f deploy/crds/gcp.managed.openshift.io_projectclaims.yaml
+kubectl create -f deploy/crds/gcp.managed.openshift.io_projectreferences.yaml
 ```
 
 ### Locally

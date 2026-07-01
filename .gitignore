@@ -39,3 +39,4 @@ claude_logs.txt
 # app-sre pipeline
 .docker/
 saas-gcp-project-operator-bundle/
+.work/

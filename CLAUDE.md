@@ -26,9 +26,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for complete setup instructions, validati
 - `make openapi-generate` - Generate OpenAPI specs
 
 ### Local Development
-- `operator-sdk up local --namespace gcp-project-operator` - Run operator locally (requires CRDs to be applied first)
-- `oc apply -f deploy/crds/gcp.managed.openshift.io_projectclaims.yaml` - Apply ProjectClaim CRD
-- `oc apply -f deploy/crds/gcp.managed.openshift.io_projectreferences.yaml` - Apply ProjectReference CRD
+- See [DEVELOPMENT.md](DEVELOPMENT.md#run-locally) for CRD setup and running the operator locally
 
 ### Testing
 - `make gotest` or `go test ./...` - Run Go tests directly
