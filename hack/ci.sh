@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Change to repository root to ensure prek finds prek.toml
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || dirname "$(dirname "$(readlink -f "$0")")")
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 if ! command -v prek &>/dev/null; then
-  echo "Error: prek is not installed. See CONTRIBUTING.md for setup instructions." >&2
+  echo "Error: prek is not installed. Install with: uv tool install prek" >&2
   exit 1
 fi
 
-prek run --all-files
+prek run --config hack/prek.ci.toml --all-files

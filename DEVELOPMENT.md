@@ -128,7 +128,7 @@ go mod tidy
 go mod verify
 ```
 
-**Note**: `go.sum` changes automatically trigger validation in pre-commit.
+**Note**: `go.sum` changes automatically trigger validation in prek hooks.
 
 ## Architecture Pointers
 
