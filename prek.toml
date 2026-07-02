@@ -15,15 +15,9 @@ hooks = [
   { id = "check-toml" },
 ]
 
-# Gitleaks secret scanning
-[[repos]]
-repo = "https://github.com/gitleaks/gitleaks"
-rev = "v8.18.0"
-hooks = [
-  { id = "gitleaks", args = ["--config=.gitleaks.toml"] },
-]
-
 # Local custom hooks
+# Note: Gitleaks secret scanning is configured in hack/prek.ci.toml for CI only.
+# To enable locally, install gitleaks and add it here as a local system hook.
 [[repos]]
 repo = "local"
 hooks = [

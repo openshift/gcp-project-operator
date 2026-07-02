@@ -11,6 +11,10 @@
 
 title = "gitleaks config for this operator"
 
+# Extend gitleaks default rules (AWS, GitHub, etc.) with our custom rules
+[extend]
+useDefault = true
+
 # =============================================================================
 # GLOBAL ALLOWLIST
 # =============================================================================

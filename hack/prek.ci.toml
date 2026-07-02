@@ -50,6 +50,15 @@ hooks = [
     pass_filenames = false
   },
 
+  # Gitleaks secret scanning (assumes gitleaks binary is pre-installed in CI)
+  {
+    id = "gitleaks",
+    name = "gitleaks",
+    language = "system",
+    entry = "bash -c 'gitleaks detect --source . --config .gitleaks.toml --no-git --verbose'",
+    pass_filenames = false
+  },
+
   # Note: golangci-lint is run via 'make go-check' and CI, not in prek
   # The boilerplate golangci.yml requires golangci-lint v2, which is built with Go 1.25
   # and cannot analyze this repo's Go 1.26 code. This is a known limitation.
