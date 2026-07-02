@@ -1,18 +1,79 @@
 {
   "permissions": {
     "allow": [
-      "Bash(prek run --all-files)",
+      "Bash(make go-build)",
+      "Bash(make go-test)",
       "Bash(make go-check)",
-      "Bash(make lint)"
+      "Bash(make lint)",
+      "Bash(go build ./...)",
+      "Bash(go test ./...)",
+      "Bash(ginkgo -r ./...)",
+      "Bash(prek --version)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git log)",
+      "Bash(git branch)"
+    ],
+    "ask": [
+      "Bash(grep *)",
+      "Bash(find . *)",
+      "Bash(ls *)",
+      "Bash(wc *)",
+      "Bash(make generate)",
+      "Bash(go fmt ./...)",
+      "Bash(go mod tidy)",
+      "Bash(prek run)",
+      "Bash(prek run *)",
+      "Bash(prek install)",
+      "Bash(boilerplate/_lib/container-make)",
+      "Bash(boilerplate/_lib/container-make *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git rebase *)",
+      "Bash(make docker-build)",
+      "Bash(kubectl *)",
+      "Bash(oc *)"
+    ],
+    "deny": [
+      "Bash(git commit --no-verify)",
+      "Bash(git commit --no-verify *)",
+      "Bash(git commit -n)",
+      "Bash(git commit -n *)",
+      "Bash(git push --force)",
+      "Bash(git push --force *)",
+      "Bash(git push -f)",
+      "Bash(git push -f *)",
+      "Bash(git push * --force)",
+      "Bash(git push * --force *)",
+      "Bash(git push * -f)",
+      "Bash(git push * -f *)",
+      "Bash(git push --force-with-lease)",
+      "Bash(git push --force-with-lease *)",
+      "Bash(git push * --force-with-lease)",
+      "Bash(git push * --force-with-lease *)",
+      "Bash(rm -rf /)",
+      "Bash(chmod 777 *)"
     ]
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/session-start-prek-setup.sh\"",
+            "async": true
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/stop-prek-validation.sh"
+            "command": "bash \"$(git rev-parse --show-toplevel)/.claude/hooks/stop-prek-validation.sh\""
           }
         ]
       }

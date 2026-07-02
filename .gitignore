@@ -29,7 +29,9 @@ testbin/*
 *.swo
 *~
 
-# Claude Code logs
+# Claude Code session artifacts
+.claude/sessions/
+.claude/memory/
 claude_logs.txt
 
 ### boilerplate

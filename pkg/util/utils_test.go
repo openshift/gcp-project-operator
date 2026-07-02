@@ -73,7 +73,11 @@ func TestGetSecret(t *testing.T) {
 			expectedSecret: builders.NewTestSecretBuilder("testName", "testNamespace", "testCreds").GetTestSecret(),
 			expectedErr:    false,
 			validateResult: func(t *testing.T, expected, result *corev1.Secret) {
-				assert.Equal(t, expected, result)
+				// controller-runtime fake client doesn't preserve TypeMeta, so compare fields individually
+				assert.Equal(t, expected.ObjectMeta.Name, result.ObjectMeta.Name)
+				assert.Equal(t, expected.ObjectMeta.Namespace, result.ObjectMeta.Namespace)
+				assert.Equal(t, expected.Data, result.Data)
+				assert.Equal(t, expected.Type, result.Type)
 			},
 		},
 		{
