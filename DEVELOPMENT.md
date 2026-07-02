@@ -7,7 +7,7 @@ Quick reference for developing the GCP Project Operator.
 - **Go**: 1.22.7 or later
 - **operator-sdk**: v1.21.0
 - **kubectl**: For cluster interaction
-- **pre-commit**: `pip install pre-commit`
+- **prek**: See [CONTRIBUTING.md](CONTRIBUTING.md) for installation
 
 ## Initial Setup
 
@@ -80,7 +80,7 @@ boilerplate/_lib/container-make generate
 # After code changes
 go build ./...                # Fast compile check (~5s)
 go test ./pkg/mypackage       # Run affected tests
-pre-commit run                # Lint staged files
+prek run                # Lint staged files
 ```
 
 **Full validation (pre-PR):**
@@ -105,9 +105,6 @@ ginkgo -skip="E2E" -r ./...
 ## Debugging
 
 ```bash
-# Verbose operator logs
-make run-verbose
-
 # Print specific package logs
 go test -v ./pkg/... 2>&1 | grep "MyFunction"
 
@@ -150,7 +147,7 @@ Local pre-commit hooks mirror Tekton CI checks:
 - **go-test** ↔ Unit test job
 - **gitleaks** ↔ Security scanning
 
-Run `pre-commit run --all-files` before pushing to catch CI failures early.
+Run `prek run --all-files` before pushing to catch CI failures early.
 
 ## Boilerplate Integration
 
@@ -192,5 +189,5 @@ boilerplate/_lib/container-make go-test
 
 - [Testing Guide](./TESTING.md)
 - [Design Documentation](./docs/design.md)
-- [How to Test](./docs/how-to-test.md)
+- [How to Test](./TESTING.md)
 - [Operator SDK Docs](https://sdk.operatorframework.io/)

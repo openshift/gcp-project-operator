@@ -116,10 +116,10 @@ The prek configuration **excludes** the `boilerplate/` directory from auto-fixin
 ### Running Validation Manually
 
 ```bash
-# Run all pre-commit checks on all files
+# Run all prek checks on all files
 prek run --all-files
 
-# Run all pre-commit checks on staged files only
+# Run all prek checks on staged files only
 prek run
 
 # Run via CI script (same as what runs in CI)

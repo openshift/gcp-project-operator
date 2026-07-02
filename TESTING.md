@@ -264,14 +264,14 @@ boilerplate/_lib/container-make go-test
 
 ## Pre-commit Integration
 
-Tests run automatically in pre-commit when Go files change:
+Tests run automatically in prek hooks when Go files change:
 ```yaml
 - id: go-test
   entry: make go-test
   files: '\.go$'
 ```
 
-This is NOT in current pre-commit config (too slow for pre-commit).
+This is NOT in current prek config (too slow for pre-commit hooks).
 Run manually before pushing: `make go-test`
 
 ## Further Reading
