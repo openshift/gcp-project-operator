@@ -1,4 +1,5 @@
-# Prek Configuration for this operator
+# Prek Configuration for CI
+# Excludes hooks requiring internal network access or that may not be available in CI
 # https://prek.j178.dev/
 
 # File hygiene and syntax validation
@@ -16,8 +17,6 @@ hooks = [
 ]
 
 # Local custom hooks
-# Note: Gitleaks secret scanning is configured in hack/prek.ci.toml for CI only.
-# To enable locally, install gitleaks and add it here as a local system hook.
 [[repos]]
 repo = "local"
 hooks = [
@@ -48,6 +47,15 @@ hooks = [
     language = "system",
     entry = "bash -c 'make rbac-wildcard-check'",
     files = '^deploy/.*\.ya?ml$',
+    pass_filenames = false
+  },
+
+  # Gitleaks secret scanning (assumes gitleaks binary is pre-installed in CI)
+  {
+    id = "gitleaks",
+    name = "gitleaks",
+    language = "system",
+    entry = "bash -c 'gitleaks detect --source . --config .gitleaks.toml --no-git --verbose'",
     pass_filenames = false
   },
 

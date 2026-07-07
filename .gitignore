@@ -29,7 +29,9 @@ testbin/*
 *.swo
 *~
 
-# Claude Code logs
+# Claude Code session artifacts
+.claude/sessions/
+.claude/memory/
 claude_logs.txt
 
 ### boilerplate
@@ -39,3 +41,4 @@ claude_logs.txt
 # app-sre pipeline
 .docker/
 saas-gcp-project-operator-bundle/
+.claude/skills/prow-ci/__pycache__/

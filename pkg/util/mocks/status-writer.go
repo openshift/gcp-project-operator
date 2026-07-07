@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -38,6 +39,25 @@ func NewMockStatusWriter(ctrl *gomock.Controller) *MockStatusWriter {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockStatusWriter) EXPECT() *MockStatusWriterMockRecorder {
 	return m.recorder
+}
+
+// Apply mocks base method.
+func (m *MockStatusWriter) Apply(arg0 context.Context, arg1 runtime.ApplyConfiguration, arg2 ...client.SubResourceApplyOption) error {
+	m.ctrl.T.Helper()
+	varargs := []any{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "Apply", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Apply indicates an expected call of Apply.
+func (mr *MockStatusWriterMockRecorder) Apply(arg0, arg1 any, arg2 ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Apply", reflect.TypeOf((*MockStatusWriter)(nil).Apply), varargs...)
 }
 
 // Create mocks base method.
