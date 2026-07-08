@@ -5,12 +5,11 @@ go 1.26.0
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/go-logr/logr v1.4.3
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.42.1
 	github.com/stretchr/testify v1.11.1
-	go.uber.org/mock v0.6.0
+	go.uber.org/mock v0.5.0
 	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.286.0
 	gopkg.in/yaml.v2 v2.4.0
