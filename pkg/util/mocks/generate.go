@@ -5,7 +5,7 @@ package mocks
 // directives should go in the source files themselves).
 // Run `make generate` from the project root.
 // Dependency: mockgen, qua:
-//    GO111MODULE=on go get github.com/golang/mock/mockgen@latest
+//    GO111MODULE=on go get go.uber.org/mock/mockgen@latest
 
 //go:generate mockgen -destination ./cr-client.go -package mocks sigs.k8s.io/controller-runtime/pkg/client Client
 //go:generate mockgen -destination ./status-writer.go -package mocks sigs.k8s.io/controller-runtime/pkg/client StatusWriter
