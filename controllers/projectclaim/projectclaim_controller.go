@@ -34,6 +34,7 @@ import (
 type CustomResourceAdapter interface {
 	EnsureProjectClaimFakeProcessed() (gcputil.OperationResult, error)
 	EnsureProjectClaimDeletionProcessed() (gcputil.OperationResult, error)
+	EnsureProjectClaimValidated() (gcputil.OperationResult, error)
 	ProjectReferenceExists() (bool, error)
 	EnsureProjectClaimInitialized() (gcputil.OperationResult, error)
 	EnsureProjectClaimStatePending() (gcputil.OperationResult, error)
@@ -101,6 +102,7 @@ func (r *ProjectClaimReconciler) ReconcileHandler(adapter CustomResourceAdapter)
 	operations := []ReconcileOperation{
 		adapter.EnsureProjectClaimFakeProcessed,
 		adapter.EnsureProjectClaimDeletionProcessed,
+		adapter.EnsureProjectClaimValidated,
 		adapter.EnsureProjectClaimInitialized,
 		adapter.EnsureRegionSupported,
 		adapter.EnsureProjectClaimStatePending,

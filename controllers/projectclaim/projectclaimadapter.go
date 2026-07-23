@@ -84,6 +84,18 @@ func (c *ProjectClaimAdapter) ProjectReferenceExists() (bool, error) {
 	return true, nil
 }
 
+// EnsureProjectClaimValidated rejects ProjectClaims whose secret-reference namespaces
+// do not match the CR's own namespace, preventing cross-namespace secret access.
+func (c *ProjectClaimAdapter) EnsureProjectClaimValidated() (gcputil.OperationResult, error) {
+	if err := c.projectClaim.Validate(); err != nil {
+		c.logger.Error(err, "ProjectClaim validation failed")
+		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
+		_ = c.StatusUpdate()
+		return gcputil.StopProcessing()
+	}
+	return gcputil.ContinueProcessing()
+}
+
 // EnsureProjectClaimDeletionProcessed deletes ProjectClaim in cases a deletion was triggered
 func (c *ProjectClaimAdapter) EnsureProjectClaimDeletionProcessed() (gcputil.OperationResult, error) {
 	if c.IsProjectClaimDeletion() {

@@ -17,7 +17,16 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+var (
+	// ErrCCSSecretRefNamespaceMismatch is returned when CCSSecretRef.Namespace does not match the ProjectClaim namespace.
+	ErrCCSSecretRefNamespaceMismatch = errors.New("ccsSecretRef.namespace must match the ProjectClaim namespace")
+	// ErrGCPCredentialSecretNamespaceMismatch is returned when GCPCredentialSecret.Namespace does not match the ProjectClaim namespace.
+	ErrGCPCredentialSecretNamespaceMismatch = errors.New("gcpCredentialSecret.namespace must match the ProjectClaim namespace")
 )
 
 // ProjectClaimSpec defines the desired state of ProjectClaim
@@ -81,6 +90,25 @@ type ProjectClaimList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ProjectClaim `json:"items"`
+}
+
+// Validate checks that all secret-reference namespace fields match the
+// ProjectClaim's own namespace, preventing cross-namespace secret access
+// through the operator's cluster-wide RBAC.
+func (p *ProjectClaim) Validate() error {
+	ns := p.GetNamespace()
+
+	if p.Spec.CCS {
+		if p.Spec.CCSSecretRef.Namespace != "" && p.Spec.CCSSecretRef.Namespace != ns {
+			return ErrCCSSecretRefNamespaceMismatch
+		}
+	}
+
+	if p.Spec.GCPCredentialSecret.Namespace != "" && p.Spec.GCPCredentialSecret.Namespace != ns {
+		return ErrGCPCredentialSecretNamespaceMismatch
+	}
+
+	return nil
 }
 
 func init() {

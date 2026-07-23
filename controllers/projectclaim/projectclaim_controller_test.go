@@ -87,6 +87,7 @@ var _ = Describe("ProjectclaimController", func() {
 				BeforeEach(func() {
 					mockAdapter.EXPECT().EnsureProjectClaimFakeProcessed().Return(gcputil.ContinueProcessing())
 					mockAdapter.EXPECT().EnsureProjectClaimDeletionProcessed().Return(gcputil.ContinueProcessing())
+					mockAdapter.EXPECT().EnsureProjectClaimValidated().Return(gcputil.ContinueProcessing())
 					mockAdapter.EXPECT().EnsureRegionSupported().Return(gcputil.ContinueProcessing())
 					mockAdapter.EXPECT().EnsureProjectReferenceExists().Return(gcputil.ContinueProcessing())
 					mockAdapter.EXPECT().EnsureProjectClaimInitialized().Return(gcputil.ContinueProcessing())

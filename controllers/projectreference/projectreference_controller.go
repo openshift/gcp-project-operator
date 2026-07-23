@@ -78,6 +78,18 @@ func (r *ProjectReferenceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
+	// Validate namespace constraints before building the GCP client.
+	// This prevents cross-namespace secret access via CCSSecretRef.
+	// Skip validation for resources being deleted to avoid wedging finalizers.
+	if projectReference.DeletionTimestamp == nil {
+		if validateErr := projectReference.Validate(); validateErr != nil {
+			reqLogger.Error(validateErr, "ProjectReference validation failed")
+			projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
+			_ = r.Client.Status().Update(ctx, projectReference)
+			return ctrl.Result{}, nil
+		}
+	}
+
 	gcpClient, err := r.getGcpClient(projectReference, reqLogger)
 	if err != nil {
 		return ctrl.Result{}, err
