@@ -85,7 +85,9 @@ func (r *ProjectReferenceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		if validateErr := projectReference.Validate(); validateErr != nil {
 			reqLogger.Error(validateErr, "ProjectReference validation failed")
 			projectReference.Status.State = gcpv1alpha1.ProjectReferenceStatusError
-			_ = r.Client.Status().Update(ctx, projectReference)
+			if updateErr := r.Client.Status().Update(ctx, projectReference); updateErr != nil {
+				return ctrl.Result{}, updateErr
+			}
 			return ctrl.Result{}, nil
 		}
 	}

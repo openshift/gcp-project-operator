@@ -101,7 +101,9 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimFakeProcessed() (gcputil.Operati
 	if err := c.projectClaim.Validate(); err != nil {
 		c.logger.Error(err, "ProjectClaim validation failed in fake processing")
 		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
-		_ = c.StatusUpdate()
+		if updateErr := c.StatusUpdate(); updateErr != nil {
+			return gcputil.RequeueWithError(updateErr)
+		}
 		return gcputil.StopProcessing()
 	}
 	if err := c.CreateFakeSecret(); err != nil {

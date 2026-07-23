@@ -90,7 +90,9 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimValidated() (gcputil.OperationRe
 	if err := c.projectClaim.Validate(); err != nil {
 		c.logger.Error(err, "ProjectClaim validation failed")
 		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
-		_ = c.StatusUpdate()
+		if updateErr := c.StatusUpdate(); updateErr != nil {
+			return gcputil.RequeueWithError(updateErr)
+		}
 		return gcputil.StopProcessing()
 	}
 	return gcputil.ContinueProcessing()
