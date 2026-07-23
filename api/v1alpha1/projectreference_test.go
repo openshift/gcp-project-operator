@@ -8,7 +8,11 @@ import (
 )
 
 func TestProjectReferenceValidate(t *testing.T) {
-	const refNamespace = "gcp-project-operator"
+	const (
+		refNamespace   = "gcp-project-operator"
+		tenantNS       = "tenant-ns"
+		foreignNS      = "foreign-ns"
+	)
 
 	tests := []struct {
 		name        string
@@ -24,12 +28,13 @@ func TestProjectReferenceValidate(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name: "valid CCS ProjectReference with matching CCSSecretRef namespace",
+			name: "valid CCS ProjectReference with CCSSecretRef matching claim namespace",
 			ref: ProjectReference{
 				ObjectMeta: metav1.ObjectMeta{Namespace: refNamespace},
 				Spec: ProjectReferenceSpec{
-					CCS:          true,
-					CCSSecretRef: NamespacedName{Namespace: refNamespace, Name: "ccs-secret"},
+					CCS:                true,
+					ProjectClaimCRLink: NamespacedName{Namespace: tenantNS, Name: "claim"},
+					CCSSecretRef:       NamespacedName{Namespace: tenantNS, Name: "ccs-secret"},
 				},
 			},
 			expectedErr: nil,
@@ -39,19 +44,33 @@ func TestProjectReferenceValidate(t *testing.T) {
 			ref: ProjectReference{
 				ObjectMeta: metav1.ObjectMeta{Namespace: refNamespace},
 				Spec: ProjectReferenceSpec{
-					CCS:          true,
-					CCSSecretRef: NamespacedName{Name: "ccs-secret"},
+					CCS:                true,
+					ProjectClaimCRLink: NamespacedName{Namespace: tenantNS, Name: "claim"},
+					CCSSecretRef:       NamespacedName{Name: "ccs-secret"},
 				},
 			},
 			expectedErr: nil,
 		},
 		{
-			name: "invalid CCS ProjectReference with cross-namespace CCSSecretRef",
+			name: "invalid CCS ProjectReference with CCSSecretRef pointing to operator namespace",
 			ref: ProjectReference{
 				ObjectMeta: metav1.ObjectMeta{Namespace: refNamespace},
 				Spec: ProjectReferenceSpec{
-					CCS:          true,
-					CCSSecretRef: NamespacedName{Namespace: "tenant-ns", Name: "ccs-secret"},
+					CCS:                true,
+					ProjectClaimCRLink: NamespacedName{Namespace: tenantNS, Name: "claim"},
+					CCSSecretRef:       NamespacedName{Namespace: refNamespace, Name: "ccs-secret"},
+				},
+			},
+			expectedErr: ErrProjectRefCCSSecretRefNamespaceMismatch,
+		},
+		{
+			name: "invalid CCS ProjectReference with CCSSecretRef pointing to foreign namespace",
+			ref: ProjectReference{
+				ObjectMeta: metav1.ObjectMeta{Namespace: refNamespace},
+				Spec: ProjectReferenceSpec{
+					CCS:                true,
+					ProjectClaimCRLink: NamespacedName{Namespace: tenantNS, Name: "claim"},
+					CCSSecretRef:       NamespacedName{Namespace: foreignNS, Name: "ccs-secret"},
 				},
 			},
 			expectedErr: ErrProjectRefCCSSecretRefNamespaceMismatch,
