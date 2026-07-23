@@ -146,6 +146,21 @@ func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimStatePendingP
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimStatePendingProject", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimStatePendingProject))
 }
 
+// EnsureProjectClaimValidated mocks base method.
+func (m *MockCustomResourceAdapter) EnsureProjectClaimValidated() (util.OperationResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnsureProjectClaimValidated")
+	ret0, _ := ret[0].(util.OperationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EnsureProjectClaimValidated indicates an expected call of EnsureProjectClaimValidated.
+func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimValidated() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimValidated", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimValidated))
+}
+
 // EnsureProjectReferenceExists mocks base method.
 func (m *MockCustomResourceAdapter) EnsureProjectReferenceExists() (util.OperationResult, error) {
 	m.ctrl.T.Helper()

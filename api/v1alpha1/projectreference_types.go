@@ -17,7 +17,15 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+var (
+	// ErrProjectRefCCSSecretRefNamespaceMismatch is returned when a ProjectReference's
+	// CCSSecretRef.Namespace does not match the linked ProjectClaim namespace.
+	ErrProjectRefCCSSecretRefNamespaceMismatch = errors.New("ccsSecretRef.namespace must match the ProjectClaim namespace")
 )
 
 // ProjectReferenceSpec defines the desired state of ProjectReference
@@ -82,6 +90,20 @@ type ProjectReferenceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ProjectReference `json:"items"`
+}
+
+// Validate checks that CCSSecretRef.Namespace, when set, matches the linked
+// ProjectClaim's namespace. ProjectReferences always live in the operator
+// namespace (gcp-project-operator), but CCSSecretRef should point at a secret
+// in the tenant's namespace — the same namespace as the ProjectClaim.
+func (p *ProjectReference) Validate() error {
+	if p.Spec.CCS {
+		claimNS := p.Spec.ProjectClaimCRLink.Namespace
+		if p.Spec.CCSSecretRef.Namespace != "" && p.Spec.CCSSecretRef.Namespace != claimNS {
+			return ErrProjectRefCCSSecretRefNamespaceMismatch
+		}
+	}
+	return nil
 }
 
 func init() {

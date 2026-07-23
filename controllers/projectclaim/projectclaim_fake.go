@@ -98,6 +98,14 @@ func (c *ProjectClaimAdapter) EnsureProjectClaimFakeProcessed() (gcputil.Operati
 		}
 		return gcputil.StopProcessing()
 	}
+	if err := c.projectClaim.Validate(); err != nil {
+		c.logger.Error(err, "ProjectClaim validation failed in fake processing")
+		c.projectClaim.Status.State = gcpv1alpha1.ClaimStatusError
+		if updateErr := c.StatusUpdate(); updateErr != nil {
+			return gcputil.RequeueWithError(updateErr)
+		}
+		return gcputil.StopProcessing()
+	}
 	if err := c.CreateFakeSecret(); err != nil {
 		return gcputil.RequeueWithError(operrors.Wrap(err, fmt.Sprintf("Could not create fake secret %s", c.projectClaim.Spec.GCPCredentialSecret.Name)))
 	}
