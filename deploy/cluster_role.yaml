@@ -7,58 +7,33 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - pods
-      - services
-      - endpoints
-      - persistentvolumeclaims
-      - events
-      - configmaps
       - secrets
     verbs:
       - create
       - delete
       - get
-      - list
-      - patch
       - update
-      - watch
   - apiGroups:
-      - apps
+      - ""
     resources:
-      - deployments
-      - daemonsets
-      - replicasets
-      - statefulsets
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - monitoring.coreos.com
-    resources:
-      - servicemonitors
+      - configmaps
     verbs:
       - get
-      - create
   - apiGroups:
-      - apps
-    resourceNames:
-      - gcp-project-operator
+      - ""
     resources:
-      - deployments/finalizers
+      - events
     verbs:
-      - update
+      - create
   - apiGroups:
       - gcp.managed.openshift.io
     resources:
       - projectclaims
       - projectclaims/status
+      - projectclaims/finalizers
       - projectreferences
       - projectreferences/status
+      - projectreferences/finalizers
     verbs:
       - create
       - delete
