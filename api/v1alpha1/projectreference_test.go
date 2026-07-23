@@ -9,9 +9,9 @@ import (
 
 func TestProjectReferenceValidate(t *testing.T) {
 	const (
-		refNamespace   = "gcp-project-operator"
-		tenantNS       = "tenant-ns"
-		foreignNS      = "foreign-ns"
+		refNamespace = "gcp-project-operator"
+		tenantNS     = "tenant-ns"
+		foreignNS    = "foreign-ns"
 	)
 
 	tests := []struct {
