@@ -86,21 +86,6 @@ func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimDeletionProce
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimDeletionProcessed", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimDeletionProcessed))
 }
 
-// EnsureProjectClaimValidated mocks base method.
-func (m *MockCustomResourceAdapter) EnsureProjectClaimValidated() (util.OperationResult, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnsureProjectClaimValidated")
-	ret0, _ := ret[0].(util.OperationResult)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// EnsureProjectClaimValidated indicates an expected call of EnsureProjectClaimValidated.
-func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimValidated() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimValidated", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimValidated))
-}
-
 // EnsureProjectClaimFakeProcessed mocks base method.
 func (m *MockCustomResourceAdapter) EnsureProjectClaimFakeProcessed() (util.OperationResult, error) {
 	m.ctrl.T.Helper()
@@ -159,6 +144,21 @@ func (m *MockCustomResourceAdapter) EnsureProjectClaimStatePendingProject() (uti
 func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimStatePendingProject() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimStatePendingProject", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimStatePendingProject))
+}
+
+// EnsureProjectClaimValidated mocks base method.
+func (m *MockCustomResourceAdapter) EnsureProjectClaimValidated() (util.OperationResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "EnsureProjectClaimValidated")
+	ret0, _ := ret[0].(util.OperationResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// EnsureProjectClaimValidated indicates an expected call of EnsureProjectClaimValidated.
+func (mr *MockCustomResourceAdapterMockRecorder) EnsureProjectClaimValidated() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureProjectClaimValidated", reflect.TypeOf((*MockCustomResourceAdapter)(nil).EnsureProjectClaimValidated))
 }
 
 // EnsureProjectReferenceExists mocks base method.
