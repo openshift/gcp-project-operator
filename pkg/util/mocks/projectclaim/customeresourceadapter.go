@@ -22,6 +22,7 @@ import (
 type MockCustomResourceAdapter struct {
 	ctrl     *gomock.Controller
 	recorder *MockCustomResourceAdapterMockRecorder
+	isgomock struct{}
 }
 
 // MockCustomResourceAdapterMockRecorder is the mock recorder for MockCustomResourceAdapter.
