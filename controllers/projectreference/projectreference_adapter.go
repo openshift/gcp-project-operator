@@ -31,6 +31,9 @@ import (
 const (
 	osdServiceAccountNameDefault = "osd-managed-admin"
 	FinalizerName                = "finalizer.gcp.managed.openshift.io"
+	// PersistentErrorThreshold is how long reconcile errors must persist
+	// before the ProjectClaim is moved to the terminal Error state.
+	PersistentErrorThreshold = 30 * time.Minute
 )
 
 // OSDRequiredAPIS is list of API's, required to setup
@@ -839,6 +842,54 @@ func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberTyp
 		}
 		return nil
 	}
+}
+
+// PropagateErrorToProjectClaim writes reconcile errors to the ProjectClaim's
+// Conditions for immediate SRE visibility. If the error persists beyond
+// PersistentErrorThreshold, it sets ClaimStatusError so that OCM can surface
+// the failure to the customer and stop waiting.
+// When err is nil and a previous error condition exists, the condition is
+// marked resolved and the ProjectClaim state is left unchanged.
+func (r *ReferenceAdapter) PropagateErrorToProjectClaim(reason string, err error) error {
+	if r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusError {
+		return nil
+	}
+
+	conditions := &r.ProjectClaim.Status.Conditions
+	conditionType := gcpv1alpha1.ConditionError
+
+	if err != nil {
+		if r.conditionManager.HasCondition(conditions, conditionType) {
+			existingCondition, _ := r.conditionManager.FindCondition(conditions, conditionType)
+			if existingCondition.Status == corev1.ConditionTrue {
+				errorStart := existingCondition.LastTransitionTime.Time
+				if time.Since(errorStart) >= PersistentErrorThreshold {
+					r.logger.Error(err, "ProjectClaim error persisted beyond threshold, setting Error state",
+						"projectClaim", r.ProjectClaim.Name,
+						"namespace", r.ProjectClaim.Namespace,
+						"threshold", PersistentErrorThreshold,
+						"erroringSince", errorStart)
+					r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusError
+				}
+			}
+		}
+
+		r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error())
+		return r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim)
+	}
+
+	if !r.conditionManager.HasCondition(conditions, conditionType) {
+		return nil
+	}
+
+	existingCondition, _ := r.conditionManager.FindCondition(conditions, conditionType)
+	resolvedReason := reason + "Resolved"
+	if existingCondition.Status == corev1.ConditionFalse && existingCondition.Reason == resolvedReason {
+		return nil
+	}
+
+	r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, resolvedReason, "")
+	return r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim)
 }
 
 // SetProjectReferenceCondition calls SetCondition() with project reference conditions
