@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -844,10 +845,29 @@ func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberTyp
 	}
 }
 
+// isTerminalError returns true if the error indicates a condition that will
+// not resolve by retrying — the customer or an SRE must take action.
+// Terminal errors are escalated to ClaimStatusError immediately rather than
+// waiting for the PersistentErrorThreshold.
+func isTerminalError(err error) bool {
+	var apiErr *googleapi.Error
+	if !stderrors.As(err, &apiErr) {
+		return false
+	}
+	switch apiErr.Code {
+	case http.StatusBadRequest: // 400 — invalid request given project state
+		return true
+	case http.StatusForbidden: // 403 — unless it's "API not yet ready"
+		return !matchesComputeApiNotReadyError(err)
+	default:
+		return false
+	}
+}
+
 // PropagateErrorToProjectClaim writes reconcile errors to the ProjectClaim's
-// Conditions for immediate SRE visibility. If the error persists beyond
-// PersistentErrorThreshold, it sets ClaimStatusError so that OCM can surface
-// the failure to the customer and stop waiting.
+// Conditions for immediate SRE visibility. Terminal GCP errors (4xx client
+// errors that won't self-heal) set ClaimStatusError immediately. Transient
+// errors are given PersistentErrorThreshold before escalating.
 // When err is nil and a previous error condition exists, the condition is
 // marked resolved and the ProjectClaim state is left unchanged.
 func (r *ReferenceAdapter) PropagateErrorToProjectClaim(reason string, err error) error {
@@ -859,7 +879,14 @@ func (r *ReferenceAdapter) PropagateErrorToProjectClaim(reason string, err error
 	conditionType := gcpv1alpha1.ConditionError
 
 	if err != nil {
-		if r.conditionManager.HasCondition(conditions, conditionType) {
+		shouldEscalate := false
+
+		if isTerminalError(err) {
+			r.logger.Error(err, "Terminal GCP error, setting ProjectClaim to Error state",
+				"projectClaim", r.ProjectClaim.Name,
+				"namespace", r.ProjectClaim.Namespace)
+			shouldEscalate = true
+		} else if r.conditionManager.HasCondition(conditions, conditionType) {
 			existingCondition, _ := r.conditionManager.FindCondition(conditions, conditionType)
 			if existingCondition.Status == corev1.ConditionTrue {
 				errorStart := existingCondition.LastTransitionTime.Time
@@ -869,9 +896,13 @@ func (r *ReferenceAdapter) PropagateErrorToProjectClaim(reason string, err error
 						"namespace", r.ProjectClaim.Namespace,
 						"threshold", PersistentErrorThreshold,
 						"erroringSince", errorStart)
-					r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusError
+					shouldEscalate = true
 				}
 			}
+		}
+
+		if shouldEscalate {
+			r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusError
 		}
 
 		r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error())

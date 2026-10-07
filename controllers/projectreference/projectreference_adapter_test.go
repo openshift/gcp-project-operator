@@ -2,6 +2,7 @@ package projectreference_test
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -852,6 +854,89 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
 				err := adapter.PropagateErrorToProjectClaim(reason, reconcileErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusPendingProject))
+			})
+		})
+
+		Context("when the error is a terminal GCP 400 error", func() {
+			It("sets ClaimStatusError immediately without waiting for threshold", func() {
+				terminalErr := &googleapi.Error{Code: 400, Message: "IAM policy members limit exceeded"}
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, terminalErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, terminalErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusError))
+			})
+		})
+
+		Context("when the error is a terminal GCP 403 error (not API-not-ready)", func() {
+			It("sets ClaimStatusError immediately", func() {
+				terminalErr := &googleapi.Error{Code: 403, Message: "The caller does not have permission"}
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, terminalErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, terminalErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusError))
+			})
+		})
+
+		Context("when the error is a wrapped terminal GCP error", func() {
+			It("unwraps and sets ClaimStatusError immediately", func() {
+				apiErr := &googleapi.Error{Code: 400, Message: "Quota exceeded"}
+				wrappedErr := fmt.Errorf("could not configure project: %w", apiErr)
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, wrappedErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, wrappedErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusError))
+			})
+		})
+
+		Context("when the error is a 403 Compute API not ready", func() {
+			It("does not treat it as terminal", func() {
+				apiNotReadyErr := &googleapi.Error{Code: 403, Message: "Access Not Configured. Compute Engine API has not been used in project 12345"}
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().HasCondition(conditions, conditionType).Return(false)
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, apiNotReadyErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, apiNotReadyErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusPendingProject))
+			})
+		})
+
+		Context("when the error is a non-terminal GCP 409 conflict", func() {
+			It("does not set ClaimStatusError immediately", func() {
+				conflictErr := &googleapi.Error{Code: 409, Message: "already exists"}
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().HasCondition(conditions, conditionType).Return(false)
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, conflictErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, conflictErr)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusPendingProject))
 			})
