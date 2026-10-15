@@ -7,6 +7,7 @@ reviewers:
 - Nikokolas3270
 - RaphaelBut
 - srep-functional-team-aurora
+- rosa-trust-engineering-access-tooling
 approvers:
 - bergmannf
 - rafael-azevedo
@@ -16,6 +17,7 @@ approvers:
 - Nikokolas3270
 - RaphaelBut
 - srep-functional-team-aurora
+- rosa-trust-engineering-access-tooling
 maintainers:
 - srep-functional-team-aurora
 - rafael-azevedo
