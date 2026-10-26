@@ -1,22 +1,22 @@
 reviewers:
 - bergmannf
 - rafael-azevedo
-- bng0y
 - typeid
 - Makdaam
 - Nikokolas3270
 - RaphaelBut
 - srep-functional-team-aurora
+- rosa-trust-engineering-access-tooling
 approvers:
 - bergmannf
 - rafael-azevedo
-- bng0y
 - typeid
 - Makdaam
 - Nikokolas3270
 - RaphaelBut
 - srep-functional-team-aurora
+- rosa-trust-engineering-access-tooling
 maintainers:
 - srep-functional-team-aurora
+- rosa-trust-engineering-access-tooling
 - rafael-azevedo
-- bng0y
