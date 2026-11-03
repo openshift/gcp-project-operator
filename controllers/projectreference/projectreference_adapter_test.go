@@ -2,6 +2,7 @@ package projectreference_test
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/openshift/gcp-project-operator/pkg/util/mocks"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/api/cloudresourcemanager/v1"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iam/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -832,5 +834,213 @@ var _ = Describe("ProjectreferenceAdapter", func() {
 			Expect(projectReference.Spec.GCPProjectID).NotTo(Equal(projectIDBefore))
 		})
 
+	})
+
+	Context("PropagateErrorToProjectClaim()", func() {
+		var (
+			reconcileErr  = errors.New("googleapi: Error 400: IAM policy members limit exceeded")
+			reason        = "ReconcileError"
+			conditionType = gcpv1alpha1.ConditionError
+		)
+
+		Context("when there is an error and no previous error condition", func() {
+			It("sets the error condition on ProjectClaim without changing state", func() {
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().HasCondition(conditions, conditionType).Return(false)
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, reconcileErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, reconcileErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusPendingProject))
+			})
+		})
+
+		Context("when the error is a terminal GCP 400 error", func() {
+			It("sets ClaimStatusError immediately without waiting for threshold", func() {
+				terminalErr := &googleapi.Error{Code: 400, Message: "IAM policy members limit exceeded"}
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, terminalErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, terminalErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusError))
+			})
+		})
+
+		Context("when the error is a terminal GCP 403 error (not API-not-ready)", func() {
+			It("sets ClaimStatusError immediately", func() {
+				terminalErr := &googleapi.Error{Code: 403, Message: "The caller does not have permission"}
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, terminalErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, terminalErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusError))
+			})
+		})
+
+		Context("when the error is a wrapped terminal GCP error", func() {
+			It("unwraps and sets ClaimStatusError immediately", func() {
+				apiErr := &googleapi.Error{Code: 400, Message: "Quota exceeded"}
+				wrappedErr := fmt.Errorf("could not configure project: %w", apiErr)
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, wrappedErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, wrappedErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusError))
+			})
+		})
+
+		Context("when the error is a 403 Compute API not ready", func() {
+			It("does not treat it as terminal", func() {
+				apiNotReadyErr := &googleapi.Error{Code: 403, Message: "Access Not Configured. Compute Engine API has not been used in project 12345"}
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().HasCondition(conditions, conditionType).Return(false)
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, apiNotReadyErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, apiNotReadyErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusPendingProject))
+			})
+		})
+
+		Context("when the error is a non-terminal GCP 409 conflict", func() {
+			It("does not set ClaimStatusError immediately", func() {
+				conflictErr := &googleapi.Error{Code: 409, Message: "already exists"}
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				mockConditions.EXPECT().HasCondition(conditions, conditionType).Return(false)
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, conflictErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, conflictErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusPendingProject))
+			})
+		})
+
+		Context("when the error has persisted beyond the threshold", func() {
+			It("sets ClaimStatusError on the ProjectClaim", func() {
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				pastThreshold := metav1.NewTime(time.Now().Add(-(PersistentErrorThreshold + time.Minute)))
+				existingCondition := &gcpv1alpha1.Condition{
+					Type:               conditionType,
+					Status:             corev1.ConditionTrue,
+					LastTransitionTime: pastThreshold,
+				}
+				mockConditions.EXPECT().HasCondition(conditions, conditionType).Return(true)
+				mockConditions.EXPECT().FindCondition(conditions, conditionType).Return(existingCondition, true)
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, reconcileErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, reconcileErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusError))
+			})
+		})
+
+		Context("when the error has not yet persisted beyond the threshold", func() {
+			It("does not set ClaimStatusError", func() {
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				recent := metav1.NewTime(time.Now().Add(-(PersistentErrorThreshold - 25*time.Minute)))
+				existingCondition := &gcpv1alpha1.Condition{
+					Type:               conditionType,
+					Status:             corev1.ConditionTrue,
+					LastTransitionTime: recent,
+				}
+				mockConditions.EXPECT().HasCondition(conditions, conditionType).Return(true)
+				mockConditions.EXPECT().FindCondition(conditions, conditionType).Return(existingCondition, true)
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, reconcileErr.Error()).Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, reconcileErr)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ProjectClaim.Status.State).To(Equal(gcpv1alpha1.ClaimStatusPendingProject))
+			})
+		})
+
+		Context("when the ProjectClaim is already in Error state", func() {
+			It("returns nil without any updates", func() {
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusError
+
+				err := adapter.PropagateErrorToProjectClaim(reason, reconcileErr)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the error is nil and no previous condition exists", func() {
+			It("returns nil without updating", func() {
+				mockConditions.EXPECT().HasCondition(gomock.Any(), conditionType).Return(false)
+				err := adapter.PropagateErrorToProjectClaim(reason, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the error is nil and a previous error condition exists", func() {
+			It("marks the condition as resolved", func() {
+				conditions := &adapter.ProjectClaim.Status.Conditions
+				adapter.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusPendingProject
+
+				existingCondition := &gcpv1alpha1.Condition{
+					Type:   conditionType,
+					Status: corev1.ConditionTrue,
+					Reason: reason,
+				}
+				mockConditions.EXPECT().HasCondition(conditions, conditionType).Return(true)
+				mockConditions.EXPECT().FindCondition(conditions, conditionType).Return(existingCondition, true)
+				mockConditions.EXPECT().SetCondition(conditions, conditionType, corev1.ConditionFalse, "ReconcileErrorResolved", "").Times(1)
+				mockKubeClient.EXPECT().Status().Return(mockStatusWriter)
+				mockStatusWriter.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
+
+		Context("when the error is nil and condition is already resolved", func() {
+			It("does not update again", func() {
+				conditions := &adapter.ProjectClaim.Status.Conditions
+
+				existingCondition := &gcpv1alpha1.Condition{
+					Type:   conditionType,
+					Status: corev1.ConditionFalse,
+					Reason: "ReconcileErrorResolved",
+				}
+				mockConditions.EXPECT().HasCondition(conditions, conditionType).Return(true)
+				mockConditions.EXPECT().FindCondition(conditions, conditionType).Return(existingCondition, true)
+
+				err := adapter.PropagateErrorToProjectClaim(reason, nil)
+				Expect(err).NotTo(HaveOccurred())
+			})
+		})
 	})
 })
