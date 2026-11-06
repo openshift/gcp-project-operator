@@ -5,8 +5,8 @@ reviewers:
 - Makdaam
 - Nikokolas3270
 - RaphaelBut
-- srep-functional-team-aurora
 - rosa-trust-engineering-access-tooling
+- rosa-trust-engineering-access-observability
 approvers:
 - bergmannf
 - rafael-azevedo
@@ -14,9 +14,9 @@ approvers:
 - Makdaam
 - Nikokolas3270
 - RaphaelBut
-- srep-functional-team-aurora
 - rosa-trust-engineering-access-tooling
+- rosa-trust-engineering-access-observability
 maintainers:
-- srep-functional-team-aurora
 - rosa-trust-engineering-access-tooling
+- rosa-trust-engineering-access-observability
 - rafael-azevedo
