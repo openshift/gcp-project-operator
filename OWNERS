@@ -6,7 +6,7 @@ reviewers:
 - Nikokolas3270
 - RaphaelBut
 - rosa-trust-engineering-access-tooling
-- rosa-trust-engineering-access-observability
+- rosa-trust-engineering-observability
 approvers:
 - bergmannf
 - rafael-azevedo
@@ -15,8 +15,8 @@ approvers:
 - Nikokolas3270
 - RaphaelBut
 - rosa-trust-engineering-access-tooling
-- rosa-trust-engineering-access-observability
+- rosa-trust-engineering-observability
 maintainers:
 - rosa-trust-engineering-access-tooling
-- rosa-trust-engineering-access-observability
+- rosa-trust-engineering-observability
 - rafael-azevedo
