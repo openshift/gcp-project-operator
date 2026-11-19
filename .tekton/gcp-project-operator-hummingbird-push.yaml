@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/openshift/gcp-project-operator?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: 'false'
+    pipelinesascode.tekton.dev/max-keep-runs: '3'
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "master"
+  creationTimestamp: null
+  labels:
+    appstudio.openshift.io/application: gcp-project-operator-hummingbird
+    appstudio.openshift.io/component: gcp-project-operator-hummingbird
+    pipelines.appstudio.openshift.io/type: build
+  name: gcp-project-operator-hummingbird-on-push
+  namespace: gcp-project-operator-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/gcp-project-operator-tenant/openshift/gcp-project-operator-hummingbird:{{revision}}
+  - name: dockerfile
+    value: build/Dockerfile.hummingbird
+  - name: path-context
+    value: .
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-gcp-project-operator
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+  pipelineRef:
+    resolver: git
+    params:
+    - name: url
+      value: https://github.com/openshift/boilerplate
+    - name: revision
+      value: master
+    - name: pathInRepo
+      value: pipelines/docker-build-multi-platform-oci-ta/pipeline.yaml
+status: {}

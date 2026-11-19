@@ -1,0 +1,17 @@
+FROM quay.io/redhat-services-prod/openshift/boilerplate:latest AS builder
+ENV OPERATOR_PATH=/gcp-project-operator
+COPY . ${OPERATOR_PATH}
+WORKDIR ${OPERATOR_PATH}
+
+# Build
+RUN make go-build
+
+FROM registry.access.redhat.com/hi/go:1.27@sha256:2c0d0db024e2d591bdada9fd74141781df5f750650ef0c92f599a73f728c7da1
+ENV OPERATOR_PATH=/gcp-project-operator \
+    OPERATOR_BIN=gcp-project-operator
+
+WORKDIR /root/
+COPY --from=builder /gcp-project-operator/build/_output/bin/${OPERATOR_BIN} /usr/local/bin/${OPERATOR_BIN}
+LABEL io.openshift.managed.name="gcp-project-operator" \
+    io.openshift.managed.description="This operator will be responsible for managing GCP project and credentials."
+ENTRYPOINT ["/usr/local/bin/gcp-project-operator"]
