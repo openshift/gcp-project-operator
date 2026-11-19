@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	stderrors "errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -31,6 +32,9 @@ import (
 const (
 	osdServiceAccountNameDefault = "osd-managed-admin"
 	FinalizerName                = "finalizer.gcp.managed.openshift.io"
+	// PersistentErrorThreshold is how long reconcile errors must persist
+	// before the ProjectClaim is moved to the terminal Error state.
+	PersistentErrorThreshold = 30 * time.Minute
 )
 
 // OSDRequiredAPIS is list of API's, required to setup
@@ -839,6 +843,84 @@ func (r *ReferenceAdapter) DeleteIAMPolicy(serviceAccountEmail string, memberTyp
 		}
 		return nil
 	}
+}
+
+// isTerminalError returns true if the error indicates a condition that will
+// not resolve by retrying — the customer or an SRE must take action.
+// Terminal errors are escalated to ClaimStatusError immediately rather than
+// waiting for the PersistentErrorThreshold.
+func isTerminalError(err error) bool {
+	var apiErr *googleapi.Error
+	if !stderrors.As(err, &apiErr) {
+		return false
+	}
+	switch apiErr.Code {
+	case http.StatusBadRequest: // 400 — invalid request given project state
+		return true
+	case http.StatusForbidden: // 403 — unless it's "API not yet ready"
+		return !matchesComputeApiNotReadyError(err)
+	default:
+		return false
+	}
+}
+
+// PropagateErrorToProjectClaim writes reconcile errors to the ProjectClaim's
+// Conditions for immediate SRE visibility. Terminal GCP errors (4xx client
+// errors that won't self-heal) set ClaimStatusError immediately. Transient
+// errors are given PersistentErrorThreshold before escalating.
+// When err is nil and a previous error condition exists, the condition is
+// marked resolved and the ProjectClaim state is left unchanged.
+func (r *ReferenceAdapter) PropagateErrorToProjectClaim(reason string, err error) error {
+	if r.ProjectClaim.Status.State == gcpv1alpha1.ClaimStatusError {
+		return nil
+	}
+
+	conditions := &r.ProjectClaim.Status.Conditions
+	conditionType := gcpv1alpha1.ConditionError
+
+	if err != nil {
+		shouldEscalate := false
+
+		if isTerminalError(err) {
+			r.logger.Error(err, "Terminal GCP error, setting ProjectClaim to Error state",
+				"projectClaim", r.ProjectClaim.Name,
+				"namespace", r.ProjectClaim.Namespace)
+			shouldEscalate = true
+		} else if r.conditionManager.HasCondition(conditions, conditionType) {
+			existingCondition, _ := r.conditionManager.FindCondition(conditions, conditionType)
+			if existingCondition.Status == corev1.ConditionTrue {
+				errorStart := existingCondition.LastTransitionTime.Time
+				if time.Since(errorStart) >= PersistentErrorThreshold {
+					r.logger.Error(err, "ProjectClaim error persisted beyond threshold, setting Error state",
+						"projectClaim", r.ProjectClaim.Name,
+						"namespace", r.ProjectClaim.Namespace,
+						"threshold", PersistentErrorThreshold,
+						"erroringSince", errorStart)
+					shouldEscalate = true
+				}
+			}
+		}
+
+		if shouldEscalate {
+			r.ProjectClaim.Status.State = gcpv1alpha1.ClaimStatusError
+		}
+
+		r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionTrue, reason, err.Error())
+		return r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim)
+	}
+
+	if !r.conditionManager.HasCondition(conditions, conditionType) {
+		return nil
+	}
+
+	existingCondition, _ := r.conditionManager.FindCondition(conditions, conditionType)
+	resolvedReason := reason + "Resolved"
+	if existingCondition.Status == corev1.ConditionFalse && existingCondition.Reason == resolvedReason {
+		return nil
+	}
+
+	r.conditionManager.SetCondition(conditions, conditionType, corev1.ConditionFalse, resolvedReason, "")
+	return r.kubeClient.Status().Update(context.TODO(), r.ProjectClaim)
 }
 
 // SetProjectReferenceCondition calls SetCondition() with project reference conditions
