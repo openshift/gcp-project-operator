@@ -10,7 +10,7 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "master"
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: gcp-project-operator-hummingbird
+    appstudio.openshift.io/application: gcp-project-operator
     appstudio.openshift.io/component: gcp-project-operator-hummingbird
     pipelines.appstudio.openshift.io/type: build
   name: gcp-project-operator-hummingbird-on-push
