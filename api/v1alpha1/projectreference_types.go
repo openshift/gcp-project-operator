@@ -105,7 +105,3 @@ func (p *ProjectReference) Validate() error {
 	}
 	return nil
 }
-
-func init() {
-	SchemeBuilder.Register(&ProjectReference{}, &ProjectReferenceList{})
-}

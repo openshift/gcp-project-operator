@@ -72,7 +72,7 @@ func (r *ProjectClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	// Fetch the ProjectClaim instance
 	instance := &gcpv1alpha1.ProjectClaim{}
-	err := r.Get(context.TODO(), req.NamespacedName, instance)
+	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -86,6 +86,7 @@ func (r *ProjectClaimReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	adapter := NewProjectClaimAdapter(instance, reqLogger, r.Client, conditionManager)
 	result, err := r.ReconcileHandler(adapter)
 	reason := "ReconcileError"
+	//nolint:contextcheck // SetProjectClaimCondition→StatusUpdate uses context.TODO() internally; threading ctx would require changing CustomResourceAdapter interface and all callers.
 	_, _ = adapter.SetProjectClaimCondition(gcpv1alpha1.ConditionError, reason, err)
 
 	return result, err

@@ -345,7 +345,7 @@ func (c *ProjectClaimAdapter) IsRegionSupported() (bool, error) {
 		return true, nil
 	}
 
-	operatorConfigMap, err := configmap.GetOperatorConfigMap(c.client)
+	operatorConfigMap, err := configmap.GetOperatorConfigMap(context.TODO(), c.client)
 	if err != nil {
 		return true, operrors.Wrap(err, "could not find the OperatorConfigMap")
 	}
