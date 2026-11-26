@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -170,7 +171,8 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 				assert.Equal(t, expected, result)
 			},
 			validateErr: func(t *testing.T, expected, result error) {
-				assert.Equal(t, expected, result)
+				assert.Error(t, result)
+				assert.Contains(t, result.Error(), "not found")
 			},
 		},
 	}
@@ -179,7 +181,7 @@ func TestGetGCPCredentialsFromSecret(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			mocks := builders.SetupDefaultMocks(t, test.localObjects)
 
-			result, err := GetGCPCredentialsFromSecret(mocks.FakeKubeClient, test.secretNamespace, "testCreds")
+			result, err := GetGCPCredentialsFromSecret(context.TODO(), mocks.FakeKubeClient, test.secretNamespace, "testCreds")
 
 			if test.expectedErr != nil {
 				assert.Error(t, err)

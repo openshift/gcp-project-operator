@@ -79,7 +79,7 @@ var _ = Describe("ProjectclaimController", func() {
 					mockAdapter.EXPECT().EnsureProjectClaimFakeProcessed().Return(gcputil.StopProcessing())
 					res, err := reconciler.ReconcileHandler(mockAdapter)
 					Expect(err).ToNot(HaveOccurred())
-					Expect(res.Requeue).To(Equal(false))
+					Expect(res.Requeue).To(Equal(false)) //nolint:staticcheck
 					Expect(res.RequeueAfter).To(Equal(0 * time.Second))
 				})
 			})
@@ -99,7 +99,7 @@ var _ = Describe("ProjectclaimController", func() {
 						mockAdapter.EXPECT().EnsureProjectReferenceLink().Return(gcputil.StopProcessing())
 						res, err := reconciler.ReconcileHandler(mockAdapter)
 						Expect(err).ToNot(HaveOccurred())
-						Expect(res.Requeue).To(Equal(false))
+						Expect(res.Requeue).To(Equal(false)) //nolint:staticcheck
 						Expect(res.RequeueAfter).To(Equal(0 * time.Second))
 					})
 				})
@@ -114,7 +114,7 @@ var _ = Describe("ProjectclaimController", func() {
 							mockAdapter.EXPECT().EnsureFinalizer().Return(gcputil.StopProcessing())
 							res, err := reconciler.ReconcileHandler(mockAdapter)
 							Expect(err).ToNot(HaveOccurred())
-							Expect(res.Requeue).To(Equal(false))
+							Expect(res.Requeue).To(Equal(false)) //nolint:staticcheck
 							Expect(res.RequeueAfter).To(Equal(0 * time.Second))
 						})
 					})
@@ -129,7 +129,7 @@ var _ = Describe("ProjectclaimController", func() {
 								mockAdapter.EXPECT().EnsureCCSSecretFinalizer().Return(gcputil.StopProcessing())
 								res, err := reconciler.ReconcileHandler(mockAdapter)
 								Expect(err).ToNot(HaveOccurred())
-								Expect(res.Requeue).To(Equal(false))
+								Expect(res.Requeue).To(Equal(false)) //nolint:staticcheck
 								Expect(res.RequeueAfter).To(Equal(0 * time.Second))
 							})
 
@@ -143,7 +143,7 @@ var _ = Describe("ProjectclaimController", func() {
 								mockAdapter.EXPECT().EnsureProjectClaimStatePendingProject()
 								res, err := reconciler.ReconcileHandler(mockAdapter)
 								Expect(err).ToNot(HaveOccurred())
-								Expect(res.Requeue).To(Equal(false))
+								Expect(res.Requeue).To(Equal(false)) //nolint:staticcheck
 								Expect(res.RequeueAfter).To(Equal(0 * time.Second))
 							})
 						})

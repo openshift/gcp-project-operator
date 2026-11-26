@@ -110,7 +110,3 @@ func (p *ProjectClaim) Validate() error {
 
 	return nil
 }
-
-func init() {
-	SchemeBuilder.Register(&ProjectClaim{}, &ProjectClaimList{})
-}

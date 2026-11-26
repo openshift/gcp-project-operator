@@ -60,16 +60,16 @@ func NewGCPSecretCR(creds string, namespacedNamed kubetypes.NamespacedName) *cor
 }
 
 // GetGCPCredentialsFromSecret extracts the gcp credentials from a secret. return value is a bytearray
-func GetGCPCredentialsFromSecret(kubeClient client.Client, namespace, name string) ([]byte, error) {
+func GetGCPCredentialsFromSecret(ctx context.Context, kubeClient client.Client, namespace, name string) ([]byte, error) {
 	secret := &corev1.Secret{}
-	err := kubeClient.Get(context.TODO(),
+	err := kubeClient.Get(ctx,
 		kubetypes.NamespacedName{
 			Namespace: namespace,
 			Name:      name,
 		},
 		secret)
 	if err != nil {
-		return []byte{}, fmt.Errorf("GetGCPCredentialsFromSecret.Get %v", err)
+		return []byte{}, fmt.Errorf("GetGCPCredentialsFromSecret.Get %w", err)
 	}
 	var osServiceAccountJSON []byte
 	var ok bool
@@ -169,7 +169,7 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 	exists = false
 	index = -1
 
-	switch reflect.TypeOf(haystack).Kind() {
+	switch reflect.TypeOf(haystack).Kind() { //nolint:exhaustive
 	case reflect.Slice:
 		s := reflect.ValueOf(haystack)
 
@@ -180,6 +180,8 @@ func InArray(needle interface{}, haystack interface{}) (exists bool, index int) 
 				return
 			}
 		}
+	default:
+		// not a slice, return not found
 	}
 
 	return

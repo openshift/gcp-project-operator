@@ -1,6 +1,7 @@
 package configmap
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -188,8 +189,7 @@ func TestGetOperatorConfigMap(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mocks := builders.SetupDefaultMocks(t, test.localObjects)
-
-			operatorConfigMap, err := GetOperatorConfigMap(mocks.FakeKubeClient)
+			operatorConfigMap, err := GetOperatorConfigMap(context.TODO(), mocks.FakeKubeClient)
 
 			if test.expectedErr != nil {
 				assert.Error(t, err)
