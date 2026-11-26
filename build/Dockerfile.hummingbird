@@ -6,7 +6,7 @@ WORKDIR ${OPERATOR_PATH}
 # Build
 RUN make go-build
 
-FROM registry.access.redhat.com/hi/go:1.27@sha256:2c0d0db024e2d591bdada9fd74141781df5f750650ef0c92f599a73f728c7da1
+FROM registry.access.redhat.com/hi/go:1.27@sha256:debbcfd42163cfb54c91feb25ee1d6923201b859cacf80cd3f42e3dc43a1abdb
 ENV OPERATOR_PATH=/gcp-project-operator \
     OPERATOR_BIN=gcp-project-operator
 
