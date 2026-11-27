@@ -1,4 +1,4 @@
-FROM quay.io/redhat-services-prod/openshift/boilerplate:latest AS builder
+FROM quay.io/redhat-services-prod/openshift/boilerplate:latest@sha256:78110c2274df4d84b855849fd4a677606963bf630a3b06bef56a744c0ed41a33 AS builder
 ENV OPERATOR_PATH=/gcp-project-operator
 COPY . ${OPERATOR_PATH}
 WORKDIR ${OPERATOR_PATH}
